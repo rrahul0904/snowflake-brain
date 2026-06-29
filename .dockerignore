@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+data/*.sqlite
+data/*.sqlite-*
+.DS_Store
+__MACOSX__
+dist
+review_artifacts
+static
+node_modules

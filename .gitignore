@@ -1,0 +1,11 @@
+.DS_Store
+__MACOSX/
+.venv/
+__pycache__/
+*.pyc
+data/*.sqlite
+data/*.sqlite-*
+node_modules/
+dist/
+review_artifacts/
+static/

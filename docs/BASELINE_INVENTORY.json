@@ -1,0 +1,508 @@
+{
+  "generated_at": "2026-06-29T11:58:28",
+  "db_path": "/Users/297159/Documents/Snowflake Certification Prep/data/snowflake_brain.sqlite",
+  "counts": {
+    "tracks": 9,
+    "courses": 24,
+    "sections": 14,
+    "lessons": 1305,
+    "transcript_chunks": 24229,
+    "practice_tests": 279,
+    "questions": 3386,
+    "labs": 40,
+    "flashcards": 0,
+    "study_goals": 1,
+    "study_plan_items": 156,
+    "empty_practice_tests": 84,
+    "non_empty_practice_tests": 195
+  },
+  "frontend_routes": [
+    "#/",
+    "#/ai",
+    "#/analytics",
+    "#/flashcards",
+    "#/labs",
+    "#/plan",
+    "#/quiz",
+    "#/search",
+    "#/video"
+  ],
+  "backend_routes": [
+    {
+      "path": "/api/ai/ask",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/brain/ask",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/courses",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/courses/{course_id}",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/courses/{course_id}/lessons",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/courses/{course_id}/practice-tests",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/courses/{course_id}/sections",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/documents/{document_id}",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/exam-sessions",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/exam-sessions/{session_id}",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/exam-sessions/{session_id}/answers",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/exam-sessions/{session_id}/finish",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/flashcards",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/flashcards",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/flashcards/all",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/flashcards/generate",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/flashcards/{card_id}",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/flashcards/{card_id}/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/index/rebuild",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/index/status",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/labs",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/labs/{lab_id}",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/labs/{lab_id}/submit",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/lessons",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/lessons/{lesson_id}",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/lessons/{lesson_id}/notes",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/lessons/{lesson_id}/transcript",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/lessons/{lesson_id}/vtt",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/media",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/practice-tests",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/practice-tests-legacy",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/practice-tests/{test_id}/questions",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/progress/by-topic",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/progress/heatmap",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/progress/lesson",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/progress/summary",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/progress/weak-topics",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/questions",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/questions/{question_id}",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/questions/{question_id}/attempt",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/questions/{question_id}/bookmark",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/questions/{question_id}/bookmark",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/questions/{question_id}/notes",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/questions/{question_id}/notes",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/quiz/grade",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/quiz/start",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/search",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/content-audit",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/goals",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/goals",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/study/goals/{goal_id}",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/study/goals/{goal_id}/generate-plan",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/study/goals/{goal_id}/plan",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/plan-items/{item_id}",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/study/practice-classifications",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/question-duplicates",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/readiness",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/study/roadmap",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/study/today",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/summary",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/tracks",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/tracks/{track_id}/courses",
+      "methods": [
+        "GET"
+      ]
+    }
+  ],
+  "smoke_tests": [
+    {
+      "path": "/api/summary",
+      "status": 200,
+      "shape": [
+        "courses",
+        "meta",
+        "stats"
+      ]
+    },
+    {
+      "path": "/api/tracks",
+      "status": 200,
+      "shape": [
+        "tracks"
+      ]
+    },
+    {
+      "path": "/api/tracks/snowpro-core/courses",
+      "status": 200,
+      "shape": [
+        "courses"
+      ]
+    },
+    {
+      "path": "/api/practice-tests?track_id=snowpro-core&min_questions=1",
+      "status": 200,
+      "shape": [
+        "tests"
+      ]
+    },
+    {
+      "path": "/api/questions?track_id=snowpro-core&limit=1",
+      "status": 200,
+      "shape": [
+        "questions",
+        "total"
+      ]
+    },
+    {
+      "path": "/api/lessons?track_id=snowpro-core&limit=1",
+      "status": 200,
+      "shape": [
+        "lessons"
+      ]
+    },
+    {
+      "path": "/api/search?q=warehouse&limit=1",
+      "status": 200,
+      "shape": [
+        "results"
+      ]
+    },
+    {
+      "path": "/api/labs",
+      "status": 200,
+      "shape": [
+        "labs"
+      ]
+    },
+    {
+      "path": "/api/flashcards",
+      "status": 200,
+      "shape": [
+        "cards",
+        "due_today"
+      ]
+    },
+    {
+      "path": "/api/study/goals",
+      "status": 200,
+      "shape": [
+        "goals"
+      ]
+    },
+    {
+      "path": "/api/study/today",
+      "status": 200,
+      "shape": [
+        "date",
+        "goals",
+        "items"
+      ]
+    },
+    {
+      "path": "/api/study/readiness?track_id=snowpro-core",
+      "status": 200,
+      "shape": [
+        "tracks"
+      ]
+    },
+    {
+      "path": "/api/study/content-audit",
+      "status": 200,
+      "shape": [
+        "duplicate_prompts",
+        "mapping_review",
+        "practice_quality",
+        "totals",
+        "tracks",
+        "transcript_quality"
+      ]
+    }
+  ]
+}

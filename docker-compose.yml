@@ -1,0 +1,15 @@
+services:
+  snowflake-brain:
+    build: .
+    container_name: snowflake-brain-lab
+    ports:
+      - "8010:8000"
+    environment:
+      CONTENT_ROOT: /content
+      BRAIN_DB: /data/snowflake_brain.sqlite
+      AUTO_INGEST: "true"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    volumes:
+      - "${CONTENT_ROOT_HOST:-./content}:/content:ro"
+      - "./data:/data"
+    restart: unless-stopped
