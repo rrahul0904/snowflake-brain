@@ -1,101 +1,91 @@
-import { escapeHtml, formatNumber, getContentAudit, getProgressSummary, getStudyGoals, getStudyReadiness } from "../api.js";
+export const VIEW_ID = "readiness";
+import { escapeHtml, getExperienceCommandCenter } from "../api.js?v=20260714-v20-ai-academy";
+import { activeTrack, emptyState, pct, progressBar, setActiveTrack, skeleton, statusLabel, trackOptions } from "../ui.js?v=20260714-v20-ai-academy";
 
 export default async function mount(container, params = {}) {
-  container.innerHTML = `
-    <section class="coach-page readiness-page">
-      <header class="coach-header">
-        <div>
-          <p class="eyebrow">Readiness</p>
-          <h1>Are you ready to book the exam?</h1>
-          <p class="page-subtitle">This page is intentionally strict. It should tell you what is blocking certification readiness.</p>
-        </div>
-        <a class="primary-btn" href="#/practice?mode=readiness">Take readiness exam</a>
-      </header>
-      <div id="readiness-root" class="loading-state">Checking readiness...</div>
-    </section>
-  `;
-
+  const trackId = params.track_id || activeTrack();
+  setActiveTrack(trackId);
+  container.innerHTML = skeleton("Loading readiness evidence...");
   try {
-    const [goals, progress, readiness, audit] = await Promise.all([
-      getStudyGoals().catch(() => ({ goals: [] })),
-      getProgressSummary().catch(() => null),
-      getStudyReadiness(params.track_id ? { track_id: params.track_id } : {}).catch(() => ({ tracks: [] })),
-      getContentAudit().catch(() => null),
-    ]);
-    const goal = (goals.goals || [])[0];
-    const track = (readiness.tracks || []).find((item) => !params.track_id || item.track_id === params.track_id) || (readiness.tracks || [])[0] || {};
-    renderReadiness(container, { goal, progress, track, audit });
+    const data = await getExperienceCommandCenter({ track_id: trackId });
+    render(container, data);
   } catch (error) {
-    container.querySelector("#readiness-root").innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
+    container.innerHTML = emptyState("Readiness gate unavailable", error.message);
   }
 }
 
-function renderReadiness(container, { goal, progress, track, audit }) {
-  const root = container.querySelector("#readiness-root");
-  const blockers = readinessBlockers(progress, track, audit);
-  const score = progress?.exam_readiness_pct || 0;
-  const verdict = blockers.length ? "Not ready yet" : "Ready with caution";
-  root.className = "readiness-cockpit";
-  root.innerHTML = `
-    <section class="panel readiness-verdict ${blockers.length ? "blocked" : "ready"}">
-      <div>
-        <p class="eyebrow">Verdict</p>
-        <h2>${verdict}</h2>
-        <p>${goal ? escapeHtml(goal.track_title) : "No active goal selected"} · readiness score ${score}%</p>
-      </div>
-      <div class="score-pill giant">${score}%</div>
-    </section>
+function render(container, data) {
+  const selected = data.selected_track_id || activeTrack();
+  const readiness = data.readiness || {};
+  const score = pct(readiness.readiness_score);
+  const blockers = readiness.blockers || [];
+  const actions = readiness.next_actions || [];
+  const domains = readiness.domains || [];
+  const probability = readiness.pass_probability_range || [0, 0];
 
-    <section class="coach-grid">
-      <article class="panel">
-        <div class="panel-header"><div><p class="eyebrow">Blocking reasons</p><h2>Fix before booking</h2></div></div>
-        <div class="readiness-blocker-list">
-          ${blockers.length ? blockers.map((blocker) => `<div class="readiness-blocker"><strong>${escapeHtml(blocker.title)}</strong><span>${escapeHtml(blocker.detail)}</span><a href="${blocker.href}">${escapeHtml(blocker.action)}</a></div>`).join("") : `<div class="success-state">No critical blockers detected. Take one more full mock to confirm.</div>`}
+  container.innerHTML = `
+    <section class="page-shell readiness-page">
+      <header class="page-hero readiness-hero">
+        <div>
+          <p class="eyebrow">Evidence gate</p>
+          <h1>${score >= 82 && !blockers.length ? "Ready signal detected." : "Do not book the exam until evidence supports it."}</h1>
+          <p>Readiness is based on practice accuracy, timed performance, lab proof, mistake repair, and content coverage — not completion theater.</p>
         </div>
-      </article>
+        <label class="cert-filter"><span>Certification</span><select id="track-select">${trackOptions(data.certifications || [], selected)}</select></label>
+      </header>
 
-      <article class="panel">
-        <div class="panel-header"><div><p class="eyebrow">Evidence</p><h2>What this is based on</h2></div></div>
-        <div class="coach-stat-list">
-          <div><strong>${formatNumber(progress?.total_attempted || 0)}</strong><span>questions attempted</span></div>
-          <div><strong>${progress?.accuracy_pct || 0}%</strong><span>overall accuracy</span></div>
-          <div><strong>${formatNumber(track.question_count || 0)}</strong><span>questions in selected track</span></div>
-          <div><strong>${formatNumber(track.practice_test_count || 0)}</strong><span>source practice tests</span></div>
+      <section class="readiness-scoreboard">
+        <div class="readiness-giant">
+          <div class="orb large" style="--score:${score}"><span>${score}%</span></div>
+          <div><p class="eyebrow">Readiness status</p><h2>${statusLabel(readiness.status)}</h2><p>Pass probability estimate: <strong>${probability[0] || 0}–${probability[1] || 0}%</strong></p></div>
         </div>
-      </article>
-    </section>
+        <div class="readiness-evidence-grid">
+          ${evidence("Question attempts", readiness.attempts || 0, "Target: 100+")}
+          ${evidence("Accuracy", `${readiness.accuracy_pct || 0}%`, "Target: 80%+")}
+          ${evidence("Mock exams", readiness.mock_exam_attempts || 0, "Target: 2 finished")}
+          ${evidence("Labs proven", `${readiness.lab_passed || 0}/${readiness.lab_available || 0}`, "Target: key domains")}
+          ${evidence("Misses", readiness.misses || 0, "Target: low/repaired")}
+          ${evidence("Mastery", `${readiness.avg_mastery_level || 0}/7`, "Target: 5+")}
+        </div>
+      </section>
 
-    <section class="panel readiness-thresholds">
-      <p class="eyebrow">Required before exam day</p>
-      <div class="threshold-grid">
-        <div><strong>Diagnostic complete</strong><span>At least 30 questions answered.</span></div>
-        <div><strong>Coverage</strong><span>100+ questions attempted for the certification.</span></div>
-        <div><strong>Accuracy</strong><span>80%+ on repeated practice.</span></div>
-        <div><strong>Mock exams</strong><span>Two full mocks above 80% before booking.</span></div>
-        <div><strong>Repair loop</strong><span>Weak topics and repeated mistakes reviewed.</span></div>
-        <div><strong>Content trust</strong><span>Know where transcripts are generated notes only.</span></div>
-      </div>
+      <section class="readiness-grid">
+        <article class="panel blocker-panel serious">
+          <div class="panel-header"><div><p class="eyebrow">Blocking reasons</p><h2>${blockers.length || "No"} active blockers</h2></div></div>
+          <div class="blocker-list big">
+            ${blockers.length ? blockers.map((item) => `<div class="blocker"><span>!</span><p>${escapeHtml(item)}</p></div>`).join("") : `<div class="success-state">No major blockers detected. Run a timed readiness exam to confirm.</div>`}
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-header"><div><p class="eyebrow">Next actions</p><h2>What moves the score</h2></div></div>
+          <div class="action-stack">${actions.length ? actions.map(actionItem).join("") : `<a class="action-tile" href="#/practice?track_id=${encodeURIComponent(selected)}&mode=exam"><strong>Take timed readiness exam</strong><span>No repair action is currently stronger than validation.</span></a>`}</div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header"><div><p class="eyebrow">Domain evidence</p><h2>Where the gate is weak</h2></div><a href="#/intelligence?track_id=${encodeURIComponent(selected)}">Open graph</a></div>
+        <div class="domain-evidence-table">
+          ${domains.map(domainRow).join("") || emptyState("No domain evidence", "Run a diagnostic to populate the readiness gate.")}
+        </div>
+      </section>
     </section>
   `;
+  container.querySelector("#track-select")?.addEventListener("change", (event) => {
+    setActiveTrack(event.target.value);
+    window.dispatchEvent(new CustomEvent("track-change", { detail: { track_id: event.target.value } }));
+  });
 }
 
-function readinessBlockers(progress, track, audit) {
-  const blockers = [];
-  if (!progress?.total_attempted) {
-    blockers.push({ title: "No diagnostic completed", detail: "The coach has no baseline. Start with 30 mixed questions.", action: "Take diagnostic", href: "#/practice?mode=diagnostic" });
-  }
-  if ((progress?.total_attempted || 0) < 100) {
-    blockers.push({ title: "Question coverage is too low", detail: `${formatNumber(progress?.total_attempted || 0)} questions attempted. Get to at least 100 before trusting readiness.`, action: "Practice more", href: "#/practice" });
-  }
-  if ((progress?.accuracy_pct || 0) < 75) {
-    blockers.push({ title: "Accuracy below safe buffer", detail: `${progress?.accuracy_pct || 0}% overall accuracy. Target 80%+ before exam day.`, action: "Repair weak topics", href: "#/review" });
-  }
-  if ((track.practice_test_count || 0) === 0) {
-    blockers.push({ title: "No source mock exam detected", detail: "This track may not have enough full-exam evidence.", action: "Use mixed readiness exam", href: "#/practice?mode=readiness" });
-  }
-  const generated = audit?.transcript_quality?.generated_notes || 0;
-  if (generated > 0) {
-    blockers.push({ title: "Some lessons are generated notes", detail: `${formatNumber(generated)} lessons do not have original transcript quality. Use questions to validate learning.`, action: "Use Learn + Practice loop", href: "#/learn" });
-  }
-  return blockers;
+function evidence(label, value, target) {
+  return `<div class="evidence-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(target)}</small></div>`;
+}
+
+function actionItem(action) {
+  const href = action.action === "Complete lab" ? `#/labs?skill_id=${encodeURIComponent(action.skill_id || "")}` : `#/practice?skill_id=${encodeURIComponent(action.skill_id || "")}`;
+  return `<a class="action-tile" href="${href}"><strong>${escapeHtml(action.action || "Repair")}: ${escapeHtml(action.skill || "Skill")}</strong><span>${escapeHtml(action.reason || action.domain || "")}</span></a>`;
+}
+
+function domainRow(domain) {
+  const score = Math.round(((domain.avg_mastery || 0) / 7) * 100);
+  return `<div class="domain-evidence-row"><span><strong>${escapeHtml(domain.domain || domain.domain_id || "Domain")}</strong><small>${domain.skills || 0} skills</small></span><span>${domain.accuracy_pct || 0}% accuracy</span><span>${domain.blockers || 0} blockers</span><span>${progressBar(score)}</span></div>`;
 }

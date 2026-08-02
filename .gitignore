@@ -5,7 +5,12 @@ __pycache__/
 *.pyc
 data/*.sqlite
 data/*.sqlite-*
+data/*.db
+data/*.db-*
+data/backups/
 node_modules/
 dist/
 review_artifacts/
+docs/replica/**/screenshots/
+docs/replica/reference/
 static/

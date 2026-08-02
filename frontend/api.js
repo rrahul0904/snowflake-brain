@@ -19,6 +19,7 @@ export async function api(path, options = {}) {
 export const getSummary = () => api("/api/summary");
 export const getCourses = () => api("/api/courses");
 export const getTracks = () => api("/api/tracks");
+export const getTrackCourses = (id) => api(`/api/tracks/${encodeURIComponent(id)}/courses`);
 export const getCourse = (id) => api(`/api/courses/${encodeURIComponent(id)}`);
 export const getCourseSections = (id) => api(`/api/courses/${encodeURIComponent(id)}/sections`);
 export const getCoursePracticeTests = (id) => api(`/api/courses/${encodeURIComponent(id)}/practice-tests`);
@@ -46,6 +47,7 @@ export const getQuestion = (id) => api(`/api/questions/${encodeURIComponent(id)}
 export const getPracticeTests = (params = {}) => api(`/api/practice-tests?${new URLSearchParams(params)}`);
 export const getPracticeTestQuestions = (id, params = {}) => api(`/api/practice-tests/${encodeURIComponent(id)}/questions?${new URLSearchParams(params)}`);
 export const startQuiz = (payload) => api("/api/quiz/start", { method: "POST", body: JSON.stringify(payload) });
+export const gradeQuiz = (payload) => api("/api/quiz/grade", { method: "POST", body: JSON.stringify(payload) });
 export const recordAttempt = (id, payload) =>
   api(`/api/questions/${encodeURIComponent(id)}/attempt`, { method: "POST", body: JSON.stringify(payload) });
 export const toggleBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`, { method: "POST", body: "{}" });
@@ -60,9 +62,30 @@ export const reviewFlashcard = (id, grade) =>
 export const deleteFlashcard = (id) => api(`/api/flashcards/${id}`, { method: "DELETE" });
 export const generateFlashcards = (payload) =>
   api("/api/flashcards/generate", { method: "POST", body: JSON.stringify(payload) });
-export const getLabs = () => api("/api/labs");
+export const getLabs = (params = {}) => api(`/api/labs?${new URLSearchParams(params)}`);
 export const getLab = (id) => api(`/api/labs/${encodeURIComponent(id)}`);
-export const submitLab = (id, sql) => api(`/api/labs/${id}/submit`, { method: "POST", body: JSON.stringify({ sql }) });
+export const getLabsConfig = () => api("/api/labs/config");
+export const submitLab = (id, sql) => api(`/api/labs/${encodeURIComponent(id)}/submit`, { method: "POST", body: JSON.stringify({ sql }) });
+
+export const getExperienceCommandCenter = (params = {}) => api(`/api/experience/command-center?${new URLSearchParams(params)}`);
+export const getExperienceShell = (params = {}) => api(`/api/experience/shell?${new URLSearchParams(params)}`);
+export const createExamSession = (payload) => api("/api/exam-sessions", { method: "POST", body: JSON.stringify(payload) });
+export const getExamSession = (sessionId) => api(`/api/exam-sessions/${encodeURIComponent(sessionId)}`);
+export const saveExamSessionAnswer = (sessionId, payload) => api(`/api/exam-sessions/${encodeURIComponent(sessionId)}/answers`, { method: "POST", body: JSON.stringify(payload) });
+export const finishExamSession = (sessionId) => api(`/api/exam-sessions/${encodeURIComponent(sessionId)}/finish`, { method: "POST", body: "{}" });
+
+export const getSkillMap = () => api("/api/skills/map");
+export const getSkillSummary = (params = {}) => api(`/api/skills/summary?${new URLSearchParams(params)}`);
+
+export const getCertificationPortfolio = () => api("/api/intelligence/portfolio");
+export const getCommandBrief = (params = {}) => api(`/api/intelligence/command-brief?${new URLSearchParams(params)}`);
+export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/readiness?${new URLSearchParams(params)}`);
+export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
+export const getMistakeQueue = (params = {}) => api(`/api/intelligence/mistake-queue?${new URLSearchParams(params)}`);
+export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);
+export const reindexSkillMap = (trackId = "") => api(`/api/intelligence/reindex-skill-map?${new URLSearchParams({ track_id: trackId })}`, { method: "POST", body: "{}" });
+
+export const getSkillResources = (skillId, params = {}) => api(`/api/skills/${encodeURIComponent(skillId)}/resources?${new URLSearchParams(params)}`);
 export const searchBrain = (q, limit = 20) => api(`/api/search?${new URLSearchParams({ q, limit })}`);
 export const askBrain = (payload) => api("/api/brain/ask", { method: "POST", body: JSON.stringify(payload) });
 export const getLessons = (params = {}) => api(`/api/lessons?${new URLSearchParams(params)}`);
@@ -71,12 +94,26 @@ export const getTranscript = (id) => api(`/api/lessons/${encodeURIComponent(id)}
 export const recordLessonProgress = (payload) =>
   api("/api/progress/lesson", { method: "POST", body: JSON.stringify(payload) });
 
+export const getDataAiCurriculum = () => api("/api/data-ai/curriculum");
+export const completeDataAiLesson = (id) =>
+  api(`/api/data-ai/lessons/${encodeURIComponent(id)}/complete`, { method: "POST", body: "{}" });
+export const submitDataAiCheck = (id, selectedIndex) =>
+  api(`/api/data-ai/checks/${encodeURIComponent(id)}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ selected_index: selectedIndex }),
+  });
+export const submitDataAiLab = (id, code) =>
+  api(`/api/data-ai/labs/${encodeURIComponent(id)}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+
 
 export async function streamAi(question, onDelta, onDone) {
   const response = await fetch("/api/ai/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, context_limit: 5 }),
+    body: JSON.stringify({ question, context_limit: 10 }),
   });
   if (!response.ok || !response.body) throw new Error("AI request failed");
   const reader = response.body.getReader();

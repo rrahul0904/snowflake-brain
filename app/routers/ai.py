@@ -1,25 +1,31 @@
 import json
+import sqlite3
 from typing import Any, AsyncIterator
 
-import httpx
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 from ..database import connect
 from ..ingest import fts_query
 
 router = APIRouter()
 
-SYSTEM_PROMPT = """You are a concise Snowflake SnowPro Core certification tutor.
-You answer ONLY based on the provided context snippets from the user's
-course material. If the answer cannot be found in the context, say so.
-Keep answers under 200 words. Use bullet points for lists. End with a
-one-sentence exam tip starting with "Exam tip:"."""
-
-
 CONCEPT_GUIDES: list[dict[str, Any]] = [
+    {
+        "keys": ["micro partition", "micro partitions", "micro-partition", "micro-partitions", "partition pruning", "clustering"],
+        "title": "Micro-partitions",
+        "answer": [
+            "Snowflake stores table data in immutable micro-partitions and keeps metadata about each partition, such as value ranges and row counts.",
+            "Query pruning uses this metadata to skip micro-partitions that cannot contain the requested rows.",
+            "Clustering can improve pruning when data is naturally disordered for common filter predicates.",
+        ],
+        "remember": [
+            "Users do not manually create micro-partitions.",
+            "Good clustering improves pruning; it does not replace warehouse sizing or query design.",
+        ],
+        "tip": "When an exam question mentions pruning, clustering depth, or metadata ranges, think micro-partitions.",
+    },
     {
         "keys": ["time travel", "undrop", "before statement", "at offset", "retention"],
         "title": "Snowflake Time Travel",
@@ -105,7 +111,14 @@ CONCEPT_GUIDES: list[dict[str, Any]] = [
 
 class AskRequest(BaseModel):
     question: str
-    context_limit: int = 5
+    context_limit: int = 8
+    track_id: str | None = None
+    course_id: str | None = None
+    lesson_id: str | None = None
+    practice_test_id: str | None = None
+    question_id: str | None = None
+    selected_answer: str | None = None
+    correct_answer: str | None = None
 
 
 @router.post("/ai/ask")
@@ -118,72 +131,57 @@ def brain_ask(payload: AskRequest) -> dict[str, Any]:
     sources = _context(payload.question, payload.context_limit)
     if not sources:
         return {
-            "answer": "I could not find strong matches in the local Snowflake brain yet. Try rebuilding the index or asking with Snowflake terms from your course titles.",
+            "answer": "Local archive answer: I could not find strong course matches for that wording yet. Try the exact Snowflake feature name, SQL command, or object name from the lesson/question.",
             "sources": [],
-            "next_steps": ["Rebuild the index", "Try a shorter Snowflake-specific question"],
+            "mode": "local_archive",
+            "next_steps": ["Search the same term", "Try a shorter Snowflake-specific question", "Open the related lesson or practice question"],
         }
     answer = _local_rag_answer(payload.question, sources)
     return {
         "answer": answer,
         "sources": sources,
+        "mode": "local_archive",
         "next_steps": ["Open the strongest source", "Submit the question to see the downloaded explanation", "Mark this question for review if the concept is weak"],
     }
 
 
 async def _ask_stream(payload: AskRequest) -> AsyncIterator[str]:
     sources = _context(payload.question, payload.context_limit)
-    if not ANTHROPIC_API_KEY:
-        yield _sse({"delta": "AI assistant requires ANTHROPIC_API_KEY environment variable."})
-        yield _sse({"done": True, "sources": sources})
-        return
-    context = "\n\n".join(
-        f"[{idx + 1}] {source['title']} ({source['type']}): {source['snippet']}"
-        for idx, source in enumerate(sources)
+    answer = _local_rag_answer(payload.question, sources) if sources else (
+        "Local archive answer: I could not find strong course matches for that wording yet. "
+        "Try the exact Snowflake feature name, SQL command, or object name from the lesson/question.\n\n"
+        "Exam tip: when no clean local evidence is found, search the exact Snowflake object or command before trusting a generated explanation."
     )
-    user_text = f"Question: {payload.question}\n\nContext:\n{context or 'No matching context found.'}"
-    headers = {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-    body = {
-        "model": ANTHROPIC_MODEL,
-        "max_tokens": 500,
-        "system": SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": user_text}],
-        "stream": True,
-    }
-    async with httpx.AsyncClient(timeout=45) as client:
-        async with client.stream("POST", "https://api.anthropic.com/v1/messages", headers=headers, json=body) as response:
-            async for line in response.aiter_lines():
-                if not line.startswith("data:"):
-                    continue
-                raw = line.removeprefix("data:").strip()
-                if raw == "[DONE]":
-                    break
-                try:
-                    event = json.loads(raw)
-                except ValueError:
-                    continue
-                if event.get("type") == "content_block_delta":
-                    text = event.get("delta", {}).get("text", "")
-                    if text:
-                        yield _sse({"delta": text})
-    yield _sse({"done": True, "sources": sources})
+    for chunk in _chunk_text(answer, 260):
+        yield _sse({"delta": chunk})
+    yield _sse({"done": True, "sources": sources, "mode": "local_archive"})
 
 
 def _context(question: str, limit: int) -> list[dict[str, Any]]:
     query = fts_query(question)
     if not query:
         return []
+    max_rows = max(3, min(limit, 12))
     with connect() as conn:
-        rows = [
+        rows: list[dict[str, Any]] = []
+        rows.extend(_search_index_context(conn, query, max_rows))
+        rows.extend(_transcript_context(conn, query, max_rows))
+        rows.extend(_question_context(conn, query, max_rows))
+        rows.extend(_lesson_title_context(conn, query, max_rows))
+        if len(rows) < 3:
+            rows.extend(_like_context(conn, question, max_rows))
+    return _dedupe_sources(rows)[:max_rows]
+
+
+def _search_index_context(conn, query: str, limit: int) -> list[dict[str, Any]]:
+    try:
+        return [
             dict(row)
             for row in conn.execute(
                 """
                 SELECT
                   title,
-                  snippet(search_fts, 1, '', '', '...', 42) AS snippet,
+                  snippet(search_fts, 1, '', '', '...', 48) AS snippet,
                   type,
                   ref_id,
                   ref_id AS id,
@@ -194,10 +192,146 @@ def _context(question: str, limit: int) -> list[dict[str, Any]]:
                 ORDER BY bm25(search_fts)
                 LIMIT ?
                 """,
-                (query, max(1, min(limit, 8))),
+                (query, limit),
             )
         ]
+    except sqlite3.OperationalError:
+        return []
+
+
+def _transcript_context(conn, query: str, limit: int) -> list[dict[str, Any]]:
+    try:
+        return [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT
+                  l.title || ' transcript' AS title,
+                  snippet(chunk_fts, 0, '', '', '...', 52) AS snippet,
+                  'transcript' AS type,
+                  tc.lesson_id AS ref_id,
+                  tc.lesson_id AS id,
+                  l.course_id AS course_id,
+                  l.video_path AS path
+                FROM chunk_fts
+                JOIN transcript_chunks tc ON tc.id = chunk_fts.rowid
+                JOIN lessons l ON l.id = tc.lesson_id
+                WHERE chunk_fts MATCH ?
+                ORDER BY bm25(chunk_fts)
+                LIMIT ?
+                """,
+                (query, limit),
+            )
+        ]
+    except sqlite3.OperationalError:
+        return []
+
+
+def _question_context(conn, query: str, limit: int) -> list[dict[str, Any]]:
+    try:
+        return [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT
+                  q.question AS title,
+                  snippet(question_fts, 0, '', '', '...', 44) || ' ' || snippet(question_fts, 1, '', '', '...', 44) AS snippet,
+                  'question' AS type,
+                  q.id AS ref_id,
+                  q.id AS id,
+                  q.course_id AS course_id,
+                  q.source_path AS path
+                FROM question_fts
+                JOIN questions q ON q.rowid = question_fts.rowid
+                WHERE question_fts MATCH ?
+                ORDER BY bm25(question_fts)
+                LIMIT ?
+                """,
+                (query, limit),
+            )
+        ]
+    except sqlite3.OperationalError:
+        return []
+
+
+def _lesson_title_context(conn, query: str, limit: int) -> list[dict[str, Any]]:
+    try:
+        return [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT
+                  l.title AS title,
+                  COALESCE(NULLIF(l.excerpt, ''), snippet(lesson_fts, 0, '', '', '...', 36)) AS snippet,
+                  'lesson' AS type,
+                  l.id AS ref_id,
+                  l.id AS id,
+                  l.course_id AS course_id,
+                  l.video_path AS path
+                FROM lesson_fts
+                JOIN lessons l ON l.rowid = lesson_fts.rowid
+                WHERE lesson_fts MATCH ?
+                ORDER BY bm25(lesson_fts)
+                LIMIT ?
+                """,
+                (query, limit),
+            )
+        ]
+    except sqlite3.OperationalError:
+        return []
+
+
+def _like_context(conn, question: str, limit: int) -> list[dict[str, Any]]:
+    tokens = [token for token in fts_query(question).replace("*", "").split() if len(token) > 2][:4]
+    if not tokens:
+        return []
+    like = [f"%{token}%" for token in tokens]
+    rows: list[dict[str, Any]] = []
+    for pattern in like:
+        rows.extend(
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT title, COALESCE(NULLIF(excerpt, ''), substr(transcript_text, 1, 420)) AS snippet,
+                       'lesson' AS type, id AS ref_id, id, course_id, video_path AS path
+                FROM lessons
+                WHERE title LIKE ? OR transcript_text LIKE ?
+                LIMIT ?
+                """,
+                (pattern, pattern, limit),
+            )
+        )
+        rows.extend(
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT question AS title, COALESCE(NULLIF(explanation, ''), question) AS snippet,
+                       'question' AS type, id AS ref_id, id, course_id, source_path AS path
+                FROM questions
+                WHERE question LIKE ? OR explanation LIKE ?
+                LIMIT ?
+                """,
+                (pattern, pattern, limit),
+            )
+        )
+        if len(rows) >= limit:
+            break
     return rows
+
+
+def _dedupe_sources(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str, str]] = set()
+    deduped: list[dict[str, Any]] = []
+    for row in rows:
+        snippet = _clean_snippet(row.get("snippet", ""))
+        key = (str(row.get("type") or ""), str(row.get("ref_id") or row.get("id") or ""), snippet[:80])
+        if not snippet or key in seen:
+            continue
+        seen.add(key)
+        item = dict(row)
+        item["snippet"] = snippet
+        deduped.append(item)
+    return deduped
 
 
 def _local_rag_answer(question: str, sources: list[dict[str, Any]]) -> str:
@@ -225,7 +359,7 @@ def _local_rag_answer(question: str, sources: list[dict[str, Any]]) -> str:
         learned = ["The local index found related material, but not enough clean context to form a confident direct explanation."]
     return "\n".join(
         [
-            f"Answer from the local Snowflake brain: {question}",
+            f"Answer from the local course intelligence system: {question}",
             "",
             *[f"- {line}" for line in learned],
             "",
@@ -279,6 +413,22 @@ def _clean_snippet(value: str) -> str:
     text = " ".join(str(value or "").split())
     text = text.replace("<mark>", "").replace("</mark>", "")
     return text[:420]
+
+
+def _chunk_text(text: str, size: int = 240) -> list[str]:
+    if not text:
+        return [""]
+    chunks = []
+    current = ""
+    for part in text.split(" "):
+        if len(current) + len(part) + 1 > size and current:
+            chunks.append(current + " ")
+            current = part
+        else:
+            current = f"{current} {part}".strip()
+    if current:
+        chunks.append(current)
+    return chunks
 
 
 def _sse(payload: dict[str, Any]) -> str:

@@ -1,80 +1,57 @@
-import { escapeHtml, searchBrain, streamAi } from "../api.js";
-import { showToast } from "../components/toast.js";
+export const VIEW_ID = "search";
+import { escapeHtml, searchBrain, streamAi } from "../api.js?v=20260714-v20-ai-academy";
+import { emptyState } from "../ui.js?v=20260714-v20-ai-academy";
+import { showToast } from "../components/toast.js?v=20260714-v20-ai-academy";
 
-let timer = null;
-
-export default async function mount(container) {
+export default async function mount(container, params = {}) {
+  const initial = params.q || "";
   container.innerHTML = `
-    <section class="page-heading">
-      <div><p class="eyebrow">Brain search</p><h1>Search lessons and questions</h1><p>Find the exact training material behind a Snowflake concept.</p></div>
-    </section>
-    <section class="panel search-panel">
-      <div class="search-bar"><input id="search-input" placeholder="Search Time Travel, RBAC, Snowpipe, micro-partitions..." autofocus /><button id="ask-ai" class="secondary-btn" type="button">Ask AI</button></div>
-      <div id="ai-answer" class="ai-answer hidden"></div>
-      <div id="results" class="result-grid empty-box">Start typing to search the local index.</div>
+    <section class="page-shell search-page-v8">
+      <header class="page-hero search-hero-v8"><div><p class="eyebrow">Brain Search</p><h1>Find the exact source behind any Snowflake concept.</h1><p>Search lessons, transcripts, practice questions, and lab challenges. Ask the local tutor only when you need a synthesized explanation.</p></div></header>
+      <section class="search-console panel">
+        <div class="search-bar-v8"><input id="query" value="${escapeHtml(initial)}" placeholder="Search RBAC, Time Travel, micro-partitions, dynamic tables..." /><button id="search" class="primary-btn">Search</button><button id="ask" class="secondary-btn">Ask tutor</button></div>
+        <div id="ai-answer" class="ai-answer-v8 hidden"></div>
+        <div id="results" class="search-results-v8">${emptyState("Start with a Snowflake concept", "The local index will return lessons and questions from your archive.")}</div>
+      </section>
     </section>
   `;
-  const input = container.querySelector("#search-input");
-  input.addEventListener("input", () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => runSearch(container, input.value), 300);
-  });
-  container.querySelector("#ask-ai").addEventListener("click", () => ask(container, input.value));
+  container.querySelector("#search")?.addEventListener("click", () => runSearch(container));
+  container.querySelector("#ask")?.addEventListener("click", () => ask(container));
+  container.querySelector("#query")?.addEventListener("keydown", (event) => { if (event.key === "Enter") runSearch(container); });
+  if (initial) runSearch(container);
 }
 
-export function unmount() {
-  clearTimeout(timer);
-}
-
-async function runSearch(container, q) {
-  const results = container.querySelector("#results");
-  if (!q.trim()) {
-    results.className = "result-grid empty-box";
-    results.textContent = "Start typing to search the local index.";
-    return;
-  }
+async function runSearch(container) {
+  const q = container.querySelector("#query")?.value.trim();
+  const host = container.querySelector("#results");
+  if (!q) return;
+  host.innerHTML = `<div class="loading-panel">Searching local archive...</div>`;
   try {
-    const data = await searchBrain(q.trim(), 24);
-    results.className = "result-grid";
-    if (!data.results.length) {
-      results.className = "result-grid empty-box";
-      results.textContent = "No matching local material found.";
-      return;
-    }
-    results.innerHTML = data.results
-      .map((item) => {
-        const href = item.type === "lesson" ? `#/video?lesson_id=${encodeURIComponent(item.ref_id)}` : item.type === "question" ? `#/quiz` : `#/labs`;
-        return `<a class="result-item" href="${href}">
-          <span class="pill">${escapeHtml(item.type)}</span>
-          <strong>${escapeHtml(item.title)}</strong>
-          <p>${item.snippet || ""}</p>
-        </a>`;
-      })
-      .join("");
+    const data = await searchBrain(q, 30);
+    const rows = data.results || [];
+    host.innerHTML = rows.length ? rows.map(resultCard).join("") : emptyState("No local matches", "Try a broader Snowflake keyword.");
   } catch (error) {
     showToast(error.message, "error");
   }
 }
 
-async function ask(container, q) {
-  if (!q.trim()) return;
+function resultCard(item) {
+  const href = item.type === "lesson" ? `#/learn?lesson_id=${encodeURIComponent(item.ref_id || "")}` : item.type === "question" ? `#/practice` : `#/labs`;
+  return `<a class="search-result-card" href="${href}"><span>${escapeHtml(item.type || "result")}</span><strong>${escapeHtml(item.title || "Untitled")}</strong><p>${escapeHtml(item.snippet || "")}</p></a>`;
+}
+
+async function ask(container) {
+  const q = container.querySelector("#query")?.value.trim();
+  if (!q) return;
   const panel = container.querySelector("#ai-answer");
   panel.classList.remove("hidden");
-  panel.innerHTML = `<p class="eyebrow">AI tutor</p><div id="stream-text"></div><div id="sources"></div>`;
-  const target = panel.querySelector("#stream-text");
+  panel.innerHTML = `<strong>Context tutor</strong><div id="stream"></div><div id="sources"></div>`;
+  const stream = panel.querySelector("#stream");
   try {
-    await streamAi(
-      q,
-      (delta) => {
-        target.textContent += delta;
-      },
-      (sources) => {
-        panel.querySelector("#sources").innerHTML = sources.length
-          ? `<div class="source-list">${sources.map((source) => `<span>${escapeHtml(source.title)}</span>`).join("")}</div>`
-          : "";
-      },
-    );
+    await streamAi(q, (delta) => { stream.textContent += delta; }, (sources) => {
+      panel.querySelector("#sources").innerHTML = sources?.length ? `<div class="source-list">${sources.map((source) => `<span>${escapeHtml(source.title)}</span>`).join("")}</div>` : "";
+    });
   } catch (error) {
-    showToast(error.message, "error");
+    panel.innerHTML = `<strong>AI tutor unavailable</strong><p>${escapeHtml(error.message)}</p><small>Search still works locally without an API key.</small>`;
   }
 }

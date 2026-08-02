@@ -9,6 +9,9 @@ services:
       BRAIN_DB: /data/snowflake_brain.sqlite
       AUTO_INGEST: "true"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      SKILL_MAP_CONFIG: /app/config/certification_skill_map.json
+      SNOWFLAKE_LABS_CONFIG: /app/config/snowflake_lab_challenges.json
+      SNOWFLAKE_LABS_MODE: "${SNOWFLAKE_LABS_MODE:-offline}"
     volumes:
       - "${CONTENT_ROOT_HOST:-./content}:/content:ro"
       - "./data:/data"

@@ -489,6 +489,106 @@ def run_migrations() -> None:
               completed INTEGER DEFAULT 0,
               completed_at TEXT
             );
+
+
+            CREATE TABLE IF NOT EXISTS question_skill_map (
+              question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+              track_id TEXT DEFAULT '',
+              domain_id TEXT DEFAULT '',
+              skill_id TEXT NOT NULL,
+              confidence REAL DEFAULT 0.5,
+              evidence_json TEXT DEFAULT '{}',
+              reviewed INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now')),
+              PRIMARY KEY(question_id, skill_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS content_skill_map (
+              content_type TEXT NOT NULL,
+              content_id TEXT NOT NULL,
+              track_id TEXT DEFAULT '',
+              domain_id TEXT DEFAULT '',
+              skill_id TEXT NOT NULL,
+              confidence REAL DEFAULT 0.5,
+              evidence_json TEXT DEFAULT '{}',
+              reviewed INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now')),
+              PRIMARY KEY(content_type, content_id, skill_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS skill_mastery_snapshots (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              track_id TEXT NOT NULL,
+              skill_id TEXT NOT NULL,
+              mastery_level INTEGER DEFAULT 0,
+              readiness_score REAL DEFAULT 0,
+              evidence_json TEXT DEFAULT '{}',
+              created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS diagnostic_sessions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              track_id TEXT NOT NULL,
+              status TEXT DEFAULT 'planned',
+              question_ids_json TEXT DEFAULT '[]',
+              started_at TEXT DEFAULT (datetime('now')),
+              finished_at TEXT,
+              score INTEGER DEFAULT 0,
+              metadata_json TEXT DEFAULT '{}'
+            );
+
+            CREATE TABLE IF NOT EXISTS diagnostic_answers (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              session_id INTEGER NOT NULL REFERENCES diagnostic_sessions(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES questions(id),
+              skill_id TEXT DEFAULT '',
+              selected_json TEXT DEFAULT '[]',
+              correct INTEGER DEFAULT 0,
+              answered_at TEXT DEFAULT (datetime('now')),
+              UNIQUE(session_id, question_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS mistake_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              question_id TEXT NOT NULL REFERENCES questions(id),
+              track_id TEXT DEFAULT '',
+              skill_id TEXT DEFAULT '',
+              mistake_type TEXT DEFAULT 'concept_gap',
+              severity INTEGER DEFAULT 1,
+              evidence_json TEXT DEFAULT '{}',
+              repaired INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT (datetime('now')),
+              repaired_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS repair_tasks (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              track_id TEXT DEFAULT '',
+              skill_id TEXT DEFAULT '',
+              question_id TEXT REFERENCES questions(id),
+              task_type TEXT NOT NULL,
+              title TEXT NOT NULL,
+              reason TEXT DEFAULT '',
+              status TEXT DEFAULT 'open',
+              priority INTEGER DEFAULT 3,
+              due_date TEXT,
+              created_at TEXT DEFAULT (datetime('now')),
+              completed_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS readiness_snapshots (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              track_id TEXT NOT NULL,
+              status TEXT NOT NULL,
+              readiness_score REAL DEFAULT 0,
+              pass_probability_low REAL DEFAULT 0,
+              pass_probability_high REAL DEFAULT 0,
+              blockers_json TEXT DEFAULT '[]',
+              next_actions_json TEXT DEFAULT '[]',
+              created_at TEXT DEFAULT (datetime('now'))
+            );
             """
         )
 
@@ -549,6 +649,12 @@ def run_migrations() -> None:
             CREATE INDEX IF NOT EXISTS idx_exam_answers_session ON exam_session_answers(session_id, correct, reviewed);
             CREATE INDEX IF NOT EXISTS idx_learning_events_type_time ON learning_events(event_type, created_at);
             CREATE INDEX IF NOT EXISTS idx_learning_events_scope ON learning_events(track_id, course_id, lesson_id, practice_test_id);
+
+            CREATE INDEX IF NOT EXISTS idx_question_skill_map_skill ON question_skill_map(track_id, domain_id, skill_id, confidence);
+            CREATE INDEX IF NOT EXISTS idx_content_skill_map_skill ON content_skill_map(track_id, domain_id, skill_id, content_type);
+            CREATE INDEX IF NOT EXISTS idx_mistake_events_scope ON mistake_events(track_id, skill_id, repaired, severity);
+            CREATE INDEX IF NOT EXISTS idx_repair_tasks_scope ON repair_tasks(track_id, skill_id, status, priority);
+            CREATE INDEX IF NOT EXISTS idx_readiness_snapshots_track ON readiness_snapshots(track_id, created_at);
             """
         )
 
@@ -560,6 +666,14 @@ def run_migrations() -> None:
             VALUES (?, ?)
             """,
             ("20260629_000_guardrail_foundation", "Guardrail baseline, quality tables, exam sessions, and study plan"),
+        )
+
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO schema_migrations(version, name)
+            VALUES (?, ?)
+            """,
+            ("20260630_000_certification_intelligence", "Certification intelligence engine tables"),
         )
 
         _create_fts(conn)

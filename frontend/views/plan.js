@@ -1,3 +1,4 @@
+export const VIEW_ID = "plan";
 import {
   createStudyRoadmap,
   escapeHtml,

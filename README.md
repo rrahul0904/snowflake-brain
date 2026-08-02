@@ -1,4 +1,4 @@
-# Snowflake Brain Lab
+# Data + AI Career Lab
 
 A Dockerized local study app for Snowflake certification prep. It indexes your downloaded Udemy course folders, then gives you a single training workspace for videos, captions, practice questions, source-backed search, quizzes, and hands-on Snowflake labs.
 
@@ -58,3 +58,38 @@ uvicorn app.main:app --reload
 ## Notes
 
 This version uses retrieval over your local material rather than fine-tuning a model. That keeps it fast, private, cheap, and immediately useful. The backend is structured so an LLM answer generator or Ollama/OpenAI adapter can be added later on top of the same indexed sources.
+
+## v4 Skill Brain + Lab Runner
+
+This build adds a certification skill map and W3Schools-style Snowflake challenge runner.
+
+Key files:
+
+- `config/certification_skill_map.json`
+- `config/snowflake_lab_challenges.json`
+- `app/skill_brain.py`
+- `app/lab_challenges.py`
+- `app/routers/skills.py`
+- `frontend/views/labs.js`
+
+New endpoints:
+
+```text
+GET /api/skills/map
+GET /api/skills/summary?track_id=snowpro-core
+GET /api/labs/config
+GET /api/labs
+POST /api/labs/{lab_id}/submit
+```
+
+Labs default to offline validation:
+
+```bash
+SNOWFLAKE_LABS_MODE=offline
+```
+
+Offline mode checks SQL structure and required Snowflake clauses locally. It does not execute SQL against Snowflake.
+
+## AI Career Curriculum
+
+The repository includes a personalized, evidence-driven curriculum for expanding senior data-engineering leadership into production AI, product-data leadership, forward-deployed architecture and research-engineering literacy. Start with [the curriculum overview](docs/ai-career-curriculum/README.md).

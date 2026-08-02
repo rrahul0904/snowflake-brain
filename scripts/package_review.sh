@@ -13,6 +13,7 @@ cd "$ROOT_DIR"
 
 zip -qr "$ZIP_PATH" \
   app \
+  config \
   frontend \
   docs \
   scripts \

@@ -1,0 +1,142 @@
+version: "1.0"
+last_verified: "2026-07-14"
+candidate_profile:
+  experience: "14+ years in professional data engineering"
+  framing: "Senior-career expansion into Data + AI platform leadership, not a career restart"
+  target_positioning: "Principal/Director-level Data and AI Platform Leader with deep data-engineering experience, production AI engineering capability, AI research literacy, product-data leadership, and forward-deployed architecture skills"
+target_roles:
+  primary: "Anthropic Data Engineering Manager, Product"
+  adjacent:
+    - "Anthropic Applied AI Architect"
+    - "Anthropic Solutions Architect"
+    - "OpenAI Forward-Deployed Engineering leadership"
+    - "OpenAI AI Deployment and AI Platform roles"
+    - "Cursor Solutions Architect"
+    - "Cursor Forward-Deployed Engineer"
+    - "Principal Data and AI Architect"
+    - "Director of Data and AI Platforms"
+    - "AI Platform Engineering Manager"
+    - "AI Engineer"
+    - "Research Engineer"
+strategy:
+  shape: "T-shaped"
+  expert_depth:
+    - "Data engineering and architecture"
+    - "Product-data systems"
+    - "AI/data platforms"
+    - "Leadership"
+    - "Evaluations"
+    - "Reliability and governance"
+  production_depth:
+    - "LLM applications"
+    - "RAG"
+    - "Agents and MCP"
+    - "AI security"
+    - "LLMOps"
+  working_literacy:
+    - "Training and post-training"
+    - "Multimodal AI"
+    - "Reinforcement learning"
+    - "Interpretability"
+    - "Research methods"
+weekly_commitment:
+  default_hours: 12
+  allocation:
+    theory_and_docs: 3
+    implementation: 5
+    portfolio_and_writing: 2
+    papers: 1
+    interview_and_communication: 1
+skill_domains:
+  level_5:
+    - "Data engineering"
+    - "Data architecture"
+    - "Product data and analytics"
+    - "Data quality and governance"
+    - "Reliability"
+    - "Leadership and executive communication"
+    - "Evaluations and AI security"
+    - "LLMOps"
+  level_4:
+    - "LLM applications"
+    - "RAG and retrieval"
+    - "Prompt/context/token engineering"
+    - "Agents"
+    - "MCP"
+    - "Forward-deployed delivery"
+    - "Inference architecture"
+  level_3_to_4:
+    - "Statistics and experimentation"
+    - "Classical ML"
+    - "Deep learning and PyTorch"
+    - "Transformers"
+    - "Research methods"
+  level_2_to_3:
+    - "Distributed training"
+    - "Multimodal AI"
+    - "Reinforcement learning"
+    - "Interpretability"
+phases:
+  - id: "role-readiness"
+    duration_weeks: 8
+    outcomes:
+      - "Career evidence inventory and role-specific application package"
+      - "AI product telemetry and canonical dbt models"
+      - "Governed analytics copilot"
+      - "Evaluation, security and executive architecture evidence"
+  - id: "month-1"
+    focus: "Classical ML, statistics and experimentation"
+  - id: "month-2"
+    focus: "Deep learning and PyTorch"
+  - id: "month-3"
+    focus: "NLP, tokenization and transformers"
+  - id: "month-4"
+    focus: "Training, post-training, fine-tuning and inference"
+  - id: "month-5"
+    focus: "RAG, retrieval, knowledge systems and context engineering"
+  - id: "month-6"
+    focus: "Agents, deep research, MCP and tactical n8n"
+  - id: "month-7"
+    focus: "Evaluations, LLMOps, security, reliability and governance"
+  - id: "month-8"
+    focus: "Multimodal AI, reinforcement learning and interpretability survey"
+  - id: "month-9"
+    focus: "Paper reproduction and integrated capstone"
+projects:
+  - id: "P1"
+    title: "AI Product Data and Intelligence Platform"
+  - id: "P2"
+    title: "Governed Enterprise Agent Platform"
+  - id: "P3"
+    title: "Language Model Research Laboratory"
+  - id: "P4"
+    title: "Forward-Deployed AI Transformation Case Study"
+milestones:
+  - "Two application-ready portfolio slices by Week 8"
+  - "Independent PyTorch training system by Month 2"
+  - "Small tokenizer and transformer by Month 3"
+  - "Secure evaluated agent/MCP platform by Month 7"
+  - "Reproduced paper result and integrated capstone by Month 9"
+evaluation_gates:
+  artifact_required: true
+  evidence_types:
+    - "Tested code"
+    - "Measured benchmark"
+    - "Architecture decision record"
+    - "Failure analysis"
+    - "Security/evaluation evidence"
+    - "Technical and executive presentation"
+  course_completion_alone_is_sufficient: false
+resource_constraints:
+  allowed:
+    - "Free official documentation"
+    - "Free university materials"
+    - "Free open-source tutorials"
+    - "Free reputable-provider courses"
+    - "Existing Udemy Premium access as optional supplement"
+  prohibited:
+    - "Recommended purchases"
+    - "Paid certifications"
+    - "Paid subscriptions"
+    - "Bootcamps"
+  source_of_truth: "Current official documentation"

@@ -1,282 +1,199 @@
-import { escapeHtml, formatNumber, getCourses, getLesson, getLessons, getTracks, getTranscript, recordLessonProgress } from "../api.js";
-import { showToast } from "../components/toast.js";
+export const VIEW_ID = "learn";
+import { escapeHtml, formatNumber, getCourses, getLesson, getLessons, getTracks, getTranscript, recordLessonProgress } from "../api.js?v=20260714-v20-ai-academy";
+import { activeTrack, emptyState, navigateWithTrack, setActiveTrack, skeleton, trackOptions } from "../ui.js?v=20260714-v20-ai-academy";
+import { showToast } from "../components/toast.js?v=20260714-v20-ai-academy";
 
 const state = {
   tracks: [],
   courses: [],
   lessons: [],
   activeLessonId: null,
-  activeLesson: null,
-  chunks: [],
-  notesOnly: false,
-  activeTab: "transcript",
+  activeTab: "overview",
 };
 
-const LESSON_TRACK_KEY = "snowflake-brain.lesson-track";
-const LESSON_COURSE_KEY = "snowflake-brain.lesson-course";
+const COURSE_KEY = "snowflake-brain.selected-course.v10";
+const courseKey = (trackId) => `${COURSE_KEY}.${trackId || "all"}`;
 
 export default async function mount(container, params = {}) {
+  const trackId = params.track_id || activeTrack();
+  setActiveTrack(trackId);
+  container.innerHTML = skeleton("Loading course library and video player...");
+  try {
+    const [tracks, courses] = await Promise.all([getTracks(), getCourses()]);
+    state.tracks = tracks.tracks || [];
+    state.courses = (courses.courses || []).filter((course) => Number(course.lesson_count || 0) > 0);
+    let requestedCourseId = params.course_id || localStorage.getItem(courseKey(trackId));
+    if (params.lesson_id && !requestedCourseId) {
+      const lesson = await getLesson(params.lesson_id);
+      requestedCourseId = lesson.course_id;
+    }
+    renderShell(container, trackId, requestedCourseId, params.lesson_id);
+    await loadLessons(container, params.lesson_id);
+  } catch (error) {
+    container.innerHTML = emptyState("Course library unavailable", error.message, `<button onclick="location.reload()">Retry</button>`);
+  }
+}
+
+function renderShell(container, trackId, requestedCourseId, openLessonId) {
+  const tracksWithLessons = new Set(state.courses.map((course) => course.track_id).filter(Boolean));
+  const usableTracks = state.tracks.filter((track) => tracksWithLessons.has(track.id));
+  const selectedTrack = usableTracks.some((track) => track.id === trackId) ? trackId : usableTracks[0]?.id || trackId;
+  const courses = coursesForTrack(selectedTrack);
+  const selectedCourse = courses.find((course) => course.id === requestedCourseId) || courses[0];
+  if (selectedCourse?.id) localStorage.setItem(courseKey(selectedTrack), selectedCourse.id);
+
   container.innerHTML = `
-    <section class="rescue-page lessons-page">
-      <header class="page-header rescue-header">
+    <section class="page-shell academy-page real-course-library">
+      <header class="course-command-header">
         <div>
-          <p class="eyebrow">Learn</p>
-          <h1>Study the lessons that move your exam score</h1>
-          <p class="page-subtitle">Use the videos as exam preparation: understand the concept, check transcript quality, then practice the related questions.</p>
+          <p class="eyebrow">Course Library</p>
+          <h1>Watch the actual lessons. Practice from the same source.</h1>
+          <p>This view is grounded in your local Udemy/Snowflake archive: video player, transcript cues, course outline, and related practice in one workspace.</p>
         </div>
-        <a class="secondary-btn" href="#/today">Back to Today</a>
+        <div class="course-command-controls">
+          <label>Certification<select id="track-select">${trackOptions(usableTracks, selectedTrack)}</select></label>
+          <label>Course<select id="course-select">${courseOptions(courses, selectedCourse?.id)}</select></label>
+        </div>
       </header>
 
-      <div class="toolbar lesson-toolbar">
-        <label class="field"><span>Certification</span><select id="track-select"></select></label>
-        <label class="field"><span>Course</span><select id="course-select"></select></label>
-        <label class="field grow"><span>Search within course</span><input id="lesson-search" placeholder="warehouse, RBAC, Snowpipe..." /></label>
-      </div>
-
-      <div id="lesson-breadcrumb" class="breadcrumb muted">Loading course...</div>
-
-      <section class="lesson-workspace">
-        <aside class="panel lesson-outline-panel">
-          <div class="panel-header"><div><p class="eyebrow">Course path</p><h2>Lessons in order</h2></div><span id="lesson-count" class="status-badge">0</span></div>
-          <div id="lessons" class="course-outline empty-state">Loading lessons...</div>
-        </aside>
-
-        <main id="player" class="panel lesson-stage">
-          <div class="empty-state"><h2>Select a lesson</h2><p>Choose a lesson from the outline.</p></div>
+      <section class="course-workbench">
+        <main class="course-main-panel panel">
+          <div id="video-stage" class="video-stage">
+            ${emptyState("Select a lesson", "Choose a lesson from the course outline to load the video, transcript, and practice links.")}
+          </div>
+          <div id="lesson-tabs" class="lesson-tabs-v9"></div>
+          <section id="lesson-detail" class="lesson-detail-v9"></section>
         </main>
 
-        <aside id="study-panel" class="panel study-panel">
-          <div class="empty-state"><h2>Study panel</h2><p>Lesson actions will appear here.</p></div>
+        <aside class="course-outline-panel panel">
+          <div class="outline-toolbar">
+            <div>
+              <p class="eyebrow">Course outline</p>
+              <h2 id="course-title">${escapeHtml(selectedCourse?.title || "Course")}</h2>
+            </div>
+            <input id="lesson-search" placeholder="Search videos: RBAC, Snowpipe, COPY..." />
+          </div>
+          <div id="course-stats" class="course-stat-row"></div>
+          <div id="lesson-list" class="outline-list-v9"></div>
         </aside>
       </section>
     </section>
   `;
 
-  try {
-    const [tracks, courses] = await Promise.all([getTracks(), getCourses()]);
-    state.tracks = tracks.tracks || [];
-    state.courses = (courses.courses || []).filter((course) => course.lesson_count > 0);
-
-    let requestedCourseId = params.course_id;
-    if (!requestedCourseId && params.lesson_id) {
-      const lesson = await getLesson(params.lesson_id);
-      requestedCourseId = lesson.course_id;
-    }
-    const defaultCourse = resolveDefaultLessonCourse(requestedCourseId, params.track_id);
-    renderTrackSelect(container, defaultCourse?.track_id || params.track_id, defaultCourse?.id);
-    renderCourseSelect(container, defaultCourse?.id || requestedCourseId);
-    await loadLessons(container, params.lesson_id);
-  } catch (error) {
-    showToast(error.message, "error");
-    container.querySelector("#player").innerHTML = `<div class="error-state">${escapeHtml(error.message)}</div>`;
-  }
-
-  container.querySelector("#track-select").addEventListener("change", () => {
+  container.querySelector("#track-select")?.addEventListener("change", (event) => {
     state.activeLessonId = null;
-    localStorage.setItem(LESSON_TRACK_KEY, container.querySelector("#track-select").value);
-    renderCourseSelect(container);
-    loadLessons(container);
+    navigateWithTrack(event.target.value, "#/learn");
   });
-  container.querySelector("#course-select").addEventListener("change", () => {
+
+  container.querySelector("#course-select")?.addEventListener("change", async (event) => {
+    localStorage.setItem(courseKey(container.querySelector("#track-select")?.value || activeTrack()), event.target.value);
     state.activeLessonId = null;
-    localStorage.setItem(LESSON_COURSE_KEY, container.querySelector("#course-select").value);
-    loadLessons(container);
+    await loadLessons(container);
   });
-  container.querySelector("#lesson-search").addEventListener("input", () => loadLessons(container));
+
+  container.querySelector("#lesson-search")?.addEventListener("input", () => renderLessonList(container));
 }
 
-function renderTrackSelect(container, requestedTrackId, requestedCourseId) {
-  const course = state.courses.find((item) => item.id === requestedCourseId);
-  const lessonTracks = new Set(state.courses.map((item) => item.track_id).filter(Boolean));
-  const tracks = state.tracks.filter((track) => lessonTracks.has(track.id));
-  const select = container.querySelector("#track-select");
-  select.innerHTML = tracks.map((track) => `<option value="${track.id}">${escapeHtml(track.title)} (${formatNumber(track.lesson_count)})</option>`).join("");
-  const preferredTrack = requestedTrackId || course?.track_id || localStorage.getItem(LESSON_TRACK_KEY) || "snowpro-core";
-  select.value = tracks.some((track) => track.id === preferredTrack) ? preferredTrack : tracks[0]?.id || "";
-}
-
-function renderCourseSelect(container, requestedCourseId) {
-  const trackId = container.querySelector("#track-select").value;
-  const sorted = state.courses
+function coursesForTrack(trackId) {
+  return state.courses
     .filter((course) => !trackId || course.track_id === trackId)
-    .sort((a, b) => (b.lesson_count || 0) - (a.lesson_count || 0));
-  const select = container.querySelector("#course-select");
-  select.innerHTML = sorted.map((course) => `<option value="${course.id}">${escapeHtml(course.title)} (${formatNumber(course.lesson_count)})</option>`).join("");
-  const saved = localStorage.getItem(LESSON_COURSE_KEY);
-  const requested = sorted.find((course) => course.id === requestedCourseId) || sorted.find((course) => course.id === saved);
-  select.value = requested?.id || sorted[0]?.id || "";
-  if (select.value) localStorage.setItem(LESSON_COURSE_KEY, select.value);
-  updateBreadcrumb(container);
+    .sort((a, b) => Number(b.lesson_count || 0) - Number(a.lesson_count || 0));
+}
+
+function courseOptions(courses, selectedId = "") {
+  return courses
+    .map((course) => `<option value="${escapeHtml(course.id)}" ${course.id === selectedId ? "selected" : ""}>${escapeHtml(course.title)} (${formatNumber(course.lesson_count || 0)})</option>`)
+    .join("");
 }
 
 async function loadLessons(container, openLessonId = null) {
-  const courseId = container.querySelector("#course-select").value;
-  const q = container.querySelector("#lesson-search").value.trim();
+  const courseId = container.querySelector("#course-select")?.value || "";
+  const trackId = container.querySelector("#track-select")?.value || activeTrack();
+  const title = state.courses.find((course) => course.id === courseId)?.title || "Course";
+  const titleNode = container.querySelector("#course-title");
+  if (titleNode) titleNode.textContent = title;
   if (!courseId) {
-    container.querySelector("#lessons").innerHTML = `<div class="empty-state">No course with lessons was found for this track.</div>`;
+    const host = container.querySelector("#lesson-list");
+    if (host) host.innerHTML = emptyState("No video course found", "This certification does not currently have indexed video lessons.");
     return;
   }
-
   try {
-    const data = await getLessons({ course_id: courseId, q, limit: 3000 });
+    const data = await getLessons({ course_id: courseId, track_id: trackId, limit: 3000 });
     state.lessons = data.lessons || [];
-    container.querySelector("#lesson-count").textContent = formatNumber(state.lessons.length);
-    renderLessons(container);
-    updateBreadcrumb(container);
-    const activeExists = state.lessons.some((lesson) => lesson.id === state.activeLessonId);
-    const target = openLessonId || (activeExists ? state.activeLessonId : state.lessons[0]?.id);
+    renderStats(container);
+    renderLessonList(container);
+    const target = openLessonId || (state.lessons.some((lesson) => lesson.id === state.activeLessonId) ? state.activeLessonId : state.lessons[0]?.id);
     if (target) await openLesson(container, target);
   } catch (error) {
     showToast(error.message, "error");
+    const host = container.querySelector("#lesson-list");
+    if (host) host.innerHTML = emptyState("Could not load lessons", error.message);
   }
 }
 
-function renderLessons(container) {
-  const host = container.querySelector("#lessons");
-  if (!state.lessons.length) {
-    host.className = "course-outline empty-state";
-    host.textContent = "No lessons match this course/search.";
+function renderStats(container) {
+  const totalDuration = state.lessons.reduce((sum, lesson) => sum + Number(lesson.duration_s || lesson.duration || 0), 0);
+  const sections = new Set(state.lessons.map((lesson) => lesson.section || "Course")).size;
+  const host = container.querySelector("#course-stats");
+  if (!host) return;
+  host.innerHTML = `
+    <span><strong>${formatNumber(state.lessons.length)}</strong> videos</span>
+    <span><strong>${formatNumber(sections)}</strong> sections</span>
+    <span><strong>${formatDuration(totalDuration)}</strong></span>
+  `;
+}
+
+function renderLessonList(container, options = {}) {
+  const host = container.querySelector("#lesson-list");
+  if (!host) return;
+  const previousScroll = host.scrollTop;
+  const q = (container.querySelector("#lesson-search")?.value || "").trim().toLowerCase();
+  const lessons = state.lessons.filter((lesson) => !q || `${lesson.title} ${lesson.section} ${lesson.course_title}`.toLowerCase().includes(q));
+  if (!lessons.length) {
+    host.innerHTML = emptyState("No matching videos", "Try another Snowflake term.");
     return;
   }
-  host.className = "course-outline";
-  host.innerHTML = groupLessons()
-    .map(
-      (group, groupIndex) => `
-        <details class="outline-section" ${groupIndex === 0 || group.lessons.some((lesson) => lesson.id === state.activeLessonId) ? "open" : ""}>
-          <summary><strong>${escapeHtml(group.title)}</strong><small>${group.lessons.length} lessons</small></summary>
-          <div class="outline-lessons">
-            ${group.lessons
-              .map((lesson) => {
-                const globalIndex = state.lessons.findIndex((item) => item.id === lesson.id) + 1;
-                return `<button class="lesson-row ${lesson.id === state.activeLessonId ? "active" : ""}" data-id="${lesson.id}" type="button">
-                  <span class="lesson-number">${globalIndex}</span>
-                  <span class="lesson-copy"><strong>${escapeHtml(lesson.title)}</strong><small>${formatDuration(lesson.duration_s || lesson.duration)}</small></span>
-                </button>`;
-              })
-              .join("")}
-          </div>
-        </details>`,
-    )
-    .join("");
-  host.querySelectorAll(".lesson-row").forEach((button) => button.addEventListener("click", () => openLesson(container, button.dataset.id)));
-}
-
-async function openLesson(container, id) {
-  state.activeLessonId = id;
-  state.activeTab = "transcript";
-  renderLessons(container);
-  try {
-    const [lesson, transcript] = await Promise.all([getLesson(id), getTranscript(id)]);
-    state.activeLesson = lesson;
-    state.chunks = transcript.chunks || [];
-    state.notesOnly = state.chunks.length === 1 && /English study notes/i.test(state.chunks[0].text || "");
-    updateBreadcrumb(container);
-    updateUrl(container, lesson);
-    renderLessonStage(container);
-    renderStudyPanel(container);
-  } catch (error) {
-    showToast(error.message, "error");
-  }
-}
-
-function renderLessonStage(container) {
-  const lesson = state.activeLesson;
-  if (!lesson) return;
-  const media = lesson.video_path ? `/api/media?path=${encodeURIComponent(lesson.video_path)}` : "";
-  container.querySelector("#player").innerHTML = `
-    <div class="lesson-title-block">
-      <div>
-        <p class="eyebrow">${escapeHtml(lesson.section || "Course")}</p>
-        <h2>${escapeHtml(lesson.title)}</h2>
-      </div>
-      ${qualityBadge(state.chunks, state.notesOnly)}
-    </div>
-    <div class="player-video-wrap compact-video">
-      ${media ? `<video id="video" controls src="${media}"></video>` : `<div class="video-empty">No video file found for this lesson.</div>`}
-    </div>
-    <div class="lesson-tabbar">
-      <button class="${state.activeTab === "transcript" ? "active" : ""}" data-tab="transcript" type="button">Transcript / Notes</button>
-      <button class="${state.activeTab === "overview" ? "active" : ""}" data-tab="overview" type="button">Overview</button>
-    </div>
-    <section id="lesson-tab-panel" class="lesson-tab-panel">${renderTabPanel(lesson)}</section>
-  `;
-  container.querySelectorAll(".lesson-tabbar button").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeTab = button.dataset.tab;
-      renderLessonStage(container);
-    });
-  });
-  wireTranscript(container);
-}
-
-function renderStudyPanel(container) {
-  const lesson = state.activeLesson;
-  if (!lesson) return;
-  const index = state.lessons.findIndex((item) => item.id === lesson.id);
-  const next = state.lessons[index + 1];
-  const related = lesson.related_questions || [];
-  container.querySelector("#study-panel").innerHTML = `
-    <div class="panel-header"><div><p class="eyebrow">Exam loop</p><h2>Finish, then practice</h2></div></div>
-    <button id="mark-complete" class="primary-btn wide" type="button">Complete lesson and continue</button>
-    ${next ? `<button id="next-lesson" class="secondary-btn wide" type="button">Next lesson</button>` : `<div class="success-state">This is the last lesson in the current list.</div>`}
-
-    <div class="study-panel-section">
-      <p class="eyebrow">Content quality</p>
-      ${qualityBadge(state.chunks, state.notesOnly)}
-      ${state.notesOnly ? `<div class="warning">Generated notes only. Original transcript was missing or unusable.</div>` : ""}
-      ${!(lesson.duration_s || lesson.duration) ? `<div class="warning">Duration unavailable.</div>` : ""}
-    </div>
-
-    <div class="study-panel-section">
-      <p class="eyebrow">Related questions</p>
-      <div class="related-question-list compact">
-        ${related.length ? related.slice(0, 5).map((question) => `<a class="related-question" href="#/practice?course_id=${encodeURIComponent(lesson.course_id)}"><strong>${escapeHtml(question.question)}</strong></a>`).join("") : `<div class="empty-state">No related questions indexed for this lesson.</div>`}
-      </div>
-      <a class="primary-btn wide" href="#/practice?mode=topic&course_id=${encodeURIComponent(lesson.course_id)}">Practice questions from this course</a>
-    </div>
-  `;
-  container.querySelector("#mark-complete").addEventListener("click", async () => {
-    try {
-      await recordLessonProgress({ lesson_id: lesson.id, completed: true, watched_s: Math.floor(container.querySelector("#video")?.currentTime || 0) });
-      showToast("Lesson marked complete", "success");
-      if (next) await openLesson(container, next.id);
-    } catch (error) {
-      showToast(error.message, "error");
-    }
-  });
-  const nextButton = container.querySelector("#next-lesson");
-  if (nextButton && next) nextButton.addEventListener("click", () => openLesson(container, next.id));
-}
-
-function renderTabPanel(lesson) {
-  if (state.activeTab === "overview") {
+  const groups = groupLessons(lessons);
+  host.innerHTML = groups.map((group, index) => {
+    const open = index === 0 || group.lessons.some((lesson) => lesson.id === state.activeLessonId);
+    const duration = group.lessons.reduce((sum, lesson) => sum + Number(lesson.duration_s || lesson.duration || 0), 0);
     return `
-      <p class="lesson-overview-copy">${escapeHtml(lesson.excerpt || "This lesson is ready in the local Snowflake course library.")}</p>
-      <div class="lesson-meta clean-meta">
-        <span>${escapeHtml(lesson.course_title)}</span>
-        <span>${formatDuration(lesson.duration_s || lesson.duration)}</span>
-        <span>${state.notesOnly ? "Generated notes" : `${formatNumber(state.chunks.length)} transcript cues`}</span>
-      </div>`;
+      <details class="outline-section-v9" ${open ? "open" : ""}>
+        <summary><span><strong>${escapeHtml(group.title)}</strong><small>${group.lessons.length} videos · ${formatDuration(duration)}</small></span><b>⌄</b></summary>
+        <div class="outline-lessons-v9">
+          ${group.lessons.map((lesson) => lessonButton(lesson)).join("")}
+        </div>
+      </details>
+    `;
+  }).join("");
+  host.scrollTop = previousScroll;
+  bindOutlineScroll(host);
+  host.querySelectorAll("[data-lesson-id]").forEach((button) => button.addEventListener("click", () => openLesson(container, button.dataset.lessonId)));
+  requestAnimationFrame(() => {
+    if (options.revealActive) scrollActiveLessonIntoView(host);
+  });
+}
+
+function bindOutlineScroll(host) {
+  if (host.dataset.scrollMarkerBound) return;
+  host.dataset.scrollMarkerBound = "1";
+}
+
+function scrollActiveLessonIntoView(host) {
+  const active = host.querySelector(".video-lesson-row.active");
+  if (!active) return;
+  const hostRect = host.getBoundingClientRect();
+  const rowRect = active.getBoundingClientRect();
+  const pad = 24;
+  if (rowRect.top < hostRect.top + pad || rowRect.bottom > hostRect.bottom - pad) {
+    active.scrollIntoView({ block: "center", behavior: "smooth" });
   }
-  return `
-    <div class="transcript-head">
-      <div><p class="eyebrow">${state.notesOnly ? "Generated notes" : "Transcript"}</p><h3>${state.notesOnly ? "English-only study notes" : "English transcript cues"}</h3></div>
-    </div>
-    <div id="transcript" class="${state.notesOnly ? "study-note-panel" : "transcript-list"}">${renderTranscript(state.chunks, state.notesOnly)}</div>`;
 }
 
-function renderTranscript(chunks, notesOnly) {
-  if (!chunks.length) return `<div class="empty-state">No English transcript or notes were indexed for this lesson.</div>`;
-  if (notesOnly) return `<p>${escapeHtml(chunks[0].text)}</p>`;
-  return chunks
-    .map((cue) => `<button class="cue" data-start="${cue.start_s || 0}" type="button"><span>${formatTime(cue.start_s)}</span><strong>${escapeHtml(cue.text)}</strong></button>`)
-    .join("");
-}
-
-function groupLessons() {
+function groupLessons(lessons) {
   const groups = [];
   const byKey = new Map();
-  for (const lesson of state.lessons) {
+  for (const lesson of lessons) {
     const title = lesson.section || "Course";
     if (!byKey.has(title)) {
       const group = { title, lessons: [] };
@@ -288,65 +205,144 @@ function groupLessons() {
   return groups;
 }
 
-function resolveDefaultLessonCourse(requestedCourseId, requestedTrackId) {
-  const requested = state.courses.find((course) => course.id === requestedCourseId);
-  if (requested) return requested;
-  const savedCourse = state.courses.find((course) => course.id === localStorage.getItem(LESSON_COURSE_KEY));
-  if (savedCourse && (!requestedTrackId || savedCourse.track_id === requestedTrackId)) return savedCourse;
-  const savedTrack = requestedTrackId || localStorage.getItem(LESSON_TRACK_KEY) || "snowpro-core";
-  const coursesForTrack = state.courses.filter((course) => course.track_id === savedTrack);
-  if (coursesForTrack.length) return coursesForTrack.sort((a, b) => (b.lesson_count || 0) - (a.lesson_count || 0))[0];
-  return [...state.courses].sort((a, b) => (b.lesson_count || 0) - (a.lesson_count || 0))[0];
+function lessonButton(lesson) {
+  const index = state.lessons.findIndex((item) => item.id === lesson.id) + 1;
+  return `
+    <button class="video-lesson-row ${lesson.id === state.activeLessonId ? "active" : ""}" data-lesson-id="${escapeHtml(lesson.id)}" type="button">
+      <span class="play-dot">▶</span>
+      <span><strong>${index}. ${escapeHtml(lesson.title)}</strong><small>${formatDuration(lesson.duration_s || lesson.duration)} · ${escapeHtml(lesson.course_title || "")}</small></span>
+    </button>
+  `;
 }
 
-function currentCourse(container) {
-  const id = container.querySelector("#course-select")?.value;
-  return state.courses.find((course) => course.id === id);
+async function openLesson(container, lessonId) {
+  state.activeLessonId = lessonId;
+  renderLessonList(container, { revealActive: true });
+  try {
+    const [lesson, transcript] = await Promise.all([getLesson(lessonId), getTranscript(lessonId).catch(() => ({ chunks: [] }))]);
+    const chunks = transcript.chunks || [];
+    const transcriptText = chunks.map((chunk) => chunk.text).join("\n\n");
+    const notesOnly = /English study notes/i.test(transcriptText);
+    renderVideoStage(container, lesson);
+    renderLessonTabs(container, lesson, chunks, notesOnly);
+    renderTab(container, lesson, chunks, notesOnly);
+  } catch (error) {
+    showToast(error.message, "error");
+  }
 }
 
-function currentTrack(container) {
-  const id = container.querySelector("#track-select")?.value;
-  return state.tracks.find((track) => track.id === id);
+function renderVideoStage(container, lesson) {
+  const media = lesson.video_path ? `/api/media?path=${encodeURIComponent(lesson.video_path)}` : "";
+  const host = container.querySelector("#video-stage");
+  if (!host) return;
+  host.innerHTML = `
+    <div class="actual-video-card">
+      ${media ? `<video id="lesson-video" controls preload="metadata" playsinline src="${media}"></video>` : `<div class="video-missing"><strong>No video file indexed for this lesson.</strong><span>The lesson still has transcript/study material if available.</span></div>`}
+    </div>
+    <div class="now-playing-card">
+      <p class="eyebrow">Now playing</p>
+      <h2>${escapeHtml(lesson.title)}</h2>
+      <p>${escapeHtml(lesson.course_title || "Snowflake course")} · ${escapeHtml(lesson.section || "Course")}</p>
+    </div>
+  `;
 }
 
-function updateBreadcrumb(container) {
-  const track = currentTrack(container);
-  const course = currentCourse(container);
-  const lesson = state.activeLesson;
-  container.querySelector("#lesson-breadcrumb").textContent = [track?.title, course?.title, lesson?.section, lesson?.title].filter(Boolean).join(" > ") || "Select a course";
+function renderLessonTabs(container, lesson, chunks, notesOnly) {
+  const host = container.querySelector("#lesson-tabs");
+  if (!host) return;
+  const tabs = [
+    ["overview", "Overview"],
+    ["transcript", notesOnly ? "Study notes" : `Transcript (${formatNumber(chunks.length)})`],
+    ["questions", "Practice"],
+    ["actions", "Next actions"],
+  ];
+  host.innerHTML = tabs.map(([key, label]) => `<button class="${state.activeTab === key ? "active" : ""}" data-tab="${key}" type="button">${escapeHtml(label)}</button>`).join("");
+  host.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => {
+    state.activeTab = button.dataset.tab;
+    renderLessonTabs(container, lesson, chunks, notesOnly);
+    renderTab(container, lesson, chunks, notesOnly);
+  }));
 }
 
-function updateUrl(container, lesson) {
-  const trackId = container.querySelector("#track-select").value;
-  const url = `#/learn?track_id=${encodeURIComponent(trackId)}&course_id=${encodeURIComponent(lesson.course_id)}&lesson_id=${encodeURIComponent(lesson.id)}`;
-  history.replaceState(null, "", url);
+function renderTab(container, lesson, chunks, notesOnly) {
+  const host = container.querySelector("#lesson-detail");
+  if (!host) return;
+  if (state.activeTab === "transcript") {
+    host.innerHTML = `
+      <div class="lesson-panel-head"><div><p class="eyebrow">${notesOnly ? "Generated notes" : "Transcript cues"}</p><h2>${notesOnly ? "Study context" : "Click a cue to seek the video"}</h2></div></div>
+      <div id="transcript-list" class="${notesOnly ? "study-note-panel-v9" : "transcript-list-v9"}">${renderTranscript(chunks, notesOnly)}</div>
+    `;
+    wireTranscript(container);
+    return;
+  }
+  if (state.activeTab === "questions") {
+    const related = lesson.related_questions || [];
+    host.innerHTML = `
+      <div class="lesson-panel-head"><div><p class="eyebrow">Practice from this source</p><h2>Turn the video into exam evidence</h2></div><a class="primary-btn" href="#/practice?course_id=${encodeURIComponent(lesson.course_id || "")}">Open course questions</a></div>
+      <div class="related-question-list-v9">
+        ${related.length ? related.slice(0, 8).map((question) => `<a href="#/practice?course_id=${encodeURIComponent(lesson.course_id || "")}"><span>${escapeHtml(question.difficulty || "practice")}</span><strong>${escapeHtml(question.question || "Question")}</strong></a>`).join("") : emptyState("No direct question links yet", "Use the course question pool or search by concept.")}
+      </div>
+    `;
+    return;
+  }
+  if (state.activeTab === "actions") {
+    host.innerHTML = `
+      <div class="lesson-panel-head"><div><p class="eyebrow">Next best actions</p><h2>Do not just watch. Prove it.</h2></div><button id="mark-complete" class="secondary-btn">Mark lesson complete</button></div>
+      <div class="evidence-actions-grid">
+        <a href="#/practice?course_id=${encodeURIComponent(lesson.course_id || "")}"><strong>Practice related questions</strong><span>Use the same course source for retention testing.</span></a>
+        <a href="#/labs"><strong>Open lab runner</strong><span>Prove the concept with Snowflake SQL challenge validation.</span></a>
+        <a href="#/search?q=${encodeURIComponent(lesson.title || "")}"><strong>Search the brain</strong><span>Find matching lessons, questions, and notes.</span></a>
+      </div>
+    `;
+    container.querySelector("#mark-complete")?.addEventListener("click", async () => {
+      try {
+        await recordLessonProgress({ lesson_id: lesson.id, completed: true, progress_pct: 100 });
+        showToast("Lesson marked complete", "success");
+      } catch (error) {
+        showToast(error.message, "error");
+      }
+    });
+    return;
+  }
+  host.innerHTML = `
+    <div class="lesson-panel-head"><div><p class="eyebrow">Lesson overview</p><h2>${escapeHtml(lesson.title)}</h2></div><span class="trust-pill ${notesOnly ? "warn" : "ok"}">${notesOnly ? "generated notes" : "transcript available"}</span></div>
+    <div class="lesson-overview-v9">
+      <p>${escapeHtml(lesson.excerpt || "This lesson is available from your local Snowflake course archive.")}</p>
+      <dl>
+        <div><dt>Course</dt><dd>${escapeHtml(lesson.course_title || "")}</dd></div>
+        <div><dt>Section</dt><dd>${escapeHtml(lesson.section || "Course")}</dd></div>
+        <div><dt>Duration</dt><dd>${formatDuration(lesson.duration_s || lesson.duration)}</dd></div>
+        <div><dt>Transcript</dt><dd>${notesOnly ? "Generated study notes" : `${formatNumber(chunks.length)} cues`}</dd></div>
+      </dl>
+    </div>
+  `;
 }
 
-function qualityBadge(chunks, notesOnly) {
-  if (!chunks.length) return `<span class="content-quality-badge danger">Missing transcript</span>`;
-  if (notesOnly) return `<span class="content-quality-badge warning">Generated notes</span>`;
-  return `<span class="content-quality-badge success">Real transcript</span>`;
+function renderTranscript(chunks, notesOnly) {
+  if (!chunks.length) return emptyState("No transcript indexed", "The video can still be watched from the local media file.");
+  if (notesOnly) return `<pre>${escapeHtml(chunks.map((chunk) => chunk.text).join("\n\n"))}</pre>`;
+  return chunks.map((cue) => `<button class="cue-v9" data-start="${Number(cue.start_s || 0)}" type="button"><span>${formatTime(cue.start_s)}</span><strong>${escapeHtml(cue.text || "")}</strong></button>`).join("");
 }
 
 function wireTranscript(container) {
-  const video = container.querySelector("#video");
+  const video = container.querySelector("#lesson-video");
   if (!video) return;
-  container.querySelectorAll(".cue").forEach((cue) => {
+  container.querySelectorAll(".cue-v9").forEach((cue) => {
     cue.addEventListener("click", () => {
       video.currentTime = Number(cue.dataset.start || 0);
-      video.play();
+      video.play().catch(() => {});
     });
   });
 }
 
 function formatTime(value) {
-  const seconds = Math.floor(value || 0);
+  const seconds = Math.floor(Number(value || 0));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function formatDuration(value) {
   const seconds = Number(value || 0);
-  if (!seconds) return "Duration unavailable";
+  if (!seconds) return "duration unknown";
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} min`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;

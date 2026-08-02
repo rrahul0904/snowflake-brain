@@ -13,6 +13,7 @@ os.environ.setdefault("AUTO_INGEST", "false")
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.database import run_migrations
 
 
 CHECKS = [
@@ -28,16 +29,25 @@ CHECKS = [
     ("GET", "/api/flashcards"),
     ("GET", "/api/study/goals"),
     ("GET", "/api/study/today"),
-    ("GET", "/api/study/readiness?track_id=snowpro-core"),
     ("GET", "/api/study/content-audit"),
+    ("GET", "/api/experience/command-center?track_id=snowpro-core"),
+    ("GET", "/api/intelligence/portfolio"),
+    ("GET", "/api/intelligence/readiness?track_id=snowpro-core"),
+    ("GET", "/api/intelligence/diagnostic?track_id=snowpro-core&count=30"),
+    ("GET", "/api/labs?certification=snowpro-core"),
+    ("POST", "/api/brain/ask"),
 ]
 
 
 def main() -> None:
+    run_migrations()
     client = TestClient(app)
     failures: list[str] = []
     for method, path in CHECKS:
-        response = client.request(method, path)
+        kwargs = {}
+        if path == "/api/brain/ask":
+            kwargs["json"] = {"question": "Explain RBAC", "context_limit": 3}
+        response = client.request(method, path, **kwargs)
         ok = 200 <= response.status_code < 400
         print(f"{method} {path} -> {response.status_code}")
         if not ok:

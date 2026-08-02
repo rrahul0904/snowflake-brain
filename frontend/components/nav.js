@@ -1,46 +1,60 @@
-const primaryItems = [
-  ["#/today", "Today"],
-  ["#/learn", "Learn"],
+const items = [
+  ["#/curriculum", "Curriculum"],
   ["#/practice", "Practice"],
-  ["#/review", "Review"],
-  ["#/readiness", "Readiness"],
+  ["#/reference", "Reference"],
+  ["#/journal", "Journal"],
 ];
 
 const aliases = new Map([
-  ["#/", "#/today"],
-  ["#/setup", "#/today"],
-  ["#/video", "#/learn"],
-  ["#/lessons", "#/learn"],
+  ["#/", "#/curriculum"],
+  ["#/command", "#/curriculum"],
+  ["#/today", "#/curriculum"],
+  ["#/academy", "#/curriculum"],
+  ["#/career", "#/journal"],
+  ["#/learn", "#/curriculum"],
+  ["#/lessons", "#/curriculum"],
+  ["#/video", "#/curriculum"],
   ["#/quiz", "#/practice"],
-  ["#/analytics", "#/review"],
+  ["#/search", "#/reference"],
+  ["#/ai", "#/reference"],
+  ["#/review", "#/practice"],
+  ["#/analytics", "#/practice"],
 ]);
 
 export async function renderNav() {
   const nav = document.querySelector("#sidebar");
+  nav.className = "replica-header";
   nav.innerHTML = `
-    <a class="brand-block brand-compact coach-brand" href="#/today">
-      <span class="brand-mark">S</span>
-      <span><strong>Snowflake Brain</strong><small>Certification coach</small></span>
-    </a>
-    <div class="nav-list nav-list-clean coach-nav-list">
-      ${primaryItems
-        .map(([href, label]) => `<a href="${href}" class="nav-item nav-item-clean" data-href="${href}"><strong>${label}</strong></a>`)
-        .join("")}
-    </div>
-    <div class="nav-secondary-links coach-secondary-links">
-      <a href="#/search">Search</a>
-      <a href="#/flashcards">Cards</a>
-      <a href="#/labs">Labs</a>
-      <a href="#/plan">Plan</a>
+    <div class="replica-nav-inner">
+      <a class="replica-brand" href="#/curriculum" aria-label="Snowflake Certification Studio home">
+        <span class="replica-brand-mark" aria-hidden="true">S</span>
+        <span>Snowflake Studio</span>
+      </a>
+      <button class="replica-menu-toggle" id="replica-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">Menu</button>
+      <div class="replica-nav-links" id="replica-nav-links">
+        ${items.map(([href, label]) => `<a href="${href}" data-href="${href}">${label}</a>`).join("")}
+      </div>
+      <div class="replica-nav-actions">
+        <label class="replica-cert-control"><span class="sr-only">Certification</span><select id="replica-track-select" aria-label="Certification"><option>Loading certifications...</option></select></label>
+        <a class="replica-primary-action" href="#/practice">Take Mock Exam</a>
+      </div>
     </div>
   `;
+  nav.querySelector("#replica-menu-toggle")?.addEventListener("click", (event) => {
+    const open = document.body.classList.toggle("replica-menu-open");
+    event.currentTarget.setAttribute("aria-expanded", String(open));
+  });
   updateActiveNav();
 }
 
 export function updateActiveNav() {
-  const raw = (window.location.hash || "#/today").split("?")[0];
+  const raw = (window.location.hash || "#/curriculum").split("?")[0];
   const active = aliases.get(raw) || raw;
-  document.querySelectorAll(".nav-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.href === active);
+  document.querySelectorAll(".replica-nav-links a").forEach((item) => {
+    const selected = item.dataset.href === active;
+    item.classList.toggle("active", selected);
+    if (selected) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
   });
+  document.body.classList.remove("replica-menu-open");
 }

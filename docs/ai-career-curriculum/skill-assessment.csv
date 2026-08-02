@@ -1,0 +1,41 @@
+domain,subskill,target_level,current_level,priority,evidence,project,resource,status,last_reviewed,next_action
+Data engineering,Batch and stream architecture,5,,P0,,P1,Airflow and Google SRE,not_started,,Document a replayable telemetry pipeline
+Data architecture,Contracts and canonical models,5,,P0,,P1,dbt guides,not_started,,Version an event contract and canonical model
+Product data,Event design and semantic metrics,5,,P0,,P1,Amplitude and dbt,not_started,,Create product event taxonomy and metric tree
+Data quality,Tests freshness and observability,5,,P0,,P1,dbt and Great Expectations,not_started,,Implement quality and freshness gates
+Governance,Access ownership and retention,5,,P0,,P1-P2,NIST AI RMF,not_started,,Create data and AI control map
+Reliability,SLOs incidents and recovery,5,,P0,,P1-P2,Google SRE,not_started,,Define SLO and run incident tabletop
+Leadership,Team and operating model,5,,P0,,All,Google reWork,not_started,,Complete team charter and hiring scorecard
+Mathematics,Linear algebra calculus and optimization,3,,P2,,P3,MIT 18.065,not_started,,Complete derivation notebook
+Statistics,Inference experimentation and calibration,4,,P1,,P1-P3,PSU STAT 503,not_started,,Design AI product experiment
+Classical ML,Generalization baselines and error analysis,3,,P1,,P3,MIT 6.036,not_started,,Build reproducible baseline
+Deep learning,Neural networks and optimization,3,,P1,,P3,PyTorch tutorials,not_started,,Train and diagnose a neural network
+PyTorch,Training loops checkpoints and profiling,4,,P1,,P3,PyTorch tutorials and CS336,not_started,,Build tested training harness
+NLP,Language modeling fundamentals,3,,P1,,P3,Hugging Face LLM Course,not_started,,Compare language model objectives
+Transformers,Attention architecture and decoding,4,,P1,,P3,CS336 and primary papers,not_started,,Implement small decoder transformer
+Token intelligence,Token context quality latency and cost,4,,P0,,P2-P3,Hugging Face tokenizers,not_started,,Build token profiler and budget policy
+Pretraining,Data objectives and scaling,3,,P2,,P3,CS336,not_started,,Run small scaling experiment
+Post-training,SFT RLHF DPO and RLAIF,3,,P2,,P3,Primary papers,not_started,,Compare SFT and DPO on small data
+Adaptation,LoRA quantization and distillation,3,,P1,,P3,Hugging Face and PyTorch,not_started,,Benchmark adapter and quantization
+Prompt and context engineering,Instruction context and caching,4,,P0,,P2,Anthropic and OpenAI docs,not_started,,Create prompt regression suite
+RAG and retrieval,Hybrid search reranking and citations,5,,P0,,P2,Hugging Face and provider docs,not_started,,Create retrieval eval dataset
+Knowledge systems,Knowledge graphs and GraphRAG,3,,P2,,P2,Primary papers and open source,not_started,,Build graph-assisted retrieval slice
+LLM applications,APIs structured output streaming and fallback,5,,P0,,P2,Anthropic and OpenAI docs,not_started,,Build provider-neutral gateway
+Agents,Tool orchestration state recovery and HITL,4,,P0,,P2,Anthropic and OpenAI agent guides,not_started,,Implement bounded tool agent
+Deep research,Iterative search synthesis and citation,3,,P1,,P2,IR and agent resources,not_started,,Build source-grounded research workflow
+MCP,Clients servers tools resources and security,4,,P0,,P2,MCP specification,not_started,,Build secure MCP server and client
+Workflow automation,n8n tactical orchestration,2,,P2,,P2,n8n docs,not_started,,Build one approval workflow
+Evaluations,Datasets rubrics judges and CI gates,5,,P0,,P2,MLflow and provider docs,not_started,,Create versioned eval harness
+LLMOps and MLOps,Tracing lifecycle rollout and drift,5,,P0,,P2,MLflow and Kubernetes,not_started,,Add traces canary and rollback
+Distributed training,DDP FSDP and parallelism concepts,3,,P2,,P3,PyTorch and CS336,not_started,,Run distributed benchmark
+GPU systems,Compute memory kernels and profiling,3,,P2,,P3,CS336 and PyTorch,not_started,,Produce memory throughput profile
+Inference systems,Batching caching quantization and autoscaling,4,,P1,,P2-P3,PyTorch and Kubernetes,not_started,,Benchmark latency throughput and cost
+AI security,Injection exfiltration tools and supply chain,5,,P0,,P2,OWASP and MCP security,not_started,,Threat model and red-team suite
+AI governance,Risk inventory measurement and accountability,5,,P0,,P2,NIST AI RMF,not_started,,Create governance operating model
+Multimodal AI,Text image and audio applications,3,,P2,,P3,PyTorch and Hugging Face,not_started,,Build and evaluate multimodal prototype
+Reinforcement learning,MDPs values policies and optimization,2,,P3,,P3,OpenAI Spinning Up,not_started,,Run small RL experiment
+Interpretability,Attribution probes and circuits,2,,P3,,P3,Distill and primary papers,not_started,,Replicate interpretability result
+Research methods,Reproduction ablation and writing,3,,P1,,P3,Primary papers,not_started,,Pre-register reproduction plan
+Product analytics,Funnels cohorts retention and experiments,5,,P0,,P1,Amplitude,not_started,,Build adoption and retention scorecard
+Forward deployed,Discovery prototype delivery and adoption,4,,P0,,P4,Case study practice,not_started,,Conduct discovery and value hypothesis
+Executive communication,Decision narrative risk and investment,5,,P0,,All,Portfolio practice,not_started,,Record ten-minute decision presentation

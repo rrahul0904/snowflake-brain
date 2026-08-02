@@ -21,7 +21,9 @@ RUN pip install --no-cache-dir \
   -r requirements.txt
 
 COPY app ./app
+COPY config ./config
 COPY frontend ./frontend
+COPY docs/ai-career-curriculum ./docs/ai-career-curriculum
 
 EXPOSE 8000
 

@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Any
+import mimetypes
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 
 from ..config import CONTENT_ROOT
 from ..database import connect
@@ -323,11 +324,81 @@ def document_detail(document_id: str) -> dict[str, Any]:
 
 
 @router.get("/media")
-def media(path: str) -> FileResponse:
+def media(request: Request, path: str):
+    """Serve local lesson videos with byte-range support.
+
+    Browser video controls need HTTP 206 responses for seeking/scrubbing.
+    Some ASGI/FileResponse combinations stream the file but do not provide
+    reliable range behavior for local MP4/MOV assets, so we implement the
+    Range header explicitly here.
+    """
     target = _safe_content_path(path)
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="Media not found")
-    return FileResponse(target)
+
+    file_size = target.stat().st_size
+    media_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    range_header = request.headers.get("range")
+
+    if not range_header:
+        response = FileResponse(target, media_type=media_type)
+        response.headers["Accept-Ranges"] = "bytes"
+        response.headers["Content-Length"] = str(file_size)
+        return response
+
+    try:
+        units, byte_range = range_header.strip().split("=", 1)
+        if units.lower() != "bytes":
+            raise ValueError("Unsupported range unit")
+        start_s, end_s = (byte_range.split("-", 1) + [""])[:2]
+
+        if start_s == "":
+            # suffix range: bytes=-500 means the final 500 bytes
+            suffix_len = int(end_s)
+            start = max(file_size - suffix_len, 0)
+            end = file_size - 1
+        else:
+            start = int(start_s)
+            end = int(end_s) if end_s else file_size - 1
+
+        if start < 0 or end < start or start >= file_size:
+            return StreamingResponse(
+                iter(()),
+                status_code=416,
+                headers={
+                    "Content-Range": f"bytes */{file_size}",
+                    "Accept-Ranges": "bytes",
+                },
+                media_type=media_type,
+            )
+        end = min(end, file_size - 1)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid Range header")
+
+    chunk_size = 1024 * 1024
+    content_length = end - start + 1
+
+    def iter_file():
+        with target.open("rb") as handle:
+            handle.seek(start)
+            remaining = content_length
+            while remaining > 0:
+                data = handle.read(min(chunk_size, remaining))
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+
+    return StreamingResponse(
+        iter_file(),
+        status_code=206,
+        media_type=media_type,
+        headers={
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(content_length),
+        },
+    )
 
 
 def _safe_content_path(path: str) -> Path:

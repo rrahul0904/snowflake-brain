@@ -1,0 +1,1626 @@
+{
+  "version": "2026-06-29-v5-all-six-certifications",
+  "certifications": [
+    {
+      "id": "snowpro-core",
+      "title": "SnowPro Core",
+      "exam_code": "COF-C03",
+      "readiness_rules": {
+        "minimum_question_coverage_pct": 70,
+        "minimum_domain_accuracy_pct": 70,
+        "mock_exam_score_pct": 80,
+        "mock_exam_count": 2,
+        "recent_practice_days": 7,
+        "unresolved_mistake_threshold": 25
+      },
+      "domains": [
+        {
+          "id": "account-security",
+          "title": "Account Access and Security",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "rbac-role-hierarchy",
+              "title": "RBAC role hierarchy and least privilege",
+              "objective": "Understand roles, users, grants, ownership, inheritance, and least-privilege access design.",
+              "aliases": [
+                "rbac",
+                "role",
+                "roles",
+                "grant",
+                "privilege",
+                "privileges",
+                "ownership",
+                "securityadmin",
+                "accountadmin",
+                "least privilege"
+              ],
+              "question_tags": [
+                "rbac",
+                "role",
+                "roles",
+                "grant",
+                "privilege",
+                "ownership",
+                "security"
+              ],
+              "exam_traps": [
+                "Confusing functional roles with access roles.",
+                "Forgetting that ownership transfer can revoke existing outbound privileges unless handled carefully.",
+                "Granting broad privileges directly to users instead of roles."
+              ]
+            },
+            {
+              "id": "network-policy-authentication",
+              "title": "Network policies and authentication controls",
+              "objective": "Recognize account security controls including MFA, network policy, SSO, and authentication choices.",
+              "aliases": [
+                "network policy",
+                "mfa",
+                "sso",
+                "authentication",
+                "externalbrowser",
+                "oauth",
+                "scim"
+              ],
+              "question_tags": [
+                "network policy",
+                "authentication",
+                "mfa",
+                "sso",
+                "security"
+              ],
+              "exam_traps": [
+                "Mixing account-level policy behavior with user-level overrides."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "virtual-warehouses",
+          "title": "Virtual Warehouses and Cost Control",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "warehouse-cost-control",
+              "title": "Warehouse sizing, suspend/resume, and cost control",
+              "objective": "Choose warehouse size, auto-suspend, auto-resume, scaling, and cost guardrails.",
+              "aliases": [
+                "warehouse",
+                "warehouses",
+                "auto_suspend",
+                "auto suspend",
+                "auto_resume",
+                "auto resume",
+                "xsmall",
+                "warehouse_size",
+                "resource monitor",
+                "cost"
+              ],
+              "question_tags": [
+                "warehouse",
+                "auto_suspend",
+                "auto_resume",
+                "warehouse_size",
+                "cost",
+                "resource monitor"
+              ],
+              "exam_traps": [
+                "Assuming a larger warehouse always reduces cost.",
+                "Forgetting idle warehouses continue billing until suspended.",
+                "Confusing multi-cluster scaling with scaling up the warehouse size."
+              ]
+            },
+            {
+              "id": "query-performance-history",
+              "title": "Query history and performance troubleshooting",
+              "objective": "Use history views and query profile signals to diagnose performance and cost.",
+              "aliases": [
+                "query history",
+                "query_history",
+                "bytes scanned",
+                "query profile",
+                "performance",
+                "cache",
+                "result cache"
+              ],
+              "question_tags": [
+                "query history",
+                "performance",
+                "cache",
+                "query profile"
+              ],
+              "exam_traps": [
+                "Confusing result cache, metadata cache, and warehouse cache behavior."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "data-loading",
+          "title": "Data Loading and Unloading",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "stage-file-format-copy",
+              "title": "Stages, file formats, and COPY INTO",
+              "objective": "Create stages/file formats and load structured files using COPY INTO with validation.",
+              "aliases": [
+                "stage",
+                "stages",
+                "file format",
+                "copy into",
+                "copy_history",
+                "validation_mode",
+                "csv",
+                "skip_header"
+              ],
+              "question_tags": [
+                "stage",
+                "file format",
+                "copy into",
+                "data loading",
+                "csv"
+              ],
+              "exam_traps": [
+                "Forgetting file formats can be named objects reused by stages and COPY statements.",
+                "Confusing internal, external, table, and user stages."
+              ]
+            },
+            {
+              "id": "snowpipe-continuous-load",
+              "title": "Snowpipe and continuous loading",
+              "objective": "Understand Snowpipe auto-ingest, notifications, pipe objects, and load history.",
+              "aliases": [
+                "snowpipe",
+                "pipe",
+                "auto ingest",
+                "notification",
+                "cloud storage",
+                "copy_history"
+              ],
+              "question_tags": [
+                "snowpipe",
+                "pipe",
+                "auto ingest",
+                "data loading"
+              ],
+              "exam_traps": [
+                "Assuming Snowpipe uses your user warehouse like COPY INTO does."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "semi-structured-data",
+          "title": "Semi-Structured Data",
+          "weight": 15,
+          "skills": [
+            {
+              "id": "variant-flatten-json",
+              "title": "VARIANT, JSON pathing, and FLATTEN",
+              "objective": "Store JSON in VARIANT, query nested paths, and flatten arrays into rows.",
+              "aliases": [
+                "variant",
+                "flatten",
+                "parse_json",
+                "json",
+                "semi structured",
+                "semi-structured",
+                "lateral flatten",
+                "payload"
+              ],
+              "question_tags": [
+                "variant",
+                "flatten",
+                "json",
+                "semi structured",
+                "parse_json"
+              ],
+              "exam_traps": [
+                "Forgetting FLATTEN is table-function style and commonly used with LATERAL.",
+                "Mixing string casting and numeric casting from VARIANT paths."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "continuity-governance-sharing",
+          "title": "Continuity, Governance, and Sharing",
+          "weight": 15,
+          "skills": [
+            {
+              "id": "time-travel-clone-failsafe",
+              "title": "Time Travel, Fail-safe, and zero-copy clone",
+              "objective": "Recover objects, query historical data, understand retention, and use zero-copy cloning.",
+              "aliases": [
+                "time travel",
+                "fail-safe",
+                "failsafe",
+                "clone",
+                "zero-copy",
+                "undrop",
+                "retention",
+                "at offset",
+                "before"
+              ],
+              "question_tags": [
+                "time travel",
+                "clone",
+                "undrop",
+                "retention",
+                "failsafe"
+              ],
+              "exam_traps": [
+                "Confusing Time Travel recovery with Fail-safe, which is not user self-service."
+              ]
+            },
+            {
+              "id": "secure-sharing-governance",
+              "title": "Secure data sharing and governance controls",
+              "objective": "Understand shares, reader accounts, masking, row access, tags, and marketplace concepts.",
+              "aliases": [
+                "share",
+                "data sharing",
+                "reader account",
+                "masking policy",
+                "row access policy",
+                "tag",
+                "governance",
+                "marketplace"
+              ],
+              "question_tags": [
+                "sharing",
+                "masking",
+                "row access",
+                "governance",
+                "marketplace"
+              ],
+              "exam_traps": [
+                "Confusing secure data sharing with copying or unloading data."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "data-pipelines",
+          "title": "Streams, Tasks, and Pipelines",
+          "weight": 10,
+          "skills": [
+            {
+              "id": "streams-tasks-incremental",
+              "title": "Streams and tasks for incremental pipelines",
+              "objective": "Use streams to track change data and tasks to automate processing.",
+              "aliases": [
+                "stream",
+                "streams",
+                "task",
+                "tasks",
+                "system$stream_has_data",
+                "change data",
+                "cdc",
+                "metadata$action"
+              ],
+              "question_tags": [
+                "stream",
+                "streams",
+                "task",
+                "tasks",
+                "cdc"
+              ],
+              "exam_traps": [
+                "Forgetting a stream offset advances when stream rows are consumed successfully."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced-architect",
+      "title": "SnowPro Advanced: Architect",
+      "exam_code": "ARA-C01",
+      "readiness_rules": {
+        "minimum_question_coverage_pct": 70,
+        "minimum_domain_accuracy_pct": 70,
+        "mock_exam_score_pct": 80,
+        "mock_exam_count": 2,
+        "recent_practice_days": 7,
+        "unresolved_mistake_threshold": 25
+      },
+      "domains": [
+        {
+          "id": "platform-architecture",
+          "title": "Platform Architecture and Design",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "architect-account-organization",
+              "title": "Account, organization, and environment strategy",
+              "objective": "Design account structures, environments, naming, region strategy, and separation of duties for enterprise Snowflake platforms.",
+              "aliases": [
+                "organization",
+                "orgadmin",
+                "account",
+                "multi-account",
+                "environment",
+                "region",
+                "replication",
+                "failover",
+                "dev test prod"
+              ],
+              "question_tags": [
+                "organization",
+                "account",
+                "region",
+                "environment",
+                "replication",
+                "failover"
+              ],
+              "exam_traps": [
+                "Using one account for every workload can make governance and blast radius harder.",
+                "Confusing database replication with full account failover."
+              ]
+            },
+            {
+              "id": "architect-network-connectivity",
+              "title": "Network connectivity and private access",
+              "objective": "Design secure connectivity using network policies, PrivateLink/private connectivity, and controlled client access.",
+              "aliases": [
+                "privatelink",
+                "private link",
+                "network policy",
+                "network rule",
+                "connectivity",
+                "vpn",
+                "proxy",
+                "client redirect",
+                "public access"
+              ],
+              "question_tags": [
+                "privatelink",
+                "network policy",
+                "connectivity",
+                "private access"
+              ],
+              "exam_traps": [
+                "Network policy is not the same as private connectivity.",
+                "Private connectivity still needs identity and role controls."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "security-governance",
+          "title": "Security, Governance, and Compliance Architecture",
+          "weight": 25,
+          "skills": [
+            {
+              "id": "architect-governance-classification",
+              "title": "Data governance, tagging, masking, and classification",
+              "objective": "Apply object tagging, masking policies, row access policies, classification, and governance patterns at scale.",
+              "aliases": [
+                "tag",
+                "tags",
+                "masking policy",
+                "row access policy",
+                "classification",
+                "pii",
+                "sensitive data",
+                "access policy",
+                "governance"
+              ],
+              "question_tags": [
+                "tagging",
+                "masking",
+                "row access",
+                "classification",
+                "governance"
+              ],
+              "exam_traps": [
+                "A masking policy protects columns, while row access policies filter rows.",
+                "Tags are metadata and need policies/processes to enforce behavior."
+              ]
+            },
+            {
+              "id": "architect-rbac-model",
+              "title": "Enterprise RBAC model and ownership strategy",
+              "objective": "Design scalable functional roles, access roles, ownership, managed access schemas, and grant patterns.",
+              "aliases": [
+                "rbac",
+                "functional role",
+                "access role",
+                "managed access schema",
+                "ownership",
+                "future grants",
+                "grant ownership"
+              ],
+              "question_tags": [
+                "rbac",
+                "managed access",
+                "ownership",
+                "future grants"
+              ],
+              "exam_traps": [
+                "Ownership grants are powerful and often misunderstood.",
+                "Future grants behave differently across databases and schemas."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "data-architecture",
+          "title": "Data Architecture and Sharing",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "architect-data-modeling",
+              "title": "Data modeling and workload-aligned storage",
+              "objective": "Design database/schema layout, transient/temporary/permanent objects, clustering strategy, and data lifecycle patterns.",
+              "aliases": [
+                "data model",
+                "schema design",
+                "transient",
+                "temporary table",
+                "permanent table",
+                "cluster key",
+                "clustering",
+                "lifecycle"
+              ],
+              "question_tags": [
+                "data modeling",
+                "transient",
+                "cluster key",
+                "schema"
+              ],
+              "exam_traps": [
+                "Clustering is not always beneficial; it must match pruning needs.",
+                "Transient tables reduce fail-safe but change recovery expectations."
+              ]
+            },
+            {
+              "id": "architect-data-sharing-marketplace",
+              "title": "Secure data sharing and marketplace architecture",
+              "objective": "Use shares, listings, reader accounts, provider/consumer patterns, and cross-account data products.",
+              "aliases": [
+                "secure data sharing",
+                "share",
+                "listing",
+                "marketplace",
+                "reader account",
+                "provider",
+                "consumer"
+              ],
+              "question_tags": [
+                "data sharing",
+                "marketplace",
+                "share",
+                "reader account"
+              ],
+              "exam_traps": [
+                "A share does not copy data.",
+                "Reader accounts are for consumers without their own Snowflake account."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "performance-resilience",
+          "title": "Performance, Scalability, and Resilience",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "architect-performance-patterns",
+              "title": "Performance architecture and workload isolation",
+              "objective": "Design warehouse patterns, workload isolation, query acceleration, search optimization, and performance monitoring.",
+              "aliases": [
+                "workload isolation",
+                "query acceleration",
+                "search optimization",
+                "warehouse pattern",
+                "performance",
+                "monitoring",
+                "query history"
+              ],
+              "question_tags": [
+                "performance",
+                "workload isolation",
+                "query acceleration",
+                "search optimization"
+              ],
+              "exam_traps": [
+                "Scaling up and scaling out solve different performance problems.",
+                "Search optimization has cost and use-case boundaries."
+              ]
+            },
+            {
+              "id": "architect-bcdr",
+              "title": "Business continuity and disaster recovery",
+              "objective": "Design replication, failover, retention, Time Travel, Fail-safe, backup, and DR operating procedures.",
+              "aliases": [
+                "business continuity",
+                "disaster recovery",
+                "replication",
+                "failover",
+                "time travel",
+                "fail-safe",
+                "retention",
+                "clone"
+              ],
+              "question_tags": [
+                "bcdr",
+                "replication",
+                "failover",
+                "time travel",
+                "fail-safe"
+              ],
+              "exam_traps": [
+                "Time Travel is not a substitute for full DR design.",
+                "Fail-safe is not user-controlled recovery."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "operations-cost",
+          "title": "Operations and Cost Architecture",
+          "weight": 15,
+          "skills": [
+            {
+              "id": "architect-cost-controls",
+              "title": "Enterprise cost controls and observability",
+              "objective": "Implement resource monitors, budgets, query attribution, chargeback/showback, and operational dashboards.",
+              "aliases": [
+                "resource monitor",
+                "budget",
+                "cost",
+                "chargeback",
+                "showback",
+                "metering history",
+                "query attribution",
+                "warehouse metering"
+              ],
+              "question_tags": [
+                "resource monitor",
+                "budget",
+                "cost",
+                "metering",
+                "chargeback"
+              ],
+              "exam_traps": [
+                "Resource monitors notify/suspend warehouses but do not optimize SQL automatically.",
+                "Cost attribution requires tagging and query/user context."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced-data-engineer",
+      "title": "SnowPro Advanced: Data Engineer",
+      "exam_code": "DEA-C01",
+      "readiness_rules": {
+        "minimum_question_coverage_pct": 70,
+        "minimum_domain_accuracy_pct": 70,
+        "mock_exam_score_pct": 80,
+        "mock_exam_count": 2,
+        "recent_practice_days": 7,
+        "unresolved_mistake_threshold": 25
+      },
+      "domains": [
+        {
+          "id": "ingestion-loading",
+          "title": "Data Ingestion and Loading",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "de-batch-loading-copy",
+              "title": "Batch loading with stages, file formats, and COPY INTO",
+              "objective": "Build reliable batch ingestion from internal/external stages using file formats, COPY options, validation, and load history.",
+              "aliases": [
+                "copy into",
+                "stage",
+                "file format",
+                "validation mode",
+                "load history",
+                "on_error",
+                "pattern",
+                "external stage"
+              ],
+              "question_tags": [
+                "copy into",
+                "stage",
+                "file format",
+                "batch loading"
+              ],
+              "exam_traps": [
+                "COPY INTO loads from stages, not directly from arbitrary client folders.",
+                "ON_ERROR behavior can hide or surface bad files depending on settings."
+              ]
+            },
+            {
+              "id": "de-continuous-ingestion-snowpipe",
+              "title": "Continuous ingestion with Snowpipe and notifications",
+              "objective": "Design Snowpipe auto-ingest and notification patterns for near-real-time file loading.",
+              "aliases": [
+                "snowpipe",
+                "auto ingest",
+                "notification integration",
+                "event notification",
+                "pipe",
+                "copy statement"
+              ],
+              "question_tags": [
+                "snowpipe",
+                "auto ingest",
+                "pipe",
+                "notification"
+              ],
+              "exam_traps": [
+                "Snowpipe is serverless ingestion, not a transformation engine.",
+                "Cloud notifications must be configured outside the pipe definition too."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "transformation-pipelines",
+          "title": "Transformation and Pipeline Engineering",
+          "weight": 25,
+          "skills": [
+            {
+              "id": "de-streams-tasks-cdc",
+              "title": "Streams and Tasks for incremental pipelines",
+              "objective": "Use streams, task graphs, change tracking, and scheduled/serverless tasks for incremental processing.",
+              "aliases": [
+                "stream",
+                "streams",
+                "task",
+                "tasks",
+                "change tracking",
+                "cdc",
+                "task graph",
+                "serverless task"
+              ],
+              "question_tags": [
+                "streams",
+                "tasks",
+                "cdc",
+                "incremental"
+              ],
+              "exam_traps": [
+                "Streams track change records; they are not a permanent history table.",
+                "Tasks need a schedule or predecessor and proper warehouse/serverless settings."
+              ]
+            },
+            {
+              "id": "de-dynamic-tables",
+              "title": "Dynamic tables and declarative pipelines",
+              "objective": "Use dynamic tables, target lag, refresh modes, and pipeline dependencies where appropriate.",
+              "aliases": [
+                "dynamic table",
+                "target lag",
+                "refresh mode",
+                "incremental refresh",
+                "declarative pipeline"
+              ],
+              "question_tags": [
+                "dynamic tables",
+                "target lag",
+                "refresh"
+              ],
+              "exam_traps": [
+                "Dynamic tables are not identical to materialized views.",
+                "Target lag affects freshness and compute usage."
+              ]
+            },
+            {
+              "id": "de-sql-transforms-quality",
+              "title": "SQL transformation quality and error handling",
+              "objective": "Design transformations with idempotency, validation, deduplication, error handling, and auditability.",
+              "aliases": [
+                "merge",
+                "deduplicate",
+                "qualify",
+                "row_number",
+                "idempotent",
+                "data quality",
+                "audit table",
+                "error table"
+              ],
+              "question_tags": [
+                "merge",
+                "deduplication",
+                "data quality",
+                "idempotency"
+              ],
+              "exam_traps": [
+                "MERGE keys must be stable or you can duplicate/change rows incorrectly.",
+                "Deduplication logic should be deterministic."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "performance-optimization",
+          "title": "Performance and Optimization",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "de-query-optimization",
+              "title": "Query optimization and micro-partition pruning",
+              "objective": "Optimize SQL using pruning, clustering awareness, query profile, result cache, and warehouse sizing.",
+              "aliases": [
+                "micro-partition",
+                "pruning",
+                "query profile",
+                "result cache",
+                "clustering",
+                "warehouse size",
+                "optimization"
+              ],
+              "question_tags": [
+                "query optimization",
+                "micro-partition",
+                "pruning",
+                "clustering"
+              ],
+              "exam_traps": [
+                "Clustering does not fix every slow query.",
+                "Result cache can make tests misleading if you ignore cache behavior."
+              ]
+            },
+            {
+              "id": "de-semi-structured-processing",
+              "title": "Semi-structured data engineering",
+              "objective": "Process JSON, arrays, VARIANT, FLATTEN, lateral joins, and schema-on-read patterns.",
+              "aliases": [
+                "variant",
+                "flatten",
+                "lateral",
+                "json",
+                "array",
+                "object",
+                "semi structured",
+                "schema on read"
+              ],
+              "question_tags": [
+                "variant",
+                "flatten",
+                "semi-structured",
+                "json"
+              ],
+              "exam_traps": [
+                "FLATTEN expands rows and can multiply data volume quickly.",
+                "Casting VARIANT fields is often required for joins and filters."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "snowpark-programming",
+          "title": "Snowpark and Programmatic Data Engineering",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "de-snowpark-python",
+              "title": "Snowpark Python data pipelines",
+              "objective": "Use Snowpark DataFrames, functions, UDFs, stored procedures, packages, and deployment patterns.",
+              "aliases": [
+                "snowpark",
+                "dataframe",
+                "python",
+                "udf",
+                "stored procedure",
+                "packages",
+                "session"
+              ],
+              "question_tags": [
+                "snowpark",
+                "python",
+                "dataframe",
+                "udf",
+                "stored procedure"
+              ],
+              "exam_traps": [
+                "Snowpark pushes work to Snowflake; it is not meant to pull all data to the client.",
+                "Package availability and runtime versions matter."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "operations-orchestration",
+          "title": "Operations, Monitoring, and Orchestration",
+          "weight": 15,
+          "skills": [
+            {
+              "id": "de-monitoring-operations",
+              "title": "Pipeline monitoring and operational recovery",
+              "objective": "Monitor load/query/task history, failures, retries, alerts, and operational recovery.",
+              "aliases": [
+                "task history",
+                "load history",
+                "query history",
+                "alert",
+                "retry",
+                "failure",
+                "monitoring",
+                "information_schema",
+                "account_usage"
+              ],
+              "question_tags": [
+                "monitoring",
+                "task history",
+                "load history",
+                "operations"
+              ],
+              "exam_traps": [
+                "ACCOUNT_USAGE can have latency; INFORMATION_SCHEMA is often more immediate.",
+                "Retries without idempotency can duplicate data."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "snowpark",
+      "title": "SnowPro: Snowpark Developer",
+      "exam_code": "SPC-C01",
+      "readiness_rules": {
+        "minimum_question_coverage_pct": 70,
+        "minimum_domain_accuracy_pct": 70,
+        "mock_exam_score_pct": 80,
+        "mock_exam_count": 2,
+        "recent_practice_days": 7,
+        "unresolved_mistake_threshold": 25
+      },
+      "domains": [
+        {
+          "id": "snowpark-fundamentals",
+          "title": "Snowpark API Fundamentals",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "snowpark-session-dataframes",
+              "title": "Sessions, DataFrames, and lazy execution",
+              "objective": "Use Snowpark sessions, DataFrame operations, lazy execution, and SQL pushdown concepts.",
+              "aliases": [
+                "snowpark session",
+                "dataframe",
+                "lazy execution",
+                "collect",
+                "select",
+                "filter",
+                "with_column",
+                "pushdown"
+              ],
+              "question_tags": [
+                "snowpark",
+                "dataframe",
+                "session",
+                "lazy execution"
+              ],
+              "exam_traps": [
+                "Calling collect brings data back to the client.",
+                "DataFrame code is lazily evaluated until an action runs."
+              ]
+            },
+            {
+              "id": "snowpark-sql-integration",
+              "title": "SQL and DataFrame interoperability",
+              "objective": "Combine SQL, DataFrame APIs, temp views, and Snowflake functions effectively.",
+              "aliases": [
+                "session.sql",
+                "sql",
+                "dataframe api",
+                "temp view",
+                "functions",
+                "call table function"
+              ],
+              "question_tags": [
+                "sql integration",
+                "session.sql",
+                "dataframe"
+              ],
+              "exam_traps": [
+                "Mixing local Python logic with Snowflake execution can create performance surprises."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "functions-procedures",
+          "title": "UDFs, UDTFs, and Stored Procedures",
+          "weight": 25,
+          "skills": [
+            {
+              "id": "snowpark-udf-udtf",
+              "title": "UDF and UDTF development",
+              "objective": "Create and deploy scalar UDFs and table functions with correct types, imports, packages, and handlers.",
+              "aliases": [
+                "udf",
+                "udtf",
+                "table function",
+                "handler",
+                "packages",
+                "imports",
+                "return type"
+              ],
+              "question_tags": [
+                "udf",
+                "udtf",
+                "handler",
+                "packages"
+              ],
+              "exam_traps": [
+                "Handlers must match declared input/output types.",
+                "Package dependencies must be available in Snowflake runtime."
+              ]
+            },
+            {
+              "id": "snowpark-stored-procedures",
+              "title": "Stored procedures and task integration",
+              "objective": "Build stored procedures that operate on data and can be scheduled/orchestrated in Snowflake.",
+              "aliases": [
+                "stored procedure",
+                "sproc",
+                "call",
+                "task",
+                "snowpark procedure",
+                "session"
+              ],
+              "question_tags": [
+                "stored procedure",
+                "sproc",
+                "task"
+              ],
+              "exam_traps": [
+                "Stored procedures need explicit return types and deployment context."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ml-feature-engineering",
+          "title": "ML and Feature Engineering",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "snowpark-feature-engineering",
+              "title": "Feature engineering with Snowpark",
+              "objective": "Prepare data, create features, split datasets, and support ML workflows inside Snowflake.",
+              "aliases": [
+                "feature engineering",
+                "ml",
+                "train test split",
+                "snowpark ml",
+                "feature store",
+                "preprocessing"
+              ],
+              "question_tags": [
+                "feature engineering",
+                "ml",
+                "snowpark ml"
+              ],
+              "exam_traps": [
+                "Feature generation should be reproducible and avoid leakage."
+              ]
+            },
+            {
+              "id": "snowpark-model-inference",
+              "title": "Model inference and deployment patterns",
+              "objective": "Apply models, batch inference, model registry concepts, and operational patterns in Snowflake.",
+              "aliases": [
+                "model",
+                "inference",
+                "predict",
+                "model registry",
+                "batch inference",
+                "deploy"
+              ],
+              "question_tags": [
+                "model inference",
+                "predict",
+                "registry"
+              ],
+              "exam_traps": [
+                "Training/inference location affects data movement and governance."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "performance-packaging",
+          "title": "Performance, Packaging, and Deployment",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "snowpark-performance",
+              "title": "Snowpark performance and scaling",
+              "objective": "Optimize Snowpark code by minimizing client-side operations, understanding pushdown, and tuning warehouses.",
+              "aliases": [
+                "performance",
+                "pushdown",
+                "collect",
+                "to_pandas",
+                "warehouse",
+                "cache",
+                "query profile"
+              ],
+              "question_tags": [
+                "performance",
+                "pushdown",
+                "collect",
+                "warehouse"
+              ],
+              "exam_traps": [
+                "to_pandas/collect can accidentally move large data out of Snowflake."
+              ]
+            },
+            {
+              "id": "snowpark-deployment-packaging",
+              "title": "Packaging, versioning, and CI/CD for Snowpark",
+              "objective": "Manage packages, imports, stages, versioning, deployment, and environment reproducibility.",
+              "aliases": [
+                "package",
+                "import",
+                "stage",
+                "deployment",
+                "version",
+                "ci/cd",
+                "environment",
+                "requirements"
+              ],
+              "question_tags": [
+                "packaging",
+                "deployment",
+                "stage",
+                "version"
+              ],
+              "exam_traps": [
+                "Local package behavior may differ from Snowflake runtime availability."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "security-governance",
+          "title": "Security and Governance for Snowpark",
+          "weight": 15,
+          "skills": [
+            {
+              "id": "snowpark-secure-execution",
+              "title": "Secure execution and role-aware development",
+              "objective": "Use roles, warehouses, secrets, external access, and governance controls for Snowpark workloads.",
+              "aliases": [
+                "role",
+                "warehouse",
+                "secret",
+                "external access",
+                "network rule",
+                "security integration",
+                "governance"
+              ],
+              "question_tags": [
+                "security",
+                "external access",
+                "role",
+                "secret"
+              ],
+              "exam_traps": [
+                "External access requires network rules/integrations and should be tightly scoped."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cortex-genai",
+      "title": "SnowPro: Cortex AI / GenAI",
+      "exam_code": "CGA-C01",
+      "readiness_rules": {
+        "minimum_question_coverage_pct": 70,
+        "minimum_domain_accuracy_pct": 70,
+        "mock_exam_score_pct": 80,
+        "mock_exam_count": 2,
+        "recent_practice_days": 7,
+        "unresolved_mistake_threshold": 25
+      },
+      "domains": [
+        {
+          "id": "cortex-foundations",
+          "title": "Cortex AI Foundations",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "cortex-llm-functions",
+              "title": "Cortex LLM functions and prompt design",
+              "objective": "Use COMPLETE, SUMMARIZE, TRANSLATE, EXTRACT_ANSWER, sentiment, and prompt patterns responsibly.",
+              "aliases": [
+                "cortex",
+                "complete",
+                "summarize",
+                "translate",
+                "extract_answer",
+                "sentiment",
+                "prompt",
+                "llm"
+              ],
+              "question_tags": [
+                "cortex",
+                "llm",
+                "complete",
+                "prompt"
+              ],
+              "exam_traps": [
+                "LLM functions can produce non-deterministic outputs.",
+                "Prompts should include context boundaries and expected format."
+              ]
+            },
+            {
+              "id": "cortex-ai-sql-patterns",
+              "title": "AI SQL integration patterns",
+              "objective": "Apply Cortex functions inside SQL pipelines while managing cost, quality, and repeatability.",
+              "aliases": [
+                "ai sql",
+                "cortex sql",
+                "complete(",
+                "select ai",
+                "structured output",
+                "json output"
+              ],
+              "question_tags": [
+                "cortex sql",
+                "ai sql",
+                "structured output"
+              ],
+              "exam_traps": [
+                "Calling LLM functions row-by-row can be expensive."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "search-rag",
+          "title": "Cortex Search and RAG",
+          "weight": 25,
+          "skills": [
+            {
+              "id": "cortex-search-service",
+              "title": "Cortex Search service design",
+              "objective": "Create and use search services, choose search columns, understand refresh, and retrieve relevant chunks.",
+              "aliases": [
+                "cortex search",
+                "search service",
+                "search columns",
+                "attribute columns",
+                "embedding",
+                "chunk"
+              ],
+              "question_tags": [
+                "cortex search",
+                "search service",
+                "rag"
+              ],
+              "exam_traps": [
+                "Search quality depends heavily on chunking and selected columns."
+              ]
+            },
+            {
+              "id": "cortex-rag-grounding",
+              "title": "RAG grounding and citation patterns",
+              "objective": "Build retrieval-augmented generation with grounded context, source citations, and hallucination controls.",
+              "aliases": [
+                "rag",
+                "retrieval augmented generation",
+                "grounding",
+                "citation",
+                "context",
+                "hallucination"
+              ],
+              "question_tags": [
+                "rag",
+                "grounding",
+                "citation",
+                "context"
+              ],
+              "exam_traps": [
+                "A model answer without retrieved evidence should be treated as low confidence."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "document-ai-unstructured",
+          "title": "Document AI and Unstructured Data",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "cortex-document-ai",
+              "title": "Document AI extraction workflows",
+              "objective": "Use Document AI-style extraction and validation patterns for PDFs/forms/unstructured sources.",
+              "aliases": [
+                "document ai",
+                "pdf",
+                "extract",
+                "ocr",
+                "unstructured",
+                "invoice",
+                "form",
+                "classification"
+              ],
+              "question_tags": [
+                "document ai",
+                "unstructured",
+                "extraction"
+              ],
+              "exam_traps": [
+                "Extraction needs validation and human review for critical workflows."
+              ]
+            },
+            {
+              "id": "cortex-chunking-prep",
+              "title": "Chunking and preprocessing for GenAI",
+              "objective": "Prepare documents with chunking, metadata, cleaning, and structure for search/RAG quality.",
+              "aliases": [
+                "chunking",
+                "preprocessing",
+                "metadata",
+                "document chunks",
+                "text extraction",
+                "semantic search"
+              ],
+              "question_tags": [
+                "chunking",
+                "metadata",
+                "preprocessing"
+              ],
+              "exam_traps": [
+                "Bad chunking can break even a strong model."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "governance-security",
+          "title": "AI Governance, Security, and Evaluation",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "cortex-governance-security",
+              "title": "AI governance and secure data use",
+              "objective": "Apply masking, RBAC, access controls, prompt safety, and data governance to GenAI workloads.",
+              "aliases": [
+                "ai governance",
+                "rbac",
+                "masking",
+                "access control",
+                "prompt injection",
+                "sensitive data",
+                "pii"
+              ],
+              "question_tags": [
+                "ai governance",
+                "prompt safety",
+                "rbac",
+                "masking"
+              ],
+              "exam_traps": [
+                "LLM access does not bypass Snowflake privileges.",
+                "Prompt injection and data leakage risks must be controlled."
+              ]
+            },
+            {
+              "id": "cortex-evaluation-monitoring",
+              "title": "AI evaluation, monitoring, and cost control",
+              "objective": "Evaluate quality, monitor usage/cost, test regressions, and track model behavior.",
+              "aliases": [
+                "evaluation",
+                "monitoring",
+                "cost",
+                "quality",
+                "benchmark",
+                "regression",
+                "usage"
+              ],
+              "question_tags": [
+                "evaluation",
+                "monitoring",
+                "cost",
+                "quality"
+              ],
+              "exam_traps": [
+                "A demo answer is not enough; use repeatable evaluations."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "applications",
+          "title": "AI Applications in Snowflake",
+          "weight": 15,
+          "skills": [
+            {
+              "id": "cortex-app-patterns",
+              "title": "GenAI application patterns in Snowflake",
+              "objective": "Design AI assistants, summarizers, classifiers, and analytics copilots using governed Snowflake data.",
+              "aliases": [
+                "assistant",
+                "copilot",
+                "classifier",
+                "summarizer",
+                "analytics app",
+                "streamlit",
+                "native app"
+              ],
+              "question_tags": [
+                "assistant",
+                "copilot",
+                "streamlit",
+                "app"
+              ],
+              "exam_traps": [
+                "Application UX must expose confidence and sources."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cost-optimization",
+      "title": "Snowflake Cost Optimization",
+      "exam_code": "COST-OPT",
+      "readiness_rules": {
+        "minimum_question_coverage_pct": 70,
+        "minimum_domain_accuracy_pct": 70,
+        "mock_exam_score_pct": 80,
+        "mock_exam_count": 2,
+        "recent_practice_days": 7,
+        "unresolved_mistake_threshold": 25
+      },
+      "domains": [
+        {
+          "id": "warehouse-cost",
+          "title": "Warehouse Cost Controls",
+          "weight": 25,
+          "skills": [
+            {
+              "id": "cost-warehouse-rightsizing",
+              "title": "Warehouse right-sizing and auto-suspend",
+              "objective": "Tune warehouse size, scaling, auto-suspend, auto-resume, and workload isolation for cost/performance.",
+              "aliases": [
+                "warehouse size",
+                "xsmall",
+                "auto_suspend",
+                "auto_resume",
+                "multi-cluster",
+                "scaling policy",
+                "right-size"
+              ],
+              "question_tags": [
+                "warehouse cost",
+                "auto_suspend",
+                "right sizing"
+              ],
+              "exam_traps": [
+                "Larger warehouse can finish faster but not always cheaper.",
+                "Idle time is a common hidden cost."
+              ]
+            },
+            {
+              "id": "cost-resource-monitors-budgets",
+              "title": "Resource monitors, budgets, and alerts",
+              "objective": "Configure monitors, budgets, alerts, thresholds, and suspend actions to control credit burn.",
+              "aliases": [
+                "resource monitor",
+                "budget",
+                "alert",
+                "threshold",
+                "suspend immediate",
+                "notify",
+                "quota"
+              ],
+              "question_tags": [
+                "resource monitor",
+                "budget",
+                "alert"
+              ],
+              "exam_traps": [
+                "Monitors are guardrails, not query optimizers."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "query-optimization",
+          "title": "Query and Workload Optimization",
+          "weight": 25,
+          "skills": [
+            {
+              "id": "cost-query-profile-pruning",
+              "title": "Query profile, pruning, and scanning reduction",
+              "objective": "Use query profile, partition pruning, clustering, and SQL rewrites to reduce scan/compute cost.",
+              "aliases": [
+                "query profile",
+                "partitions scanned",
+                "bytes scanned",
+                "pruning",
+                "cluster key",
+                "clustering",
+                "explain"
+              ],
+              "question_tags": [
+                "query profile",
+                "pruning",
+                "clustering",
+                "scan"
+              ],
+              "exam_traps": [
+                "Clustering adds maintenance cost; measure benefit first."
+              ]
+            },
+            {
+              "id": "cost-caching-results",
+              "title": "Caching, result reuse, and warehouse behavior",
+              "objective": "Understand result cache, local disk cache, metadata cache, and when queries consume compute.",
+              "aliases": [
+                "result cache",
+                "warehouse cache",
+                "metadata cache",
+                "cache",
+                "use_cached_result"
+              ],
+              "question_tags": [
+                "result cache",
+                "cache",
+                "warehouse"
+              ],
+              "exam_traps": [
+                "Cached results can hide true workload cost during testing."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "storage-cost",
+          "title": "Storage and Data Lifecycle Cost",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "cost-storage-retention",
+              "title": "Storage, retention, Time Travel, and Fail-safe cost",
+              "objective": "Optimize table type, retention period, clone behavior, Time Travel, and storage lifecycle.",
+              "aliases": [
+                "time travel",
+                "fail-safe",
+                "retention",
+                "transient",
+                "temporary",
+                "clone",
+                "storage cost"
+              ],
+              "question_tags": [
+                "storage",
+                "retention",
+                "time travel",
+                "transient"
+              ],
+              "exam_traps": [
+                "Transient tables reduce fail-safe but change recovery guarantees.",
+                "Zero-copy clone shares storage until changes diverge."
+              ]
+            },
+            {
+              "id": "cost-data-loading-files",
+              "title": "File sizing and loading efficiency",
+              "objective": "Use appropriate file sizes, compression, stages, and load patterns to reduce ingestion overhead.",
+              "aliases": [
+                "file size",
+                "compression",
+                "copy into",
+                "stage",
+                "small files",
+                "loading performance"
+              ],
+              "question_tags": [
+                "file sizing",
+                "compression",
+                "loading"
+              ],
+              "exam_traps": [
+                "Too many tiny files can hurt loading efficiency."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "monitoring-attribution",
+          "title": "Monitoring and Attribution",
+          "weight": 20,
+          "skills": [
+            {
+              "id": "cost-account-usage-attribution",
+              "title": "ACCOUNT_USAGE cost attribution",
+              "objective": "Use metering history, query history, tags, warehouses, users, and roles for chargeback/showback.",
+              "aliases": [
+                "account_usage",
+                "metering_history",
+                "query_history",
+                "warehouse_metering_history",
+                "tag",
+                "chargeback",
+                "showback"
+              ],
+              "question_tags": [
+                "account_usage",
+                "metering",
+                "chargeback",
+                "query_history"
+              ],
+              "exam_traps": [
+                "ACCOUNT_USAGE latency can delay reporting.",
+                "Without tags/context, chargeback is guesswork."
+              ]
+            },
+            {
+              "id": "cost-alerting-automation",
+              "title": "Cost alerting and automated remediation",
+              "objective": "Build alerts/tasks around spend spikes, idle warehouses, and anomalous usage.",
+              "aliases": [
+                "alert",
+                "task",
+                "serverless task",
+                "usage anomaly",
+                "idle warehouse",
+                "automated remediation"
+              ],
+              "question_tags": [
+                "alerting",
+                "automation",
+                "idle warehouse"
+              ],
+              "exam_traps": [
+                "Automation should avoid breaking critical workloads without escalation."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "governance-finops",
+          "title": "FinOps Governance",
+          "weight": 10,
+          "skills": [
+            {
+              "id": "cost-finops-operating-model",
+              "title": "FinOps operating model for Snowflake",
+              "objective": "Define ownership, tagging, budgets, usage reviews, and stakeholder reporting.",
+              "aliases": [
+                "finops",
+                "owner",
+                "tagging",
+                "budget owner",
+                "usage review",
+                "chargeback",
+                "showback"
+              ],
+              "question_tags": [
+                "finops",
+                "tagging",
+                "budget",
+                "owner"
+              ],
+              "exam_traps": [
+                "Technical controls fail without ownership and review cadence."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
