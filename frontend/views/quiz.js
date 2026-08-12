@@ -1,7 +1,7 @@
 export const VIEW_ID = "practice";
-import { escapeHtml, formatNumber, getDiagnosticPlan, getExperienceShell, getPracticeTests, gradeQuiz, recordAttempt, startQuiz } from "../api.js?v=20260714-v20-ai-academy";
-import { activeTrack, emptyState, navigateWithTrack, pct, setActiveTrack, skeleton, trackOptions } from "../ui.js?v=20260714-v20-ai-academy";
-import { showToast } from "../components/toast.js?v=20260714-v20-ai-academy";
+import { escapeHtml, formatNumber, getDiagnosticPlan, getExperienceShell, gradeQuiz, recordAttempt, startQuiz } from "../api.js?v=20260812-v23-cert-guide";
+import { activeTrack, emptyState, navigateWithTrack, pct, setActiveTrack, skeleton, trackOptions } from "../ui.js?v=20260731-v21-editorial-replica";
+import { showToast } from "../components/toast.js?v=20260731-v21-editorial-replica";
 
 const state = {
   trackId: "snowpro-core",
@@ -26,15 +26,17 @@ export default async function mount(container, params = {}) {
   state.trackId = params.track_id || activeTrack();
   setActiveTrack(state.trackId);
   resetSession();
-  container.innerHTML = skeleton("Loading exam studio...");
+  container.innerHTML = skeleton("Loading practice session...");
   try {
-    const [experience, tests] = await Promise.all([
-      getExperienceShell({ track_id: state.trackId }),
-      getPracticeTests({ track_id: state.trackId, min_questions: 1 }).catch(() => ({ tests: [] })),
-    ]);
-    renderStart(container, experience, tests.tests || [], params);
+    const experience = await getExperienceShell({ track_id: state.trackId });
+    const requestedMode = params.mode || "";
+    if (["diagnostic", "drill", "quick-mock", "full-mock", "exam"].includes(requestedMode)) {
+      await launch(container, { mode: requestedMode, count: Number(params.count || 0) || undefined });
+      return;
+    }
+    renderStart(container, experience);
   } catch (error) {
-    container.innerHTML = emptyState("Exam studio unavailable", error.message);
+    container.innerHTML = emptyState("Practice unavailable", error.message);
   }
 }
 
@@ -49,47 +51,38 @@ function resetSession() {
   state.durationSec = 0;
 }
 
-function renderStart(container, experience, tests, params = {}) {
+function renderStart(container, experience) {
   const selected = experience.selected_track_id || state.trackId;
   state.trackId = selected;
   const readiness = experience.readiness || {};
-  const attempts = readiness.attempts || 0;
-  const accuracy = readiness.accuracy_pct || 0;
-  const mockAttempts = readiness.mock_exam_attempts || 0;
   container.innerHTML = `
     <section class="page-shell exam-page product-v10">
       <header class="page-hero split-hero exam-hero">
         <div>
-          <p class="eyebrow">Exam Studio</p>
-          <h1>Timed practice, source tests, and diagnostic evidence.</h1>
-          <p>This workspace separates learning from exam behavior: no explanations until submit, review marking, timer pressure, and score reports that feed the readiness gate.</p>
+          <p class="eyebrow">Practice</p>
+          <h1>Diagnostic, drill, and mock exam.</h1>
+          <p>Use the diagnostic to find weak domains, drill to reinforce them, and timed mocks to rehearse exam behavior before you book the real exam.</p>
         </div>
         <label class="cert-filter"><span>Certification</span><select id="track-select">${trackOptions(experience.certifications || [], selected)}</select></label>
       </header>
 
       <section class="exam-evidence-strip">
-        <div><span>Recorded attempts</span><strong>${formatNumber(attempts)}</strong></div>
-        <div><span>Current accuracy</span><strong>${accuracy}%</strong></div>
-        <div><span>Finished mocks</span><strong>${formatNumber(mockAttempts)}</strong></div>
-        <div><span>Readiness</span><strong>${pct(readiness.readiness_score)}%</strong></div>
+        <div><span>Recorded attempts</span><strong>${formatNumber(readiness.attempts || 0)}</strong></div>
+        <div><span>Current accuracy</span><strong>${pct(readiness.accuracy_pct || 0)}%</strong></div>
+        <div><span>Finished mocks</span><strong>${formatNumber(readiness.mock_exam_attempts || 0)}</strong></div>
+        <div><span>Readiness</span><strong>${pct(readiness.readiness_score || 0)}%</strong></div>
       </section>
 
       <section class="exam-mode-grid serious-modes">
-        ${modeCard("diagnostic", "Diagnostic baseline", "Balanced first-pass assessment across mapped skills. Use this before trusting the plan.", "30 questions", true, "45 min")}
-        ${modeCard("random", "Adaptive drill", "Fast question set for weak-skill repair and repetition.", "15 questions", false, "Untimed")}
-        ${modeCard("exam", "Readiness exam", "Timed-style certification simulation. Explanations remain hidden until submit.", "50 questions", false, "90 min")}
-      </section>
-
-      <section class="panel test-library-panel">
-        <div class="panel-header"><div><p class="eyebrow">Downloaded source tests</p><h2>${tests.length} available practice sets</h2></div><span class="muted">From your local archive</span></div>
-        <div class="test-library">${tests.slice(0, 36).map(testCard).join("") || emptyState("No practice tests", "This certification has no source tests mapped yet.")}</div>
+        ${modeCard("diagnostic", "Diagnostic assessment", "Untimed placement test across the certification blueprint. Use it to decide what to study first.", "25 questions", true, "Untimed")}
+        ${modeCard("drill", "Drill mode", "Short repeated practice for concept reinforcement and mistake repair.", "15 questions", false, "Untimed")}
+        ${modeCard("quick-mock", "Quick mock", "A shorter timed sitting for a readiness check between study sessions.", "30 questions", false, "60 min")}
+        ${modeCard("full-mock", "Full mock", "A long timed simulation with review flags, free navigation, and explanations after submit.", "65 questions", false, "130 min")}
       </section>
     </section>
   `;
   container.querySelector("#track-select")?.addEventListener("change", (event) => navigateWithTrack(event.target.value, "#/practice"));
   container.querySelectorAll("[data-mode]").forEach((button) => button.addEventListener("click", () => launch(container, { mode: button.dataset.mode, count: Number(button.dataset.count || 15) })));
-  container.querySelectorAll("[data-test]").forEach((button) => button.addEventListener("click", () => launch(container, { mode: "source-test", test_id: button.dataset.test, count: 500 })));
-  if (params.mode === "diagnostic") launch(container, { mode: "diagnostic", count: 30 });
 }
 
 function modeCard(mode, title, body, count, primary, timer) {
@@ -97,28 +90,29 @@ function modeCard(mode, title, body, count, primary, timer) {
   return `<button class="mode-card ${primary ? "featured" : ""}" data-mode="${mode}" data-count="${n}" type="button"><span>${escapeHtml(title)}</span><strong>${escapeHtml(count)}</strong><p>${escapeHtml(body)}</p><small>${escapeHtml(timer)}</small></button>`;
 }
 
-function testCard(test) {
-  return `<button class="test-card" data-test="${escapeHtml(test.test_id)}" type="button"><strong>${escapeHtml(test.test_title || "Practice Test")}</strong><span>${escapeHtml(test.course_title || "")}</span><small>${test.question_count || 0} questions</small></button>`;
-}
-
 async function launch(container, config) {
-  container.innerHTML = skeleton("Preparing serious exam session...");
+  container.innerHTML = skeleton("Preparing practice session...");
   try {
-    let data;
+    let count = Number(config.count || 0);
     if (config.mode === "diagnostic") {
-      await getDiagnosticPlan({ track_id: state.trackId, count: config.count || 30 }).catch(() => null);
-      data = await startQuiz({ track_id: state.trackId, count: config.count || 30, mode: "random" });
-      state.durationSec = 45 * 60;
-    } else if (config.mode === "exam") {
-      data = await startQuiz({ track_id: state.trackId, count: config.count || 50, mode: "random" });
-      state.durationSec = 90 * 60;
-    } else if (config.mode === "source-test") {
-      data = await startQuiz({ track_id: state.trackId, test_id: config.test_id, count: config.count || 500, mode: "sequential" });
-      state.durationSec = Math.max(30 * 60, Math.min(150 * 60, (data.questions || []).length * 90));
+      count = count || 25;
+      await getDiagnosticPlan({ track_id: state.trackId, count }).catch(() => null);
+      state.durationSec = 0;
+    } else if (config.mode === "drill") {
+      count = count || 15;
+      state.durationSec = 0;
+    } else if (config.mode === "quick-mock") {
+      count = count || 30;
+      state.durationSec = count * 120;
+    } else if (config.mode === "full-mock" || config.mode === "exam") {
+      count = count || 65;
+      state.durationSec = count * 120;
     } else {
-      data = await startQuiz({ track_id: state.trackId, count: config.count || 15, mode: "random" });
+      count = count || 15;
       state.durationSec = 0;
     }
+
+    const data = await startQuiz({ track_id: state.trackId, count, mode: "random" });
     state.questions = data.questions || [];
     state.index = 0;
     state.answers = new Map();
@@ -130,7 +124,7 @@ async function launch(container, config) {
     startTimer(container);
   } catch (error) {
     showToast(error.message, "error");
-    container.innerHTML = emptyState("Unable to start practice", error.message, `<a class="primary-btn" href="#/practice">Back to Exam Studio</a>`);
+    container.innerHTML = emptyState("Unable to start practice", error.message, `<a class="primary-btn" href="#/mock?track_id=${encodeURIComponent(state.trackId)}">Back to Practice</a>`);
   }
 }
 
@@ -139,15 +133,21 @@ function startTimer(container) {
   state.timer = setInterval(() => {
     const node = container.querySelector("#exam-timer");
     if (node) node.textContent = timerText();
+    if (state.durationSec && remainingSeconds() <= 0 && !state.submitted) submit(container);
   }, 1000);
+}
+
+function elapsedSeconds() {
+  return state.startedAt ? Math.floor((Date.now() - state.startedAt) / 1000) : 0;
+}
+
+function remainingSeconds() {
+  return Math.max(0, state.durationSec - elapsedSeconds());
 }
 
 function timerText() {
   if (!state.startedAt) return "--:--";
-  const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
-  if (!state.durationSec) return formatClock(elapsed);
-  const remaining = Math.max(0, state.durationSec - elapsed);
-  return formatClock(remaining);
+  return formatClock(state.durationSec ? remainingSeconds() : elapsedSeconds());
 }
 
 function formatClock(total) {
@@ -159,7 +159,7 @@ function formatClock(total) {
 
 function renderQuiz(container) {
   if (!state.questions.length) {
-    container.innerHTML = emptyState("No questions found", "Try another mode or certification.", `<a class="primary-btn" href="#/practice">Back</a>`);
+    container.innerHTML = emptyState("No questions found", "Try another certification or practice mode.", `<a class="primary-btn" href="#/mock?track_id=${encodeURIComponent(state.trackId)}">Back</a>`);
     return;
   }
   const q = state.questions[state.index];
@@ -168,7 +168,7 @@ function renderQuiz(container) {
   container.innerHTML = `
     <section class="quiz-shell-v10">
       <aside class="quiz-nav-panel">
-        <a href="#/practice?track_id=${encodeURIComponent(state.trackId)}" class="ghost-link">← Exam Studio</a>
+        <a href="#/mock?track_id=${encodeURIComponent(state.trackId)}" class="ghost-link">← Practice</a>
         <h2>${escapeHtml(modeLabel(state.mode))}</h2>
         <div class="exam-timer-card"><span>${state.durationSec ? "Time remaining" : "Elapsed time"}</span><strong id="exam-timer">${timerText()}</strong></div>
         <div class="exam-counters"><span>${state.answers.size} answered</span><span>${unanswered} unanswered</span><span>${state.marked.size} marked</span></div>
@@ -177,7 +177,7 @@ function renderQuiz(container) {
       </aside>
       <main class="question-stage-v10">
         <div class="question-card-v10">
-          <div class="question-meta"><span>Question ${state.index + 1}/${state.questions.length}</span><span>${escapeHtml(q.test_title || "Practice")}</span><span>${escapeHtml(q.difficulty || "medium")}</span></div>
+          <div class="question-meta"><span>Question ${state.index + 1}/${state.questions.length}</span><span>${escapeHtml(q.test_title || "Certification practice")}</span><span>${escapeHtml(q.difficulty || "medium")}</span></div>
           <h1>${escapeHtml(q.question)}</h1>
           <div class="options-v10">${(q.options || []).map((option, i) => optionRow(q, option, i, selected)).join("")}</div>
           <div class="question-actions"><button id="prev" class="secondary-btn">Previous</button><button id="mark-review" class="secondary-btn">${state.marked.has(q.id) ? "Unmark review" : "Mark for review"}</button><button id="next" class="primary-btn">Next</button></div>
@@ -189,10 +189,10 @@ function renderQuiz(container) {
 }
 
 function modeLabel(mode) {
-  if (mode === "diagnostic") return "Diagnostic baseline";
-  if (mode === "exam") return "Timed readiness exam";
-  if (mode === "source-test") return "Downloaded source test";
-  return "Adaptive drill";
+  if (mode === "diagnostic") return "Diagnostic Assessment";
+  if (mode === "quick-mock") return "Quick Mock";
+  if (mode === "full-mock" || mode === "exam") return "Full Mock Exam";
+  return "Drill Mode";
 }
 
 function optionRow(q, option, i, selected) {
@@ -218,6 +218,8 @@ function capture(container) {
 }
 
 async function submit(container) {
+  if (state.submitted) return;
+  state.submitted = true;
   capture(container);
   if (state.timer) clearInterval(state.timer);
   const answers = state.questions.map((question) => ({ question_id: question.id, selected: state.answers.get(question.id) || [] }));
@@ -229,17 +231,17 @@ async function submit(container) {
     try { await recordAttempt(row.question.id, { selected: row.selected || [], correct: Boolean(row.isCorrect), mode: state.mode || "practice" }); } catch {}
   }
   const percent = Math.round((score / Math.max(1, state.questions.length)) * 100);
-  const elapsed = state.startedAt ? Math.floor((Date.now() - state.startedAt) / 1000) : 0;
-  const bySource = scoreBy(rows, (row) => row.question.test_title || row.question.course_title || "Practice");
+  const elapsed = elapsedSeconds();
+  const bySet = scoreBy(rows, (row) => row.question.test_title || "Certification practice");
   container.innerHTML = `
     <section class="page-shell result-page product-v10">
       <header class="page-hero result-hero split-hero">
-        <div><p class="eyebrow">Score report</p><h1>${percent}%</h1><p>${score}/${state.questions.length} correct · ${formatClock(elapsed)} elapsed · ${state.marked.size} marked for review. Incorrect answers were recorded as repair evidence.</p></div>
-        <div class="score-verdict"><strong>${percent >= 80 ? "Passing signal" : "Repair required"}</strong><span>${percent >= 80 ? "Validate with another timed set." : "Review misses before another full mock."}</span></div>
+        <div><p class="eyebrow">Score Report</p><h1>${percent}%</h1><p>${score}/${state.questions.length} correct · ${formatClock(elapsed)} elapsed · ${state.marked.size} marked for review.</p></div>
+        <div class="score-verdict"><strong>${percent >= 80 ? "Strong readiness signal" : "More study recommended"}</strong><span>${percent >= 80 ? "Validate with another timed set before booking." : "Review the missed concepts, then drill them again."}</span></div>
       </header>
       <section class="result-grid">
-        <article class="panel"><div class="panel-header"><div><p class="eyebrow">Source breakdown</p><h2>Where misses came from</h2></div></div><div class="breakdown-list">${bySource.map(breakdownRow).join("")}</div></article>
-        <article class="panel"><div class="panel-header"><div><p class="eyebrow">Next action</p><h2>Repair then retest</h2></div></div><div class="action-stack"><a class="action-tile" href="#/review"><strong>Open repair queue</strong><span>Turn misses into targeted review work.</span></a><a class="action-tile" href="#/learn?track_id=${encodeURIComponent(state.trackId)}"><strong>Watch related lessons</strong><span>Use video and transcripts to close concept gaps.</span></a><a class="action-tile" href="#/practice?track_id=${encodeURIComponent(state.trackId)}"><strong>Start another drill</strong><span>Retest only after reviewing misses.</span></a></div></article>
+        <article class="panel"><div class="panel-header"><div><p class="eyebrow">Performance breakdown</p><h2>Where misses occurred</h2></div></div><div class="breakdown-list">${bySet.map(breakdownRow).join("")}</div></article>
+        <article class="panel"><div class="panel-header"><div><p class="eyebrow">Next action</p><h2>Review, drill, retest</h2></div></div><div class="action-stack"><a class="action-tile" href="#/progress?track_id=${encodeURIComponent(state.trackId)}"><strong>Open Progress Dashboard</strong><span>See readiness and weak domains.</span></a><a class="action-tile" href="#/curriculum?track_id=${encodeURIComponent(state.trackId)}"><strong>Review task lessons</strong><span>Return to the exam blueprint and close concept gaps.</span></a><a class="action-tile" href="#/drill?track_id=${encodeURIComponent(state.trackId)}"><strong>Start Drill Mode</strong><span>Reinforce weak concepts before another mock.</span></a></div></article>
       </section>
       <section class="result-list">${rows.map(resultRow).join("")}</section>
     </section>
