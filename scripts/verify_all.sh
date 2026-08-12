@@ -12,7 +12,7 @@ if [[ -z "$NODE_BIN" || ! -x "$NODE_BIN" ]]; then
 fi
 
 echo "== Backend compile =="
-python3 -m compileall app
+python3 -m compileall app scripts/smoke_evidence.py scripts/smoke_certification_guide.py
 
 echo "== Database migrations =="
 python3 -c "from app.database import run_migrations; run_migrations(); print('migrations ok')"
@@ -20,7 +20,10 @@ python3 -c "from app.database import run_migrations; run_migrations(); print('mi
 echo "== Evidence workflow smoke =="
 python3 scripts/smoke_evidence.py
 
-echo "== API smoke tests =="
+echo "== Complete certification product smoke =="
+python3 scripts/smoke_certification_guide.py
+
+echo "== Existing API compatibility smoke =="
 python3 scripts/smoke_api.py
 
 echo "== Source boundary check =="
@@ -38,9 +41,9 @@ FRONTEND_FILES=(
   frontend/components/nav.js
   frontend/components/topbar.js
   frontend/components/toast.js
-  frontend/views/curriculum.js
-  frontend/views/lesson.js
+  frontend/views/guide.js
   frontend/views/quiz.js
+  frontend/views/labs.js
   frontend/views/reference.js
   frontend/views/journal.js
 )
@@ -48,11 +51,11 @@ for file in "${FRONTEND_FILES[@]}"; do
   "$NODE_BIN" --check "$file"
 done
 
-echo "== Static route contract =="
+echo "== Static certification route/product contract =="
 "$NODE_BIN" scripts/smoke_static_routes.mjs
 
 echo "== Package check =="
 scripts/package_review.sh >/tmp/snowflake_brain_package_path.txt
 python3 scripts/check_package.py "$(cat /tmp/snowflake_brain_package_path.txt)"
 
-echo "All verification checks passed."
+echo "All Snowflake Certification Guide verification checks passed."
