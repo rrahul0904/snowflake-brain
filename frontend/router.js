@@ -13,12 +13,13 @@ const routes = {
   "#/domain": guide,
   "#/skill": guide,
   "#/diagnostic": guide,
+  "#/drill": guide,
+  "#/mock": guide,
   "#/exercises": guide,
   "#/quick-reference": guide,
   "#/glossary": guide,
-  "#/archive": () => import(`./views/curriculum.js?v=${ASSET_VERSION}`),
-  "#/lesson": () => import(`./views/lesson.js?v=${ASSET_VERSION}`),
   "#/practice": () => import(`./views/quiz.js?v=${ASSET_VERSION}`),
+  "#/labs": () => import(`./views/labs.js?v=${ASSET_VERSION}`),
   "#/reference": () => import(`./views/reference.js?v=${ASSET_VERSION}`),
   "#/journal": () => import(`./views/journal.js?v=${ASSET_VERSION}`),
   "#/article": () => import(`./views/journal.js?v=${ASSET_VERSION}`),
@@ -32,17 +33,18 @@ const aliases = {
   "#/academy": "#/curriculum",
   "#/intelligence": "#/progress",
   "#/learn": "#/curriculum",
-  "#/lessons": "#/archive",
-  "#/video": "#/lesson",
+  "#/lessons": "#/curriculum",
+  "#/lesson": "#/curriculum",
+  "#/video": "#/curriculum",
   "#/quiz": "#/practice",
-  "#/labs": "#/exercises",
   "#/readiness": "#/progress",
   "#/career": "#/journal",
   "#/search": "#/reference",
-  "#/flashcards": "#/practice",
-  "#/review": "#/practice",
+  "#/flashcards": "#/drill",
+  "#/review": "#/drill",
   "#/analytics": "#/progress",
   "#/ai": "#/reference",
+  "#/archive": "#/curriculum",
 };
 
 let currentView = null;
@@ -56,7 +58,7 @@ export async function route() {
   window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "loading", route: path, error: null };
   document.body.classList.remove("player-mode", "quiz-active", "replica-exam-active");
   if (currentView?.unmount) currentView.unmount();
-  root.innerHTML = skeleton("Loading certification studio...");
+  root.innerHTML = skeleton("Loading certification guide...");
   updateActiveNav();
   try {
     currentView = await loader();
