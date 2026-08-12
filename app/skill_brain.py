@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import copy
 import json
 import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .config import SKILL_MAP_CONFIG
+from .config import CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG, SKILL_MAP_CONFIG
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -17,8 +18,16 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def load_skill_map() -> dict[str, Any]:
-    data = _read_json(SKILL_MAP_CONFIG)
+    data = copy.deepcopy(_read_json(SKILL_MAP_CONFIG))
     data.setdefault("certifications", [])
+    supplement = _read_json(CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG)
+    existing = {cert.get("id") for cert in data["certifications"]}
+    for cert in supplement.get("certifications") or []:
+        if cert.get("id") not in existing:
+            data["certifications"].append(copy.deepcopy(cert))
+            existing.add(cert.get("id"))
+    data["supplement_version"] = supplement.get("version")
+    data["weight_note"] = supplement.get("weight_note")
     return data
 
 
