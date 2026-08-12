@@ -10,6 +10,9 @@ ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SKILL_MAP_CONFIG = Path(os.getenv("SKILL_MAP_CONFIG", str(ROOT_DIR / "config" / "certification_skill_map.json"))).expanduser()
+CORE_C03_BLUEPRINT_CONFIG = Path(
+    os.getenv("CORE_C03_BLUEPRINT_CONFIG", str(ROOT_DIR / "config" / "snowpro_core_cof_c03_blueprint.json"))
+).expanduser()
 CERTIFICATION_CATALOG_CONFIG = Path(
     os.getenv("CERTIFICATION_CATALOG_CONFIG", str(ROOT_DIR / "config" / "certification_catalog.json"))
 ).expanduser()
