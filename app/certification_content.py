@@ -5,7 +5,7 @@ import json
 from functools import lru_cache
 from typing import Any
 
-from .config import CERTIFICATION_CATALOG_CONFIG, STUDY_CONTENT_CORE_CONFIG
+from .config import CERTIFICATION_CATALOG_CONFIG, CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG, STUDY_CONTENT_CORE_CONFIG
 from .skill_brain import load_skill_map
 
 
@@ -17,10 +17,29 @@ def load_certification_catalog() -> dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
+def load_curricula_supplement() -> dict[str, Any]:
+    if not CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG.exists():
+        return {"version": "missing", "certifications": []}
+    return json.loads(CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
 def load_core_study_content() -> dict[str, Any]:
     if not STUDY_CONTENT_CORE_CONFIG.exists():
         return {"version": "missing", "track_id": "snowpro-core", "skills": {}}
     return json.loads(STUDY_CONTENT_CORE_CONFIG.read_text(encoding="utf-8"))
+
+
+def _raw_configured_skill_map() -> dict[str, Any]:
+    skill_map = copy.deepcopy(load_skill_map())
+    existing = {cert.get("id") for cert in skill_map.get("certifications") or []}
+    for cert in load_curricula_supplement().get("certifications") or []:
+        if cert.get("id") not in existing:
+            skill_map.setdefault("certifications", []).append(copy.deepcopy(cert))
+            existing.add(cert.get("id"))
+    skill_map["supplement_version"] = load_curricula_supplement().get("version")
+    skill_map["weight_note"] = load_curricula_supplement().get("weight_note")
+    return skill_map
 
 
 def _catalog_by_track() -> dict[str, dict[str, Any]]:
@@ -34,23 +53,29 @@ def _catalog_by_track() -> dict[str, dict[str, Any]]:
 
 
 def certification_catalog() -> dict[str, Any]:
-    configured = {item.get("id") for item in (load_skill_map().get("certifications") or [])}
+    configured = {item.get("id") for item in (_raw_configured_skill_map().get("certifications") or [])}
     catalog = copy.deepcopy(load_certification_catalog())
     for group in ("official_certifications", "custom_tracks"):
         for row in catalog.get(group) or []:
-            track_id = row.get("configured_track_id")
-            row["implemented"] = bool(track_id and track_id in configured)
-            row["launchable"] = bool(row["implemented"] and row.get("status") == "available")
+            inferred_track = row.get("configured_track_id") or row.get("id")
+            implemented = bool(inferred_track and inferred_track in configured)
+            row["configured_track_id"] = inferred_track if implemented else row.get("configured_track_id")
+            row["implemented"] = implemented
+            # Catalog entries listed by Snowflake as live certifications are launchable once a curriculum exists.
+            if implemented and group == "official_certifications":
+                row["status"] = "available"
+            row["launchable"] = bool(implemented and row.get("status") == "available")
     return catalog
 
 
 def configured_skill_map() -> dict[str, Any]:
-    """Return the configured curriculum with current catalog metadata overlaid.
+    """Return all implemented curricula with current public certification metadata overlaid.
 
-    Curriculum/domain/skill content remains versioned in certification_skill_map.json,
-    while current public exam names/codes/status are controlled by the catalog.
+    The original curriculum file contains the long-lived internal tracks. Supplemental curricula
+    complete the current official SnowPro catalog. Current exam names/codes/status are owned by
+    the catalog, not duplicated across curriculum files.
     """
-    skill_map = copy.deepcopy(load_skill_map())
+    skill_map = _raw_configured_skill_map()
     catalog_by_track = _catalog_by_track()
     for cert in skill_map.get("certifications") or []:
         official = catalog_by_track.get(str(cert.get("id") or ""))
@@ -61,7 +86,7 @@ def configured_skill_map() -> dict[str, Any]:
         cert["title"] = official.get("title") or cert.get("title")
         cert["exam_code"] = official.get("exam_code") or cert.get("exam_code")
         cert["official"] = official.get("category") != "custom"
-        cert["catalog_status"] = official.get("status") or "available"
+        cert["catalog_status"] = "available" if cert["official"] else (official.get("status") or "available")
         cert["level"] = official.get("level")
         cert["candidate_experience"] = official.get("candidate_experience")
         cert["official_overview"] = official.get("overview") or []
@@ -71,7 +96,10 @@ def configured_skill_map() -> dict[str, Any]:
             "full_questions": 65,
             "seconds_per_question": 120,
         }
+        cert.setdefault("weight_source", "configured_exam_blueprint")
     skill_map["catalog_version"] = load_certification_catalog().get("version")
+    skill_map["certification_count"] = len(skill_map.get("certifications") or [])
+    skill_map["official_certification_count"] = sum(1 for cert in skill_map.get("certifications") or [] if cert.get("official"))
     return skill_map
 
 
@@ -146,12 +174,19 @@ def _fallback_lesson(cert: dict[str, Any], domain: dict[str, Any], skill: dict[s
             "title": f"Apply {skill.get('title')}",
             "prompt": f"Write or describe a Snowflake implementation that satisfies this task objective: {objective}",
             "starter_sql": "-- Describe or write the Snowflake implementation here.\n",
-            "checks": ["The solution directly addresses the task objective", "The solution avoids the listed exam traps", "The reasoning explains why adjacent alternatives are less appropriate"],
+            "checks": [
+                "The solution directly addresses the task objective",
+                "The solution avoids the listed exam traps",
+                "The reasoning explains why adjacent alternatives are less appropriate",
+            ],
         },
         "sources": [
             {"title": "Snowflake Documentation", "url": "https://docs.snowflake.com/"},
-            *([{"title": f"Official {cert.get('title')} certification page", "url": cert.get("official_source_url")}]
-              if cert.get("official_source_url") else []),
+            *(
+                [{"title": f"Official {cert.get('title')} certification page", "url": cert.get("official_source_url")}]
+                if cert.get("official_source_url")
+                else []
+            ),
         ],
     }
 
@@ -172,16 +207,18 @@ def study_lesson(track_id: str, skill_id: str) -> dict[str, Any] | None:
             "exam_code": cert.get("exam_code"),
             "official": cert.get("official", False),
             "source_url": cert.get("official_source_url"),
+            "weight_source": cert.get("weight_source"),
         },
         "domain": {
             "id": domain.get("id"),
             "title": domain.get("title"),
             "weight": domain.get("weight", 0),
+            "weight_source": cert.get("weight_source"),
         },
         "skill": skill,
         "content": content,
         "content_quality": "curated" if curated else "generated_from_curriculum",
-        "content_version": load_core_study_content().get("version") if curated else configured_skill_map().get("version"),
+        "content_version": load_core_study_content().get("version") if curated else (configured_skill_map().get("supplement_version") or configured_skill_map().get("version")),
     }
 
 
@@ -195,12 +232,21 @@ def content_coverage() -> dict[str, Any]:
                 total += 1
                 if cert.get("id") == "snowpro-core" and skill.get("id") in (load_core_study_content().get("skills") or {}):
                     curated += 1
-        rows.append({
-            "track_id": cert.get("id"),
-            "title": cert.get("title"),
-            "tasks": total,
-            "curated_tasks": curated,
-            "generated_tasks": total - curated,
-            "usable_tasks": total,
-        })
-    return {"tracks": rows, "usable_tasks": sum(row["usable_tasks"] for row in rows), "curated_tasks": sum(row["curated_tasks"] for row in rows)}
+        rows.append(
+            {
+                "track_id": cert.get("id"),
+                "title": cert.get("title"),
+                "official": cert.get("official", False),
+                "weight_source": cert.get("weight_source"),
+                "tasks": total,
+                "curated_tasks": curated,
+                "generated_tasks": total - curated,
+                "usable_tasks": total,
+            }
+        )
+    return {
+        "tracks": rows,
+        "usable_tasks": sum(row["usable_tasks"] for row in rows),
+        "curated_tasks": sum(row["curated_tasks"] for row in rows),
+        "official_tracks": sum(1 for row in rows if row.get("official")),
+    }
