@@ -54,7 +54,7 @@ def _question_text(row: dict[str, Any]) -> str:
 
 
 def _question_pool(conn, track_id: str, difficulty: str | None, unanswered_only: bool) -> list[dict[str, Any]]:
-    filters = ["COALESCE(c.track_id, pt.track_id, '') = ?"]
+    filters = ["COALESCE(NULLIF(c.track_id, ''), NULLIF(pt.track_id, ''), '') = ?"]
     params: list[Any] = [track_id]
     if difficulty:
         filters.append("q.difficulty = ?")
@@ -140,7 +140,6 @@ def _rank_for_drill(row: dict[str, Any]) -> tuple[Any, ...]:
     correct = int(row.get("correct_attempts") or 0)
     misses = int(row.get("missed_attempts") or 0)
     accuracy = (correct / attempts) if attempts else 0
-    # Unseen first, then repeatedly missed / low-accuracy questions, then older items.
     return (0 if attempts == 0 else 1, -misses, accuracy, attempts, row.get("last_attempted") or "")
 
 
@@ -168,7 +167,6 @@ def _balanced_by_domain(rows: list[dict[str, Any]], domains: list[dict[str, Any]
         base = max(1, count // len(active))
         for domain in active:
             _take_unique(selected, buckets[domain["id"]], min(count, len(selected) + base), seen)
-        # Round-robin residual gives every domain a chance before generic fill.
         while len(selected) < count:
             changed = False
             for domain in active:
@@ -199,7 +197,6 @@ def _weighted_by_domain(rows: list[dict[str, Any]], domains: list[dict[str, Any]
         weight = float(domain.get("weight") or 0)
         target = max(1, round(count * weight / 100)) if weight else 0
         allocations.append((domain, target))
-    # Adjust allocation to approximately match requested count.
     allocations.sort(key=lambda item: float(item[0].get("weight") or 0), reverse=True)
     while sum(value for _, value in allocations) > count and allocations:
         for idx, (domain, value) in enumerate(allocations):
@@ -229,7 +226,6 @@ def _adaptive_drill(rows: list[dict[str, Any]], count: int, skill_id: str | None
         if targeted:
             target = targeted
     else:
-        # Derive skill weakness from aggregate attempts/accuracy and select from weakest first.
         skill_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"attempts": 0, "correct": 0, "misses": 0})
         for row in rows:
             sid = row.get("mapped_skill_id")
@@ -315,9 +311,22 @@ def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
 
 @router.post("/certification-mock/record")
 def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
-    _cert(payload.track_id)
+    cert = _cert(payload.track_id)
+    if payload.score > payload.total:
+        raise HTTPException(status_code=400, detail="Mock score cannot exceed the total question count")
     percent = round((payload.score / max(1, payload.total)) * 100)
     with connect() as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO certification_tracks(id, title, description, position)
+            VALUES (?, ?, ?, 0)
+            """,
+            (
+                payload.track_id,
+                cert.get("title") or payload.track_id,
+                f"Certification Studio track for {cert.get('exam_code') or payload.track_id}",
+            ),
+        )
         cursor = conn.execute(
             """
             INSERT INTO exam_sessions(track_id, mode, started_at, finished_at, score, total_questions, status)
@@ -339,15 +348,17 @@ def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
             """,
             (
                 payload.track_id,
-                json.dumps({
-                    "session_id": session_id,
-                    "mode": payload.mode,
-                    "score": payload.score,
-                    "total": payload.total,
-                    "score_pct": percent,
-                    "elapsed_seconds": payload.elapsed_seconds,
-                    "selection_strategy": payload.selection_strategy,
-                }),
+                json.dumps(
+                    {
+                        "session_id": session_id,
+                        "mode": payload.mode,
+                        "score": payload.score,
+                        "total": payload.total,
+                        "score_pct": percent,
+                        "elapsed_seconds": payload.elapsed_seconds,
+                        "selection_strategy": payload.selection_strategy,
+                    }
+                ),
             ),
         )
     return {"ok": True, "session_id": session_id, "score_pct": percent}
