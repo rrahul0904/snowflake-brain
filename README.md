@@ -1,26 +1,54 @@
 # Snowflake Certification Guide
 
-A private, local-first Snowflake certification preparation product modeled around the actual workflow a certification learner needs:
+A private, local-first Snowflake certification preparation product built around the workflow a learner actually needs:
 
-**choose a certification → understand the exam blueprint → learn every task statement → diagnose weaknesses → drill weak skills → complete build exercises → sit timed mocks → review quick-reference/glossary → track readiness until prepared to pass.**
+**choose a certification → understand its curriculum blueprint → learn every task statement → diagnose weaknesses → drill weak skills → complete build exercises → sit timed mocks → review quick-reference/glossary → track readiness until prepared to pass.**
 
-The learner-facing product is deliberately **not** a video/course player. The certification blueprint and written task lessons are the product. Legacy archive/media tables remain only for migration compatibility and existing local question ingestion.
+The learner-facing product is deliberately **not** a video/course player. Written certification tasks, practice evidence, build exercises, and readiness are the product. Legacy archive/media tables remain only for migration compatibility and optional question ingestion.
 
-## Current product
+## What is implemented
 
-### Certification home
+### All current official SnowPro certifications
 
-- Official SnowPro catalog grouped into Associate/Core, Specialty, and Advanced certifications.
-- Current public exam codes and certification metadata are separated from the internal curriculum map.
-- Implemented tracks open immediately.
-- Official certifications whose full curriculum has not been implemented are shown honestly as `coming soon` rather than opening empty pages.
-- Custom learning tracks such as Cost Optimization are clearly separated from official SnowPro certifications.
+The product exposes launchable curricula for the current Snowflake certification catalog:
 
-Current catalog metadata lives in:
+- SnowPro Associate: Platform — `SOL-C01`
+- SnowPro Core — `COF-C03`
+- SnowPro Specialty: Snowpark — `SPS-C01`
+- SnowPro Specialty: Native Apps — `NAS-C01`
+- SnowPro Specialty: Gen AI — `GES-C01`
+- SnowPro Advanced: Architect — `ARA-C01`
+- SnowPro Advanced: Security Engineer — `SEA-C01`
+- SnowPro Advanced: Data Engineer — `DEA-C02`
+- SnowPro Advanced: Data Scientist — `DSA-C03`
+- SnowPro Advanced: Administrator — `ADA-C02`
+- SnowPro Advanced: Data Analyst — `DAA-C01`
+
+Custom learning tracks such as Snowflake Cost Optimization remain available but are clearly separated from official SnowPro certifications.
+
+Current public certification metadata lives in:
 
 ```text
 config/certification_catalog.json
 ```
+
+The long-lived curriculum map and the supplemental official curricula live in:
+
+```text
+config/certification_skill_map.json
+config/certification_curricula_supplement.json
+```
+
+For the six supplemental curricula, Snowflake's public certification overview exposes capability areas but not detailed machine-readable domain percentages. Their percentages are therefore explicitly treated as **normalized curriculum planning weights**, not represented as official exam-domain weightings.
+
+### Certification home
+
+- official catalog grouped into Associate/Core, Specialty, and Advanced
+- current public exam codes
+- certification selector independent of course ingestion
+- certification summary and task completion
+- direct entry to Diagnostic and Curriculum
+- Custom Learning Tracks section separate from official exams
 
 ### Blueprint-driven curriculum
 
@@ -28,7 +56,7 @@ The canonical learning hierarchy is:
 
 ```text
 Certification
-  → weighted exam domains
+  → curriculum domains
     → task statements / skills
       → written lesson
       → scenario practice
@@ -36,15 +64,9 @@ Certification
       → task completion
 ```
 
-The certification blueprint is defined in:
-
-```text
-config/certification_skill_map.json
-```
-
 ### Written task lessons
 
-Each task lesson supports the same study contract:
+Every task route supports:
 
 - What You Need to Know
 - Key Concept
@@ -59,43 +81,63 @@ Each task lesson supports the same study contract:
 - Drill This Task
 - Next Lesson
 
-SnowPro Core COF-C03 currently has a fully authored editorial lesson for every configured task in:
+SnowPro Core COF-C03 has a fully authored editorial lesson for every configured task in:
 
 ```text
 config/study_content_core.json
 ```
 
-Other implemented curriculum tracks always receive a structured task lesson generated from their configured objective, aliases, traps, and official certification metadata, so implemented routes do not render blank study pages. They can be upgraded to fully curated editorial lessons independently without changing the application architecture.
+Every other official curriculum receives a complete structured lesson from its task objective, vocabulary, traps, official certification metadata, and the common lesson contract. Those lessons are fully functional today and can be upgraded to deeper editorial prose without changing application architecture.
 
-### Diagnostic
+### Guaranteed local practice bank
 
-The diagnostic uses certification-domain mappings to build a balanced baseline across the blueprint. It is designed to answer:
+A clean installation does not depend on imported courses or practice-test archives to make the product usable.
 
-> Where am I weak before I start studying?
+When certification practice first runs, the backend creates a deterministic local canonical question bank from each task lesson. Questions cover:
 
-### Drill Mode
+- task objective
+- decision rules
+- configured traps
+- trap correction
+- anti-patterns
+- build checks
+- worked examples
+- application scenarios
 
-Drill selection is evidence driven rather than a simple random question bucket.
+The system creates enough unique local questions per certification to support at least a full 65-question mock even when no external question archive is installed.
 
-Priority order includes:
+Canonical questions are persisted in SQLite and linked to their exact task with high-confidence deterministic mappings. Human-reviewed imported questions remain preferred evidence.
 
-- explicit task/skill target
-- explicit domain target
-- unseen questions
-- repeatedly missed questions
-- low-accuracy questions
-- weak-skill evidence
-- lower-attempt evidence
-
-Question-to-skill resolution prefers:
+Question-to-skill resolution order is:
 
 1. human-reviewed mapping
 2. persisted mapping at confidence `>= 0.70`
 3. heuristic fallback
 
+### Diagnostic
+
+Diagnostic selection is balanced across configured curriculum domains instead of a single random question bucket.
+
+It answers:
+
+> Where am I weak before I start studying?
+
+### Drill Mode
+
+Drill Mode supports:
+
+- explicit task/skill targeting
+- explicit domain targeting
+- weak-skill prioritization
+- unseen-question priority
+- repeated-miss priority
+- low-accuracy priority
+- attempt-history awareness
+- preference for stronger mapping provenance
+
 ### Mock Exam
 
-Mock selection follows configured domain weights rather than `ORDER BY RANDOM()`.
+Mock selection uses configured curriculum weights instead of `ORDER BY RANDOM()`.
 
 The learner gets:
 
@@ -105,20 +147,18 @@ The learner gets:
 - question navigator
 - free navigation
 - mark-for-review
-- auto-submit when time expires
-- explanations only after submission
-- persistent mock results
-- post-exam repair links to Progress, Curriculum, and Drill
+- automatic submission when time expires
+- explanations deferred until submission
+- persistent mock score/elapsed-time evidence
+- post-exam actions into Progress, Curriculum, and Drill
 
-Completed mocks are stored as finished exam sessions and immediately feed readiness evidence.
+Mock scores are persisted as raw `score / total` and normalized to percentage by the readiness model.
 
 ### Build Exercises
 
-Configured Snowflake SQL challenges open in the local lab runner and validate SQL structure without sending SQL to a Snowflake account.
+Configured Snowflake SQL challenges open in the local lab runner and validate solution structure without sending SQL to a live Snowflake account.
 
-Every written task also contains an exercise even when a dedicated validator has not yet been authored.
-
-Relevant files:
+Every written task also includes a task exercise even when a dedicated validator has not yet been authored.
 
 ```text
 config/snowflake_lab_challenges.json
@@ -128,7 +168,7 @@ frontend/views/labs.js
 
 ### Quick Reference
 
-Quick Reference is generated from the same canonical task lessons used by Curriculum, so the final-review material cannot silently drift away from the teaching content.
+Quick Reference is generated from the same canonical task lessons used by Curriculum.
 
 It includes:
 
@@ -136,23 +176,23 @@ It includes:
 - key concepts
 - compact decision rules
 - exam traps
-- domain weights
-- links to deeper task lessons
+- curriculum weights
+- links to deeper lessons
 - browser `Print / Save PDF`
 
 ### Glossary
 
-The glossary is searchable and exam oriented. Entries combine:
+The glossary is searchable and exam oriented:
 
 - task/feature title
 - objective/definition
 - aliases and vocabulary
 - exam context/trap
-- direct link to the lesson
+- direct task link
 
 ### Snowflake Certification Blog
 
-The built-in Blog provides original exam and technical deep dives that link back into task lessons instead of living as disconnected articles.
+The built-in Blog contains original exam and technical deep dives linked back into the task curriculum.
 
 Current topics include:
 
@@ -167,7 +207,26 @@ Current topics include:
 - Secure Data Sharing, masking, and row access policies
 - streams vs tasks
 
-### Progress and readiness
+### Persistent Progress
+
+Task completion is stored in SQLite through:
+
+```text
+GET  /api/skills/task-progress
+POST /api/skills/task-progress
+```
+
+Example:
+
+```json
+{
+  "track_id": "snowpro-core",
+  "skill_id": "warehouse-cost-control",
+  "completed": true
+}
+```
+
+### Evidence-based readiness
 
 Readiness is not page-view completion.
 
@@ -180,9 +239,9 @@ The model consumes:
 - timed/mock attempts
 - lab evidence
 - mapping quality
-- domain/skill coverage
+- task/skill coverage
 
-The API reports two separate concepts:
+The API deliberately reports two separate concepts:
 
 ```text
 readiness_score
@@ -193,7 +252,19 @@ readiness_confidence
 
 `readiness_confidence` represents how much evidence exists to trust that score, using mapping trust, practice volume, skill coverage, mock evidence, and task completion.
 
-This prevents a learner with a few lucky answers from receiving a falsely authoritative readiness signal.
+Mastery is entirely certification-task based:
+
+```text
+1 exposed            written task exists
+2 learned            task marked complete
+3 practiced          sufficient question attempts
+4 accurate           sufficient accuracy evidence
+5 timed_accurate     timed/mock accuracy evidence
+6 lab_proven         applicable lab passed
+7 exam_ready         strong combined evidence
+```
+
+Video watches, transcript progress, and course lesson counts do not contribute to this mastery ladder.
 
 ## Product routes
 
@@ -223,44 +294,46 @@ Direct workspaces:
 #/article
 ```
 
-Legacy video/archive URLs redirect into the certification product. The old learner-facing video/course views were removed.
+Legacy video/archive URLs redirect into the certification product. The old learner-facing `curriculum.js`, `lesson.js`, and `video.js` views were removed.
 
 ## Architecture
 
-The application intentionally stays lightweight and local-first:
+The application intentionally remains lightweight and local-first:
 
 - Python 3.13
 - FastAPI
 - Pydantic
-- SQLite with WAL/FTS5
+- SQLite with WAL / FTS5
 - vanilla HTML/CSS/native ES modules
 - HTTPX
 - Docker / Docker Compose
-- no React build pipeline required
-- no authentication for the current single-user local deployment
+- no React/Node build pipeline required
+- no authentication for the current local single-user deployment
 - lab SQL uses offline validation and is never executed against Snowflake by default
 
-The sophistication lives in the certification model, evidence graph, practice selection, and readiness logic rather than infrastructure complexity.
+The sophistication lives in certification modeling, task content, evidence mapping, adaptive selection, and readiness—not infrastructure theater.
 
 ## Important configuration files
 
 ```text
-config/certification_catalog.json       Current official/custom certification metadata
-config/certification_skill_map.json     Implemented domains and task statements
-config/study_content_core.json          Fully authored COF-C03 written lessons
-config/snowflake_lab_challenges.json    Validated hands-on challenges
+config/certification_catalog.json                Current official/custom certification metadata
+config/certification_skill_map.json              Original implemented curricula
+config/certification_curricula_supplement.json   Remaining official certification curricula
+config/study_content_core.json                   Fully authored COF-C03 written lessons
+config/snowflake_lab_challenges.json             Validated hands-on challenges
 ```
 
 ## Important backend modules
 
 ```text
 app/certification_content.py            Catalog overlay + written lesson engine
+app/skill_brain.py                      Complete merged curriculum/skill lookup
 app/intelligence.py                     Mastery, mistakes, readiness, confidence
 app/evidence.py                         Mapping audit/review foundation
-app/routers/skills.py                   Catalog, lessons, completion, task resources
-app/routers/certification_practice.py   Targeted diagnostic/drill/mock selection
+app/routers/skills.py                   Catalog, lessons, completion, resources
+app/routers/certification_practice.py   Canonical bank + targeted diagnostic/drill/mock engine
 app/routers/labs.py                     Offline challenge API
-app/routers/experience.py               Certification-product startup payload
+app/routers/experience.py               Video-free certification startup payload
 ```
 
 ## Main APIs
@@ -276,21 +349,11 @@ GET  /api/skills/{skill_id}/lesson?track_id=snowpro-core
 GET  /api/skills/{skill_id}/resources?track_id=snowpro-core
 ```
 
-### Task progress
+### Progress
 
 ```text
 GET  /api/skills/task-progress?track_id=snowpro-core
 POST /api/skills/task-progress
-```
-
-Example:
-
-```json
-{
-  "track_id": "snowpro-core",
-  "skill_id": "warehouse-cost-control",
-  "completed": true
-}
 ```
 
 ### Practice
@@ -302,7 +365,7 @@ POST /api/questions/{question_id}/attempt
 POST /api/certification-mock/record
 ```
 
-Example targeted drill:
+Targeted drill:
 
 ```json
 {
@@ -313,7 +376,7 @@ Example targeted drill:
 }
 ```
 
-Example full mock selection:
+Full mock:
 
 ```json
 {
@@ -378,30 +441,13 @@ uvicorn app.main:app --reload --port 8010
 
 ## Verification
 
-Run the local verification suite:
+Local verification entry point:
 
 ```bash
 bash scripts/verify_all.sh
 ```
 
-The portable certification-product smoke verifies:
-
-- current certification catalog overlays
-- current exam codes
-- full COF-C03 editorial content coverage
-- usable content for every implemented task
-- persistent task completion
-- skill-targeted drills
-- domain-balanced diagnostics
-- blueprint-weighted mocks
-- mock persistence and score normalization
-- readiness confidence
-- reviewed question-mapping precedence
-- video-free mastery evidence
-- video-free route contract
-- frontend syntax
-
-Key smoke scripts:
+Key portable smoke tests:
 
 ```text
 scripts/smoke_evidence.py
@@ -409,25 +455,36 @@ scripts/smoke_certification_guide.py
 scripts/smoke_static_routes.mjs
 ```
 
-## Current content status
+The certification smoke is designed to prove:
 
-### Fully curated
+- all 11 official certification catalog entries exist
+- all 11 official certifications are implemented and launchable
+- current exam codes are overlaid correctly
+- every configured task returns a complete lesson contract
+- all 10 COF-C03 tasks use curated editorial content
+- every official certification can generate 65 unique questions on a fresh DB
+- deterministic canonical questions have persisted task mappings
+- human-reviewed mappings outrank canonical mappings in targeted drill selection
+- diagnostic selection is domain balanced
+- mock selection follows configured weights
+- mock results persist and normalize correctly
+- task completion persists
+- readiness returns score and confidence separately
+- mastery contains no video/course lesson evidence
+- removed video views remain absent
+- frontend route and syntax contracts remain valid
+
+## Content quality levels
+
+### Editorially curated
 
 - SnowPro Core — COF-C03 — all 10 configured task lessons
 
-### Implemented with structured curriculum lessons
+### Structured curriculum lessons
 
-- SnowPro Advanced: Data Engineer
-- SnowPro Advanced: Architect
-- SnowPro Specialty: Snowpark
-- SnowPro Specialty: Gen AI
-- Snowflake Cost Optimization (custom learning track)
+Every other official SnowPro certification is fully launchable through the same lesson/practice/mock/progress engine. Its current first version uses the structured curriculum lesson generator, with official certification metadata, task-specific objective/vocabulary/traps, practice scenarios, exercises, and source links.
 
-These tracks are fully navigable through the same engine. Their task lessons currently use the structured curriculum-derived fallback until each track receives the same editorial depth as Core.
-
-### Official catalog visible as coming soon
-
-Official SnowPro certifications without an implemented curriculum are shown in the catalog but cannot launch an empty guide. That is intentional product behavior.
+That is a content-depth distinction, not missing product functionality.
 
 ## Product principle
 
@@ -435,6 +492,6 @@ The application should always answer three questions clearly:
 
 1. **What does this Snowflake certification require?**
 2. **What do I currently know based on evidence?**
-3. **What should I study, practise, or build next to be ready to pass?**
+3. **What should I learn, practise, or build next to be ready to pass?**
 
 Anything that does not improve those three answers should not become learner-facing product complexity.
