@@ -3,22 +3,34 @@ const items = [
   ["#/practice", "Practice"],
   ["#/reference", "Reference"],
   ["#/journal", "Journal"],
+  ["#/progress", "Progress"],
 ];
 
 const aliases = new Map([
-  ["#/", "#/curriculum"],
-  ["#/command", "#/curriculum"],
-  ["#/today", "#/curriculum"],
+  ["#/", "#/home"],
+  ["#/command", "#/home"],
+  ["#/today", "#/progress"],
   ["#/academy", "#/curriculum"],
-  ["#/career", "#/journal"],
   ["#/learn", "#/curriculum"],
   ["#/lessons", "#/curriculum"],
+  ["#/archive", "#/curriculum"],
+  ["#/domain", "#/curriculum"],
+  ["#/skill", "#/curriculum"],
+  ["#/lesson", "#/curriculum"],
   ["#/video", "#/curriculum"],
   ["#/quiz", "#/practice"],
+  ["#/diagnostic", "#/practice"],
+  ["#/exercises", "#/practice"],
+  ["#/labs", "#/practice"],
+  ["#/readiness", "#/progress"],
+  ["#/intelligence", "#/progress"],
+  ["#/analytics", "#/progress"],
+  ["#/career", "#/journal"],
   ["#/search", "#/reference"],
+  ["#/quick-reference", "#/reference"],
+  ["#/glossary", "#/reference"],
   ["#/ai", "#/reference"],
   ["#/review", "#/practice"],
-  ["#/analytics", "#/practice"],
 ]);
 
 export async function renderNav() {
@@ -26,9 +38,9 @@ export async function renderNav() {
   nav.className = "replica-header";
   nav.innerHTML = `
     <div class="replica-nav-inner">
-      <a class="replica-brand" href="#/curriculum" aria-label="Snowflake Certification Studio home">
+      <a class="replica-brand" href="#/home" aria-label="Snowflake Certification Studio home">
         <span class="replica-brand-mark" aria-hidden="true">S</span>
-        <span>Snowflake Studio</span>
+        <span>Snowflake Certified</span>
       </a>
       <button class="replica-menu-toggle" id="replica-menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">Menu</button>
       <div class="replica-nav-links" id="replica-nav-links">
@@ -36,7 +48,7 @@ export async function renderNav() {
       </div>
       <div class="replica-nav-actions">
         <label class="replica-cert-control"><span class="sr-only">Certification</span><select id="replica-track-select" aria-label="Certification"><option>Loading certifications...</option></select></label>
-        <a class="replica-primary-action" href="#/practice">Take Mock Exam</a>
+        <a class="replica-primary-action" href="#/practice">Mock Exam</a>
       </div>
     </div>
   `;
@@ -48,7 +60,7 @@ export async function renderNav() {
 }
 
 export function updateActiveNav() {
-  const raw = (window.location.hash || "#/curriculum").split("?")[0];
+  const raw = (window.location.hash || "#/home").split("?")[0];
   const active = aliases.get(raw) || raw;
   document.querySelectorAll(".replica-nav-links a").forEach((item) => {
     const selected = item.dataset.href === active;
