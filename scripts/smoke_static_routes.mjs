@@ -20,15 +20,16 @@ const guideRoutes = [
   "#/domain",
   "#/skill",
   "#/diagnostic",
+  "#/drill",
+  "#/mock",
   "#/exercises",
   "#/quick-reference",
   "#/glossary",
 ];
 
 const directRoutes = [
-  ["#/archive", "curriculum.js", "curriculum"],
-  ["#/lesson", "lesson.js", "lesson"],
   ["#/practice", "quiz.js", "practice"],
+  ["#/labs", "labs.js", "labs"],
   ["#/reference", "reference.js", "reference"],
   ["#/journal", "journal.js", "journal"],
   ["#/article", "journal.js", "journal"],
@@ -39,27 +40,33 @@ const aliases = {
   "#/command": "#/home",
   "#/today": "#/progress",
   "#/learn": "#/curriculum",
-  "#/lessons": "#/archive",
-  "#/video": "#/lesson",
+  "#/lessons": "#/curriculum",
+  "#/lesson": "#/curriculum",
+  "#/video": "#/curriculum",
   "#/quiz": "#/practice",
-  "#/labs": "#/exercises",
   "#/readiness": "#/progress",
   "#/search": "#/reference",
   "#/ai": "#/reference",
+  "#/archive": "#/curriculum",
 };
 
 if (!router.includes(`const ASSET_VERSION = "${assetVersion}"`)) failures.push(`router asset version is not ${assetVersion}`);
 if (!index.includes(`/static/app.js?v=${assetVersion}`)) failures.push("index.html does not load the v23 application entry point");
 if (!index.includes(`/static/guide.css?v=${assetVersion}`)) failures.push("index.html does not load the v23 guide stylesheet");
+if (!index.includes(`/static/guide-study.css?v=${assetVersion}`)) failures.push("index.html does not load task-study styles");
 if (!app.includes(`./router.js?v=${assetVersion}`)) failures.push("app.js does not load the v23 router");
-if (!app.includes('window.location.hash = "#/home"')) failures.push("app.js must boot new sessions into the certification home");
-if (!index.includes("<title>Snowflake Certification Studio</title>")) failures.push("index.html is missing the product title");
+if (!app.includes('window.location.hash = "#/home"')) failures.push("app.js must boot new sessions into certification home");
+if (!index.includes("<title>Snowflake Certification Guide</title>")) failures.push("index.html is missing the certification guide title");
 
 if (!guide.includes('export const VIEW_ID = "certification-guide"')) failures.push("guide.js must identify as certification-guide");
 if (!/export default async function mount|export default function mount/.test(guide)) failures.push("guide.js lacks a default mount export");
-for (const fn of ["renderHome", "renderCurriculum", "renderProgress", "renderDomain", "renderSkill", "renderDiagnostic", "renderExercises", "renderQuickReference", "renderGlossary"]) {
+for (const fn of ["renderHome", "renderCurriculum", "renderProgress", "renderDomain", "renderSkill", "renderDiagnostic", "renderDrill", "renderMock", "renderExercises", "renderQuickReference", "renderGlossary"]) {
   if (!guide.includes(`function ${fn}`) && !guide.includes(`async function ${fn}`)) failures.push(`guide.js is missing ${fn}`);
 }
+for (const phrase of ["What You Need to Know", "Exam Traps", "Practice Scenario", "Build Exercise", "Mark Complete", "Next Lesson"]) {
+  if (!guide.includes(phrase)) failures.push(`task lesson is missing ${phrase}`);
+}
+if (!guide.includes("/api/skills/task-progress")) failures.push("guide must persist task completion through the task-progress API");
 
 for (const route of guideRoutes) {
   if (!router.includes(`"${route}": guide`)) failures.push(`${route} must load the certification guide module`);
@@ -81,7 +88,10 @@ for (const [legacyRoute, targetRoute] of Object.entries(aliases)) {
   if (!router.includes(`"${legacyRoute}": "${targetRoute}"`)) failures.push(`legacy alias ${legacyRoute} must resolve to ${targetRoute}`);
 }
 
-for (const item of ["Curriculum", "Practice", "Reference", "Journal", "Progress"]) {
+for (const removed of ["frontend/views/lesson.js", "frontend/views/video.js", "frontend/views/curriculum.js"]) {
+  if (fs.existsSync(path.join(root, removed))) failures.push(`${removed} should be removed from the video-free certification product`);
+}
+for (const item of ["Curriculum", "Practice", "Reference", "Blog"]) {
   if (!nav.includes(`"${item}"`)) failures.push(`navigation is missing ${item}`);
 }
 if (!nav.includes('href="#/home"')) failures.push("brand must link to certification home");
@@ -95,4 +105,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("Static route smoke passed for v23 Snowflake certification guide.");
+console.log("Static route smoke passed for video-free v23 Snowflake certification guide.");
