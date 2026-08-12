@@ -53,9 +53,8 @@ jobs:
             frontend/components/topbar.js
             frontend/components/toast.js
             frontend/views/guide.js
-            frontend/views/curriculum.js
-            frontend/views/lesson.js
             frontend/views/quiz.js
+            frontend/views/labs.js
             frontend/views/reference.js
             frontend/views/journal.js
           )
