@@ -5,12 +5,8 @@ export async function api(path, options = {}) {
   });
   if (!response.ok) {
     let message = response.statusText;
-    try {
-      const body = await response.json();
-      message = body.detail || message;
-    } catch {
-      message = await response.text();
-    }
+    try { const body = await response.json(); message = body.detail || message; }
+    catch { message = await response.text(); }
     throw new Error(message || "Request failed");
   }
   return response.json();
@@ -38,9 +34,10 @@ export const getQuestions = (params = {}) => api(`/api/questions?${new URLSearch
 export const getQuestion = (id) => api(`/api/questions/${encodeURIComponent(id)}`);
 export const getPracticeTests = (params = {}) => api(`/api/practice-tests?${new URLSearchParams(params)}`);
 export const getPracticeTestQuestions = (id, params = {}) => api(`/api/practice-tests/${encodeURIComponent(id)}/questions?${new URLSearchParams(params)}`);
-export const startQuiz = (payload) => api("/api/quiz/start", { method: "POST", body: JSON.stringify(payload) });
+export const startQuiz = (payload) => api("/api/certification-quiz/start", { method: "POST", body: JSON.stringify(payload) });
 export const gradeQuiz = (payload) => api("/api/quiz/grade", { method: "POST", body: JSON.stringify(payload) });
 export const recordAttempt = (id, payload) => api(`/api/questions/${encodeURIComponent(id)}/attempt`, { method: "POST", body: JSON.stringify(payload) });
+export const recordMockSession = (payload) => api("/api/certification-mock/record", { method: "POST", body: JSON.stringify(payload) });
 export const toggleBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`, { method: "POST", body: "{}" });
 export const getBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`);
 export const addQuestionNote = (id, body) => api(`/api/questions/${encodeURIComponent(id)}/notes`, { method: "POST", body: JSON.stringify({ body }) });
@@ -91,11 +88,7 @@ export const submitDataAiCheck = (id, selectedIndex) => api(`/api/data-ai/checks
 export const submitDataAiLab = (id, code) => api(`/api/data-ai/labs/${encodeURIComponent(id)}/submit`, { method: "POST", body: JSON.stringify({ code }) });
 
 export async function streamAi(question, onDelta, onDone) {
-  const response = await fetch("/api/ai/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, context_limit: 10 }),
-  });
+  const response = await fetch("/api/ai/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, context_limit: 10 }) });
   if (!response.ok || !response.body) throw new Error("AI request failed");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -117,12 +110,7 @@ export async function streamAi(question, onDelta, onDone) {
 }
 
 export function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
 
 export function formatNumber(value) {
