@@ -5,8 +5,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from ..certification_content import certification_catalog, configured_skill_map, content_coverage, study_lesson
 from ..database import connect
-from ..skill_brain import certification, flatten_skills, load_skill_map, skill_score
+from ..skill_brain import certification, flatten_skills, skill_score
 
 router = APIRouter()
 
@@ -49,7 +50,17 @@ def _question_text(row: dict[str, Any]) -> str:
 
 @router.get("/skills/map")
 def skill_map() -> dict[str, Any]:
-    return load_skill_map()
+    return configured_skill_map()
+
+
+@router.get("/skills/catalog")
+def skill_catalog() -> dict[str, Any]:
+    return certification_catalog()
+
+
+@router.get("/skills/content-coverage")
+def skill_content_coverage() -> dict[str, Any]:
+    return content_coverage()
 
 
 @router.get("/skills/task-progress")
@@ -107,6 +118,8 @@ def update_task_progress(payload: TaskProgressUpdate) -> dict[str, Any]:
 @router.get("/skills/summary")
 def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
     cert = certification(track_id)
+    # Overlay current public metadata without changing the underlying curriculum ids.
+    cert = next((item for item in configured_skill_map().get("certifications", []) if item.get("id") == track_id), cert)
     skills = flatten_skills(track_id)
     with connect() as conn:
         _ensure_task_progress(conn)
@@ -129,6 +142,18 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
                 (track_id or "", track_id or "", track_id or ""),
             )
         ]
+        reliable_edges = [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT question_id, skill_id, domain_id, confidence, reviewed
+                FROM question_skill_map
+                WHERE track_id = ? AND (reviewed = 1 OR confidence >= 0.70)
+                ORDER BY reviewed DESC, confidence DESC
+                """,
+                (track_id,),
+            )
+        ]
         completed = {
             row["skill_id"]
             for row in conn.execute(
@@ -149,11 +174,20 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
             )
         ]
 
+    best_edge_by_question: dict[str, dict[str, Any]] = {}
+    for edge in reliable_edges:
+        best_edge_by_question.setdefault(edge["question_id"], edge)
+
     output = []
     total_questions = len(question_rows)
     for skill in skills:
         q_matches = []
         for row in question_rows:
+            reliable = best_edge_by_question.get(row["id"])
+            if reliable:
+                if reliable.get("skill_id") == skill.get("id"):
+                    q_matches.append((float(reliable.get("confidence") or 1), row))
+                continue
             score = skill_score(_question_text(row), skill)
             if score:
                 q_matches.append((score, row))
@@ -162,7 +196,7 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
         accuracy = round((correct / attempts) * 100) if attempts else 0
         coverage_pct = round((len(q_matches) / total_questions) * 100) if total_questions else 0
         completed_task = skill.get("id") in completed
-        status = "completed" if completed_task else "not_started"
+        status = "completed" if completed_task else "available"
         if attempts:
             status = "strong" if accuracy >= 80 else "needs_review" if accuracy >= 60 else "weak"
         output.append(
@@ -215,13 +249,39 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
     }
 
 
+@router.get("/skills/{skill_id}/lesson")
+def skill_lesson(skill_id: str, track_id: str = "snowpro-core") -> dict[str, Any]:
+    lesson = study_lesson(track_id, skill_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Study lesson is not configured for this certification task")
+    return lesson
+
+
 @router.get("/skills/{skill_id}/resources")
 def skill_resources(skill_id: str, track_id: str = "snowpro-core", limit: int = 12) -> dict[str, Any]:
     skills = {skill["id"]: skill for skill in flatten_skills(track_id)}
     skill = skills.get(skill_id)
     if not skill:
-        return {"skill": None, "questions": []}
+        return {"skill": None, "questions": [], "mapping_strategy": "none"}
+    limit = max(1, min(50, limit))
     with connect() as conn:
+        persisted = [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT q.id, q.question, q.options_json, q.correct_json, q.explanation,
+                       q.tags, q.test_title, q.course_title, qsm.confidence, qsm.reviewed
+                FROM question_skill_map qsm
+                JOIN questions q ON q.id = qsm.question_id
+                WHERE qsm.track_id = ? AND qsm.skill_id = ? AND (qsm.reviewed = 1 OR qsm.confidence >= 0.70)
+                ORDER BY qsm.reviewed DESC, qsm.confidence DESC, q.id
+                LIMIT ?
+                """,
+                (track_id, skill_id, limit),
+            )
+        ]
+        if persisted:
+            return {"skill": skill, "questions": persisted, "mapping_strategy": "persisted_reliable"}
         questions = [
             dict(row)
             for row in conn.execute(
@@ -244,5 +304,6 @@ def skill_resources(skill_id: str, track_id: str = "snowpro-core", limit: int = 
     )
     return {
         "skill": skill,
-        "questions": [row for score, row in question_scored if score > 0][: max(1, min(50, limit))],
+        "questions": [row for score, row in question_scored if score > 0][:limit],
+        "mapping_strategy": "heuristic_fallback",
     }
