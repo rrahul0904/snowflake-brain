@@ -35,10 +35,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Compile Python sources
-        run: python -m compileall app scripts/smoke_evidence.py scripts/smoke_certification_guide.py
+        run: python -m compileall app scripts/smoke_evidence.py scripts/smoke_core_guide.py scripts/smoke_certification_guide.py
 
       - name: Verify evidence audit and review workflow
         run: python scripts/smoke_evidence.py
+
+      - name: Verify canonical COF-C03 written guide
+        run: python scripts/smoke_core_guide.py
 
       - name: Verify complete all-certification product
         run: python scripts/smoke_certification_guide.py
