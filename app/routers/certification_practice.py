@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..certification_content import configured_skill_map
+from ..certification_content import configured_skill_map, study_lesson
 from ..database import connect
 from ..serializers import question_public
 from ..skill_brain import flatten_skills, skill_score
@@ -43,17 +43,226 @@ def _cert(track_id: str) -> dict[str, Any]:
 
 
 def _question_text(row: dict[str, Any]) -> str:
-    return " ".join(
+    return " ".join([row.get("question") or "", row.get("explanation") or "", row.get("tags") or "", row.get("test_title") or ""])
+
+
+def _placed_options(correct: str, distractors: list[str], correct_index: int) -> tuple[list[str], list[int]]:
+    clean = [str(item).strip() for item in distractors if str(item).strip() and str(item).strip() != correct]
+    while len(clean) < 3:
+        clean.append(
+            [
+                "Use the broadest administrative privilege because it is more flexible.",
+                "Move the workload outside Snowflake before checking whether the platform already supports it.",
+                "Increase compute first without identifying the actual requirement or bottleneck.",
+            ][len(clean) % 3]
+        )
+    options = clean[:3]
+    correct_index = max(0, min(3, int(correct_index)))
+    options.insert(correct_index, correct)
+    return options, [correct_index]
+
+
+def _canonical_variants(track_id: str, skill: dict[str, Any]) -> list[dict[str, Any]]:
+    payload = study_lesson(track_id, skill["id"])
+    content = (payload or {}).get("content") or {}
+    objective = skill.get("objective") or content.get("summary") or f"Apply {skill.get('title')} correctly."
+    traps = list(skill.get("exam_traps") or [])
+    anti_patterns = list(content.get("anti_patterns") or traps)
+    rules = list(content.get("decision_rules") or [])
+    trap_explanations = list(content.get("trap_explanations") or [])
+    checks = list((content.get("build_exercise") or {}).get("checks") or [])
+    worked = content.get("worked_example") or {}
+    scenario = content.get("scenario") or {}
+    variants: list[dict[str, Any]] = []
+
+    scenario_options = scenario.get("options") or []
+    if scenario.get("question") and len(scenario_options) >= 2:
+        variants.append(
+            {
+                "question": scenario["question"],
+                "options": scenario_options,
+                "correct": [int(scenario.get("correct_index") or 0)],
+                "explanation": scenario.get("explanation") or objective,
+                "difficulty": "medium",
+                "kind": "scenario",
+            }
+        )
+
+    direct_options, direct_correct = _placed_options(
+        objective,
         [
-            row.get("question") or "",
-            row.get("explanation") or "",
-            row.get("tags") or "",
-            row.get("test_title") or "",
-        ]
+            "Apply a nearby Snowflake feature even when it solves a different layer of the problem.",
+            "Prefer the most privileged or expensive option regardless of the stated requirement.",
+            "Ignore the task boundary and choose based only on a familiar keyword.",
+        ],
+        1,
     )
+    variants.append({"question": f"Which statement best matches the certification objective for {skill.get('title')}?", "options": direct_options, "correct": direct_correct, "explanation": objective, "difficulty": "easy", "kind": "objective"})
+
+    if rules:
+        rule = rules[0]
+        options, correct = _placed_options(
+            str(rule.get("choose") or skill.get("title")),
+            [
+                "Choose the broadest system role instead of matching the requirement.",
+                "Add more compute even though the scenario does not describe a compute bottleneck.",
+                "Export the data and rebuild the workflow outside Snowflake by default.",
+            ],
+            2,
+        )
+        variants.append({"question": f"Requirement: {rule.get('when')}. Which choice is most appropriate?", "options": options, "correct": correct, "explanation": str(rule.get("why") or objective), "difficulty": "medium", "kind": "decision_rule"})
+
+    trap = traps[0] if traps else (anti_patterns[0] if anti_patterns else "Choose a feature without checking the scenario requirement.")
+    options, correct = _placed_options(
+        trap,
+        [
+            f"Apply {skill.get('title')} only when its documented responsibility matches the requirement.",
+            "Compare adjacent Snowflake features before selecting the answer.",
+            "Use the least unnecessary privilege, movement, cost, and operational complexity.",
+        ],
+        3,
+    )
+    variants.append({"question": f"Which option is a common exam trap or anti-pattern for {skill.get('title')}?", "options": options, "correct": correct, "explanation": f"This is a configured trap for the task: {trap}", "difficulty": "medium", "kind": "trap"})
+
+    if trap_explanations:
+        item = trap_explanations[0]
+        correction = str(item.get("correction") or objective)
+        options, correct = _placed_options(
+            correction,
+            [
+                "The trap is actually the recommended design in every scenario.",
+                "The distinction does not matter because all Snowflake features have the same responsibility.",
+                "The safest answer is always the option with the most privileges or compute.",
+            ],
+            0,
+        )
+        variants.append({"question": f"A candidate believes: “{item.get('trap')}” Which correction is most accurate?", "options": options, "correct": correct, "explanation": correction, "difficulty": "hard", "kind": "trap_correction"})
+
+    anti = anti_patterns[0] if anti_patterns else trap
+    options, correct = _placed_options(
+        anti,
+        [
+            f"Match {skill.get('title')} to its documented problem boundary.",
+            "Validate the scenario constraints before choosing an implementation.",
+            "Prefer a simpler Snowflake-native solution when it satisfies the requirement.",
+        ],
+        1,
+    )
+    variants.append({"question": f"Which implementation choice should you avoid when applying {skill.get('title')}?", "options": options, "correct": correct, "explanation": f"The lesson identifies this as an anti-pattern: {anti}", "difficulty": "medium", "kind": "anti_pattern"})
+
+    check = checks[0] if checks else f"The implementation directly satisfies the objective: {objective}"
+    options, correct = _placed_options(
+        check,
+        [
+            "The solution relies on an unrelated feature instead of the task capability.",
+            "The solution broadens access or cost without a requirement for it.",
+            "The solution ignores the feature boundary described in the lesson.",
+        ],
+        2,
+    )
+    variants.append({"question": f"Which completion check best demonstrates a correct implementation of {skill.get('title')}?", "options": options, "correct": correct, "explanation": check, "difficulty": "medium", "kind": "build_check"})
+
+    worked_answer = str(worked.get("answer") or objective)
+    options, correct = _placed_options(
+        worked_answer,
+        [
+            "Choose the opposite control even though it addresses a different requirement.",
+            "Escalate to the broadest administrative option without evidence.",
+            "Ignore the stated constraints and optimize a different part of the system.",
+        ],
+        3,
+    )
+    variants.append({"question": f"Which conclusion best matches the worked example for {skill.get('title')}?", "options": options, "correct": correct, "explanation": worked_answer, "difficulty": "hard", "kind": "worked_example"})
+
+    while len(variants) < 8:
+        index = len(variants)
+        options, correct = _placed_options(
+            f"Apply {skill.get('title')} when the scenario matches this objective: {objective}",
+            [
+                "Select a different feature solely because its name appears in the question.",
+                "Increase privilege or compute before establishing that it is required.",
+                "Ignore the documented task boundary and rely on an unrelated workaround.",
+            ],
+            index % 4,
+        )
+        variants.append({"question": f"Scenario check {index + 1}: Which approach correctly applies {skill.get('title')}?", "options": options, "correct": correct, "explanation": objective, "difficulty": "medium", "kind": f"application_{index + 1}"})
+    return variants[:8]
 
 
-def _question_pool(conn, track_id: str, difficulty: str | None, unanswered_only: bool) -> list[dict[str, Any]]:
+def _ensure_canonical_question_bank(conn: Any, track_id: str) -> int:
+    cert = _cert(track_id)
+    course_id = f"certguide::{track_id}"
+    course_title = f"{cert.get('title') or track_id} Canonical Practice Bank"
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO certification_tracks(id, title, description, position)
+        VALUES (?, ?, ?, 0)
+        """,
+        (track_id, cert.get("title") or track_id, f"Certification Studio track for {cert.get('exam_code') or track_id}"),
+    )
+    conn.execute(
+        """
+        INSERT INTO courses(id, track_id, track_title, title, slug, path)
+        VALUES (?, ?, ?, ?, ?, '')
+        ON CONFLICT(id) DO UPDATE SET track_id=excluded.track_id, track_title=excluded.track_title, title=excluded.title
+        """,
+        (course_id, track_id, cert.get("title") or track_id, course_title, course_id.replace("::", "-")),
+    )
+    created = 0
+    for skill in flatten_skills(track_id):
+        for index, variant in enumerate(_canonical_variants(track_id, skill)):
+            question_id = f"certgen::{track_id}::{skill['id']}::{index + 1}"
+            before = conn.total_changes
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO questions(
+                  id, course_id, course_title, test_id, test_title, question,
+                  options_json, correct_json, explanation, source_path,
+                  assessment_type, tags, difficulty, question_position
+                )
+                VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, 'certification_canonical', ?, ?, ?)
+                """,
+                (
+                    question_id,
+                    course_id,
+                    course_title,
+                    f"Canonical {cert.get('exam_code') or track_id} Bank",
+                    variant["question"],
+                    json.dumps(variant["options"]),
+                    json.dumps(variant["correct"]),
+                    variant["explanation"],
+                    f"canonical://{track_id}/{skill['id']}/{variant['kind']}",
+                    json.dumps([skill["id"], skill.get("domain_id"), "canonical", variant["kind"]]),
+                    variant["difficulty"],
+                    index + 1,
+                ),
+            )
+            if conn.total_changes > before:
+                created += 1
+            conn.execute(
+                """
+                INSERT INTO question_skill_map(question_id, track_id, domain_id, skill_id, confidence, evidence_json, reviewed)
+                VALUES (?, ?, ?, ?, 0.98, ?, 0)
+                ON CONFLICT(question_id, skill_id) DO UPDATE SET
+                  track_id=excluded.track_id,
+                  domain_id=excluded.domain_id,
+                  confidence=MAX(question_skill_map.confidence, excluded.confidence),
+                  evidence_json=excluded.evidence_json,
+                  updated_at=datetime('now')
+                """,
+                (
+                    question_id,
+                    track_id,
+                    skill.get("domain_id") or "",
+                    skill["id"],
+                    json.dumps({"source": "canonical_study_content", "variant": variant["kind"], "deterministic_skill_edge": True}),
+                ),
+            )
+    return created
+
+
+def _question_pool(conn: Any, track_id: str, difficulty: str | None, unanswered_only: bool) -> list[dict[str, Any]]:
+    _ensure_canonical_question_bank(conn, track_id)
     filters = ["COALESCE(NULLIF(c.track_id, ''), NULLIF(pt.track_id, ''), '') = ?"]
     params: list[Any] = [track_id]
     if difficulty:
@@ -84,19 +293,8 @@ def _question_pool(conn, track_id: str, difficulty: str | None, unanswered_only:
     ]
 
 
-def _best_reliable_edges(conn, track_id: str) -> dict[str, dict[str, Any]]:
-    edges = [
-        dict(row)
-        for row in conn.execute(
-            """
-            SELECT question_id, track_id, domain_id, skill_id, confidence, reviewed
-            FROM question_skill_map
-            WHERE track_id = ? AND (reviewed = 1 OR confidence >= 0.70)
-            ORDER BY question_id, reviewed DESC, confidence DESC, updated_at DESC
-            """,
-            (track_id,),
-        )
-    ]
+def _best_reliable_edges(conn: Any, track_id: str) -> dict[str, dict[str, Any]]:
+    edges = [dict(row) for row in conn.execute("SELECT question_id, track_id, domain_id, skill_id, confidence, reviewed FROM question_skill_map WHERE track_id = ? AND (reviewed = 1 OR confidence >= 0.70) ORDER BY question_id, reviewed DESC, confidence DESC, updated_at DESC", (track_id,))]
     best: dict[str, dict[str, Any]] = {}
     for edge in edges:
         best.setdefault(edge["question_id"], edge)
@@ -234,15 +432,7 @@ def _adaptive_drill(rows: list[dict[str, Any]], count: int, skill_id: str | None
             skill_stats[sid]["attempts"] += int(row.get("attempts") or 0)
             skill_stats[sid]["correct"] += int(row.get("correct_attempts") or 0)
             skill_stats[sid]["misses"] += int(row.get("missed_attempts") or 0)
-        weakness = sorted(
-            skill_stats,
-            key=lambda sid: (
-                0 if skill_stats[sid]["attempts"] == 0 else 1,
-                (skill_stats[sid]["correct"] / max(1, skill_stats[sid]["attempts"])),
-                -skill_stats[sid]["misses"],
-                skill_stats[sid]["attempts"],
-            ),
-        )
+        weakness = sorted(skill_stats, key=lambda sid: (0 if skill_stats[sid]["attempts"] == 0 else 1, skill_stats[sid]["correct"] / max(1, skill_stats[sid]["attempts"]), -skill_stats[sid]["misses"], skill_stats[sid]["attempts"]))
         rank = {sid: index for index, sid in enumerate(weakness)}
         target = sorted(rows, key=lambda row: (rank.get(row.get("mapped_skill_id"), 9999), *_rank_for_drill(row)))
     target = sorted(target, key=_rank_for_drill)
@@ -265,7 +455,6 @@ def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
     rows, reliable_count, heuristic_count = _assign_edges(rows, payload.track_id, persisted)
     if not rows:
         return {"questions": [], "total": 0, "selection_strategy": mode, "domain_counts": {}, "mapped_count": 0, "heuristic_count": 0}
-
     if payload.skill_id:
         selected = _adaptive_drill(rows, count, payload.skill_id, payload.domain_id)
         strategy = "skill_targeted"
@@ -286,7 +475,6 @@ def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
         random.shuffle(selected)
         selected = selected[:count]
         strategy = "random"
-
     domain_counts: dict[str, int] = defaultdict(int)
     skill_ids: set[str] = set()
     provenance_counts: dict[str, int] = defaultdict(int)
@@ -295,18 +483,8 @@ def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
         if row.get("mapped_skill_id"):
             skill_ids.add(row["mapped_skill_id"])
         provenance_counts[row.get("mapping_provenance") or "unmapped"] += 1
-
     questions = [question_public(row, include_answer=False) for row in selected]
-    return {
-        "questions": questions,
-        "total": len(questions),
-        "selection_strategy": strategy,
-        "domain_counts": dict(domain_counts),
-        "skill_ids": sorted(skill_ids),
-        "mapping_provenance": dict(provenance_counts),
-        "reliable_pool_count": reliable_count,
-        "heuristic_pool_count": heuristic_count,
-    }
+    return {"questions": questions, "total": len(questions), "selection_strategy": strategy, "domain_counts": dict(domain_counts), "skill_ids": sorted(skill_ids), "mapping_provenance": dict(provenance_counts), "reliable_pool_count": reliable_count, "heuristic_pool_count": heuristic_count}
 
 
 @router.post("/certification-mock/record")
@@ -316,49 +494,8 @@ def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="Mock score cannot exceed the total question count")
     percent = round((payload.score / max(1, payload.total)) * 100)
     with connect() as conn:
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO certification_tracks(id, title, description, position)
-            VALUES (?, ?, ?, 0)
-            """,
-            (
-                payload.track_id,
-                cert.get("title") or payload.track_id,
-                f"Certification Studio track for {cert.get('exam_code') or payload.track_id}",
-            ),
-        )
-        cursor = conn.execute(
-            """
-            INSERT INTO exam_sessions(track_id, mode, started_at, finished_at, score, total_questions, status)
-            VALUES (?, ?, datetime('now', ?), datetime('now'), ?, ?, 'finished')
-            """,
-            (
-                payload.track_id,
-                "exam_full_mock" if payload.mode in {"full-mock", "exam"} else "exam_quick_mock",
-                f"-{max(0, int(payload.elapsed_seconds))} seconds",
-                payload.score,
-                payload.total,
-            ),
-        )
+        conn.execute("INSERT OR IGNORE INTO certification_tracks(id, title, description, position) VALUES (?, ?, ?, 0)", (payload.track_id, cert.get("title") or payload.track_id, f"Certification Studio track for {cert.get('exam_code') or payload.track_id}"))
+        cursor = conn.execute("INSERT INTO exam_sessions(track_id, mode, started_at, finished_at, score, total_questions, status) VALUES (?, ?, datetime('now', ?), datetime('now'), ?, ?, 'finished')", (payload.track_id, "exam_full_mock" if payload.mode in {"full-mock", "exam"} else "exam_quick_mock", f"-{max(0, int(payload.elapsed_seconds))} seconds", payload.score, payload.total))
         session_id = int(cursor.lastrowid)
-        conn.execute(
-            """
-            INSERT INTO learning_events(event_type, track_id, metadata_json)
-            VALUES ('practice_test_finished', ?, ?)
-            """,
-            (
-                payload.track_id,
-                json.dumps(
-                    {
-                        "session_id": session_id,
-                        "mode": payload.mode,
-                        "score": payload.score,
-                        "total": payload.total,
-                        "score_pct": percent,
-                        "elapsed_seconds": payload.elapsed_seconds,
-                        "selection_strategy": payload.selection_strategy,
-                    }
-                ),
-            ),
-        )
+        conn.execute("INSERT INTO learning_events(event_type, track_id, metadata_json) VALUES ('practice_test_finished', ?, ?)", (payload.track_id, json.dumps({"session_id": session_id, "mode": payload.mode, "score": payload.score, "total": payload.total, "score_pct": percent, "elapsed_seconds": payload.elapsed_seconds, "selection_strategy": payload.selection_strategy})))
     return {"ok": True, "session_id": session_id, "score_pct": percent}
