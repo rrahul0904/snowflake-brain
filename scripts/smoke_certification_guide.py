@@ -19,21 +19,11 @@ from fastapi.testclient import TestClient
 from app.database import connect
 from app.main import app
 
-REQUIRED_CONTENT_KEYS = {
-    "summary",
-    "what_you_need_to_know",
-    "key_concept",
-    "decision_rules",
-    "anti_patterns",
-    "trap_explanations",
-    "worked_example",
-    "scenario",
-    "build_exercise",
-    "sources",
-}
+REQUIRED_CONTENT_KEYS = {"summary", "what_you_need_to_know", "key_concept", "decision_rules", "anti_patterns", "trap_explanations", "worked_example", "scenario", "build_exercise", "sources"}
+EXPECTED_OFFICIAL = {"associate-platform", "snowpro-core", "snowpark", "native-apps", "cortex-genai", "advanced-architect", "advanced-security-engineer", "advanced-data-engineer", "advanced-data-scientist", "advanced-administrator", "advanced-data-analyst"}
 
 
-def seed_questions() -> None:
+def seed_reviewed_core_questions() -> None:
     samples = [
         ("q-rbac-1", "rbac-role-hierarchy", "account-security", "Which RBAC design follows least privilege?"),
         ("q-auth-1", "network-policy-authentication", "account-security", "Which control restricts allowed network origins?"),
@@ -47,20 +37,20 @@ def seed_questions() -> None:
         ("q-stream-1", "streams-tasks-incremental", "data-pipelines", "Which object exposes changed rows?"),
     ]
     with connect() as conn:
-        conn.execute("INSERT INTO certification_tracks(id, title, description, position) VALUES ('snowpro-core','SnowPro Core','',1)")
-        conn.execute("INSERT INTO courses(id, track_id, track_title, title) VALUES ('smoke-core','snowpro-core','SnowPro Core','Smoke Certification Questions')")
+        conn.execute("INSERT OR IGNORE INTO certification_tracks(id, title, description, position) VALUES ('snowpro-core','SnowPro Core','',1)")
+        conn.execute("INSERT OR IGNORE INTO courses(id, track_id, track_title, title) VALUES ('smoke-core','snowpro-core','SnowPro Core','Smoke Certification Questions')")
         for index, (qid, skill_id, domain_id, question) in enumerate(samples):
             conn.execute(
                 """
-                INSERT INTO questions(id, course_id, course_title, test_id, test_title, question, options_json, correct_json, explanation, source_path, assessment_type, tags, difficulty, question_position)
-                VALUES (?, 'smoke-core', 'Smoke Certification Questions', '', 'Certification Bank', ?, ?, '[0]', ?, '', 'multiple_choice', ?, 'medium', ?)
+                INSERT OR IGNORE INTO questions(id, course_id, course_title, test_id, test_title, question, options_json, correct_json, explanation, source_path, assessment_type, tags, difficulty, question_position)
+                VALUES (?, 'smoke-core', 'Smoke Certification Questions', '', 'Reviewed Certification Bank', ?, ?, '[0]', ?, '', 'multiple_choice', ?, 'medium', ?)
                 """,
                 (qid, question, json.dumps(["Correct", "Distractor A", "Distractor B", "Distractor C"]), f"Explanation for {skill_id} with sufficient detail.", skill_id.replace("-", " "), index + 1),
             )
             conn.execute(
                 """
-                INSERT INTO question_skill_map(question_id, track_id, domain_id, skill_id, confidence, evidence_json, reviewed)
-                VALUES (?, 'snowpro-core', ?, ?, 0.99, '{"source":"smoke"}', 1)
+                INSERT OR REPLACE INTO question_skill_map(question_id, track_id, domain_id, skill_id, confidence, evidence_json, reviewed)
+                VALUES (?, 'snowpro-core', ?, ?, 0.99, '{"source":"smoke_human_review"}', 1)
                 """,
                 (qid, domain_id, skill_id),
             )
@@ -71,29 +61,43 @@ def main() -> None:
         catalog_response = client.get("/api/skills/catalog")
         assert catalog_response.status_code == 200, catalog_response.text
         catalog = catalog_response.json()
-        by_id = {item["id"]: item for item in catalog.get("official_certifications", [])}
+        official = catalog.get("official_certifications", [])
+        by_id = {item["id"]: item for item in official}
+        assert set(by_id) == EXPECTED_OFFICIAL, set(by_id)
+        assert all(item.get("implemented") for item in official), official
+        assert all(item.get("launchable") for item in official), official
         assert by_id["snowpro-core"]["exam_code"] == "COF-C03"
         assert by_id["snowpark"]["exam_code"] == "SPS-C01"
+        assert by_id["native-apps"]["exam_code"] == "NAS-C01"
         assert by_id["cortex-genai"]["exam_code"] == "GES-C01"
+        assert by_id["advanced-security-engineer"]["exam_code"] == "SEA-C01"
         assert by_id["advanced-data-engineer"]["exam_code"] == "DEA-C02"
+        assert by_id["advanced-data-scientist"]["exam_code"] == "DSA-C03"
+        assert by_id["advanced-administrator"]["exam_code"] == "ADA-C02"
+        assert by_id["advanced-data-analyst"]["exam_code"] == "DAA-C01"
         assert any(item.get("category") == "custom" for item in catalog.get("custom_tracks", []))
 
         skill_map = client.get("/api/skills/map")
         assert skill_map.status_code == 200, skill_map.text
-        certifications = skill_map.json().get("certifications") or []
-        assert certifications, "Certification map must expose at least one track"
+        map_body = skill_map.json()
+        certifications = map_body.get("certifications") or []
         mapped = {cert["id"]: cert for cert in certifications}
+        assert EXPECTED_OFFICIAL.issubset(mapped), mapped.keys()
+        assert map_body.get("official_certification_count") == 11
         assert mapped["snowpark"]["exam_code"] == "SPS-C01"
         assert mapped["cortex-genai"]["exam_code"] == "GES-C01"
         assert mapped["advanced-data-engineer"]["exam_code"] == "DEA-C02"
+        for track_id in ["associate-platform", "native-apps", "advanced-security-engineer", "advanced-data-scientist", "advanced-administrator", "advanced-data-analyst"]:
+            assert mapped[track_id]["weight_source"] == "normalized_public_overview"
 
         coverage = client.get("/api/skills/content-coverage")
         assert coverage.status_code == 200, coverage.text
         coverage_body = coverage.json()
+        assert coverage_body["official_tracks"] == 11
         core_coverage = next(row for row in coverage_body["tracks"] if row["track_id"] == "snowpro-core")
         assert core_coverage["tasks"] == 10
         assert core_coverage["curated_tasks"] == 10
-        assert all(row["usable_tasks"] == row["tasks"] for row in coverage_body["tracks"])
+        assert all(row["usable_tasks"] == row["tasks"] and row["tasks"] > 0 for row in coverage_body["tracks"])
 
         for cert in certifications:
             for domain in cert.get("domains", []):
@@ -107,6 +111,16 @@ def main() -> None:
                     if cert["id"] == "snowpro-core":
                         assert body["content_quality"] == "curated"
 
+        # Every official certification must be able to supply a full-size unique mock on a clean database.
+        for track_id in sorted(EXPECTED_OFFICIAL):
+            full_mock = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "full-mock", "count": 65})
+            assert full_mock.status_code == 200, (track_id, full_mock.text)
+            full_body = full_mock.json()
+            assert full_body["selection_strategy"] == "blueprint_weighted", (track_id, full_body)
+            assert full_body["total"] == 65, (track_id, full_body["total"])
+            assert len({question["id"] for question in full_body["questions"]}) == 65, track_id
+            assert full_body["mapping_provenance"].get("persisted_high_confidence", 0) > 0, track_id
+
         cert = mapped["snowpro-core"]
         track_id = cert["id"]
         skills = [skill for domain in cert.get("domains", []) for skill in domain.get("skills", [])]
@@ -119,28 +133,26 @@ def main() -> None:
         after = client.get("/api/skills/task-progress", params={"track_id": track_id})
         assert skill_id in after.json()["completed_skill_ids"]
 
-        seed_questions()
+        seed_reviewed_core_questions()
 
         targeted = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "drill", "skill_id": "warehouse-cost-control", "count": 1})
         assert targeted.status_code == 200, targeted.text
-        assert targeted.json()["selection_strategy"] == "skill_targeted"
-        assert targeted.json()["total"] == 1
-        assert "warehouse-cost-control" in targeted.json()["skill_ids"]
-        assert targeted.json()["mapping_provenance"].get("human_reviewed") == 1
+        target_body = targeted.json()
+        assert target_body["selection_strategy"] == "skill_targeted"
+        assert target_body["total"] == 1
+        assert "warehouse-cost-control" in target_body["skill_ids"]
+        assert target_body["mapping_provenance"].get("human_reviewed") == 1, target_body
 
-        diagnostic = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "diagnostic", "count": 10})
+        diagnostic = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "diagnostic", "count": 30})
         assert diagnostic.status_code == 200, diagnostic.text
         assert diagnostic.json()["selection_strategy"] == "domain_balanced"
-        assert len(diagnostic.json()["domain_counts"]) >= 5
+        assert len(diagnostic.json()["domain_counts"]) >= 6
 
-        mock = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "full-mock", "count": 10})
-        assert mock.status_code == 200, mock.text
-        assert mock.json()["selection_strategy"] == "blueprint_weighted"
-        assert mock.json()["total"] == 10
-
-        mock_record = client.post("/api/certification-mock/record", json={"track_id": track_id, "mode": "full-mock", "score": 8, "total": 10, "elapsed_seconds": 600, "selection_strategy": "blueprint_weighted"})
+        mock_record = client.post("/api/certification-mock/record", json={"track_id": track_id, "mode": "full-mock", "score": 52, "total": 65, "elapsed_seconds": 6000, "selection_strategy": "blueprint_weighted"})
         assert mock_record.status_code == 200, mock_record.text
         assert mock_record.json()["score_pct"] == 80
+        invalid_score = client.post("/api/certification-mock/record", json={"track_id": track_id, "mode": "full-mock", "score": 66, "total": 65})
+        assert invalid_score.status_code == 400
 
         readiness = client.get("/api/intelligence/readiness", params={"track_id": track_id})
         assert readiness.status_code == 200, readiness.text
@@ -154,6 +166,7 @@ def main() -> None:
         assert mastery.status_code == 200, mastery.text
         mastery_body = mastery.json()
         assert mastery_body["mapping_stats"].get("human_reviewed") == 10
+        assert mastery_body["mapping_stats"].get("persisted_high_confidence", 0) >= 80
         first = next(item for item in mastery_body["skills"] if item["skill_id"] == skill_id)
         assert first["task_completed"] is True
         assert "task_content_available" in first["evidence"]
@@ -163,7 +176,7 @@ def main() -> None:
         invalid = client.post("/api/skills/task-progress", json={"track_id": track_id, "skill_id": "missing-skill", "completed": True})
         assert invalid.status_code == 404, invalid.text
 
-    print("Complete Snowflake certification product smoke passed.")
+    print("Complete all-certification Snowflake product smoke passed.")
 
 
 if __name__ == "__main__":
