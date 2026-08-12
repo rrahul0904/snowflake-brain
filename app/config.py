@@ -13,6 +13,12 @@ SKILL_MAP_CONFIG = Path(os.getenv("SKILL_MAP_CONFIG", str(ROOT_DIR / "config" / 
 CERTIFICATION_CATALOG_CONFIG = Path(
     os.getenv("CERTIFICATION_CATALOG_CONFIG", str(ROOT_DIR / "config" / "certification_catalog.json"))
 ).expanduser()
+CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG = Path(
+    os.getenv(
+        "CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG",
+        str(ROOT_DIR / "config" / "certification_curricula_supplement.json"),
+    )
+).expanduser()
 STUDY_CONTENT_CORE_CONFIG = Path(
     os.getenv("STUDY_CONTENT_CORE_CONFIG", str(ROOT_DIR / "config" / "study_content_core.json"))
 ).expanduser()
