@@ -7,6 +7,7 @@ on:
       - main
       - agent/editorial-replica
       - agent/v22-evidence-foundation
+      - agent/v23-snowflake-certification-guide
 
 permissions:
   contents: read
@@ -36,7 +37,7 @@ jobs:
       - name: Verify evidence audit and review workflow
         run: python scripts/smoke_evidence.py
 
-      - name: Verify v21 editorial route contract
+      - name: Verify current certification route contract
         run: node scripts/smoke_static_routes.mjs
 
       - name: Verify current frontend syntax
@@ -51,6 +52,7 @@ jobs:
             frontend/components/nav.js
             frontend/components/topbar.js
             frontend/components/toast.js
+            frontend/views/guide.js
             frontend/views/curriculum.js
             frontend/views/lesson.js
             frontend/views/quiz.js
