@@ -6,14 +6,14 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import AUTO_INGEST
 from .database import run_migrations
-from .routers import ai, courses, data_ai, experience, flashcards, index, intelligence, labs, progress, questions, search, skills, study
+from .routers import ai, certification_practice, courses, data_ai, experience, flashcards, index, intelligence, labs, progress, questions, search, skills, study
 from .routers.index import maybe_auto_ingest
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 CAREER_DOCS_DIR = ROOT_DIR / "docs" / "ai-career-curriculum"
 
-app = FastAPI(title="Data + AI Career Lab", version="0.2.0")
+app = FastAPI(title="Snowflake Certification Studio", version="0.3.0")
 
 
 @app.on_event("startup")
@@ -26,6 +26,7 @@ def startup() -> None:
 app.include_router(index.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
 app.include_router(questions.router, prefix="/api")
+app.include_router(certification_practice.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(flashcards.router, prefix="/api")
