@@ -1,11 +1,22 @@
 import { showToast } from "./components/toast.js?v=20260731-v21-editorial-replica";
-import { updateActiveNav } from "./components/nav.js?v=20260731-v21-editorial-replica";
+import { updateActiveNav } from "./components/nav.js?v=20260812-v23-cert-guide";
 import { errorPanel, skeleton } from "./ui.js?v=20260731-v21-editorial-replica";
 
-const ASSET_VERSION = "20260731-v21-editorial-replica";
+const ASSET_VERSION = "20260812-v23-cert-guide";
+
+const guide = () => import(`./views/guide.js?v=${ASSET_VERSION}`);
 
 const routes = {
-  "#/curriculum": () => import(`./views/curriculum.js?v=${ASSET_VERSION}`),
+  "#/home": guide,
+  "#/curriculum": guide,
+  "#/progress": guide,
+  "#/domain": guide,
+  "#/skill": guide,
+  "#/diagnostic": guide,
+  "#/exercises": guide,
+  "#/quick-reference": guide,
+  "#/glossary": guide,
+  "#/archive": () => import(`./views/curriculum.js?v=${ASSET_VERSION}`),
   "#/lesson": () => import(`./views/lesson.js?v=${ASSET_VERSION}`),
   "#/practice": () => import(`./views/quiz.js?v=${ASSET_VERSION}`),
   "#/reference": () => import(`./views/reference.js?v=${ASSET_VERSION}`),
@@ -14,23 +25,23 @@ const routes = {
 };
 
 const aliases = {
-  "#/": "#/curriculum",
-  "#/command": "#/curriculum",
-  "#/today": "#/curriculum",
-  "#/setup": "#/curriculum",
+  "#/": "#/home",
+  "#/command": "#/home",
+  "#/today": "#/progress",
+  "#/setup": "#/home",
   "#/academy": "#/curriculum",
-  "#/intelligence": "#/curriculum",
-  "#/learn": "#/lesson",
-  "#/lessons": "#/curriculum",
+  "#/intelligence": "#/progress",
+  "#/learn": "#/curriculum",
+  "#/lessons": "#/archive",
   "#/video": "#/lesson",
   "#/quiz": "#/practice",
-  "#/labs": "#/reference",
-  "#/readiness": "#/practice",
+  "#/labs": "#/exercises",
+  "#/readiness": "#/progress",
   "#/career": "#/journal",
   "#/search": "#/reference",
-  "#/flashcards": "#/curriculum",
+  "#/flashcards": "#/practice",
   "#/review": "#/practice",
-  "#/analytics": "#/practice",
+  "#/analytics": "#/progress",
   "#/ai": "#/reference",
 };
 
@@ -38,14 +49,14 @@ let currentView = null;
 
 export async function route() {
   const root = document.querySelector("#view-root");
-  const hash = window.location.hash || "#/curriculum";
+  const hash = window.location.hash || "#/home";
   const [rawPath, query = ""] = hash.split("?");
   const path = aliases[rawPath] || rawPath;
-  const loader = routes[path] || routes["#/curriculum"];
+  const loader = routes[path] || routes["#/home"];
   window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "loading", route: path, error: null };
   document.body.classList.remove("player-mode", "quiz-active", "replica-exam-active");
   if (currentView?.unmount) currentView.unmount();
-  root.innerHTML = skeleton("Loading...");
+  root.innerHTML = skeleton("Loading certification studio...");
   updateActiveNav();
   try {
     currentView = await loader();
