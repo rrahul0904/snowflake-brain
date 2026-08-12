@@ -1,78 +1,59 @@
 export const VIEW_ID = "journal";
 
-import { escapeHtml } from "../api.js?v=20260731-v21-editorial-replica";
+import { escapeHtml } from "../api.js?v=20260812-v23-cert-guide";
+import { activeTrack } from "../ui.js?v=20260731-v21-editorial-replica";
 
 const articles = [
   {
-    id: "architecture-foundations",
-    tag: "SnowPro Core · Architecture",
-    title: "How Snowflake separates storage, compute, and services",
-    summary: "A practical mental model for the three architectural layers and why independent scaling matters on the exam.",
-    body: [
-      ["The architecture in one sentence", "Snowflake stores data centrally, processes it through independent virtual warehouses, and coordinates the platform through cloud services. The separation is the reason multiple workloads can share governed data without sharing the same compute cluster."],
-      ["Storage", "Database storage manages compressed, columnar micro-partitions in cloud object storage. Snowflake controls file layout, metadata, encryption, and optimization; users interact with logical tables rather than physical files."],
-      ["Query processing", "Virtual warehouses provide compute. Each warehouse can start, stop, resize, and run independently. A reporting warehouse does not need to compete with an ELT warehouse for CPU and memory."],
-      ["Cloud services", "Cloud services coordinate authentication, metadata, query parsing, optimization, access control, and transaction management. This layer connects governed storage to independent compute."],
-    ],
+    id: "snowpro-core-c03-guide", tag: "SnowPro Core · COF-C03", title: "How to prepare for SnowPro Core COF-C03", summary: "Use the exam blueprint as the curriculum, then prove every domain with written lessons, targeted drills, build exercises, and timed mocks.", skill: "rbac-role-hierarchy",
+    body: [["Start with the blueprint", "Do not treat certification prep as a pile of unrelated Snowflake features. Work domain by domain and task by task. The goal is to understand which capability solves which requirement and to recognize distractors that solve an adjacent problem."], ["Build evidence, not page views", "A lesson is only the beginning. Mark a task complete after you can explain the decision rule, then use mapped questions, hands-on exercises, and timed mocks to demonstrate that the concept survives under exam pressure."], ["Prioritize weak domains", "Use the diagnostic to establish a baseline. Drill the lowest-mastery skills first, especially repeated misses and questions whose wording exposes feature confusion."], ["Finish with exam behavior", "Full mocks should validate pacing, navigation, review discipline, and score consistency. One passing result is encouraging; repeated timed evidence across the blueprint is much stronger."]]
   },
   {
-    id: "rag-in-snowflake",
-    tag: "Data + AI · Retrieval",
-    title: "A production RAG path with Cortex Search",
-    summary: "From document ingestion to grounded answers: chunking, retrieval scope, citations, evaluation, and access control.",
-    body: [
-      ["Start with retrieval quality", "A useful retrieval-augmented generation system begins with documents that have stable ownership, good metadata, and a defined access boundary. Model quality cannot rescue missing or poorly scoped evidence."],
-      ["Chunk with structure", "Chunk around headings, concepts, and complete procedures instead of arbitrary character counts. Keep source identifiers, timestamps, course names, and certification domains attached to every chunk."],
-      ["Retrieve inside the user's scope", "Filter by certification, course, lesson, role, and source permissions before ranking semantic matches. The answer should cite the retrieved material and clearly say when evidence is insufficient."],
-      ["Evaluate the whole system", "Measure retrieval recall, citation correctness, groundedness, latency, and task completion. A polished answer without supporting evidence is a failure, not a success."],
-    ],
+    id: "snowflake-rbac-exam", tag: "Security · RBAC", title: "Snowflake RBAC: the hierarchy questions candidates miss", summary: "Roles, inheritance, ownership, managed access, and least privilege in the form the exam actually tests them.", skill: "rbac-role-hierarchy",
+    body: [["Think in layers", "Functional roles represent jobs such as Analyst or Data Engineer. Narrow access roles can encapsulate privileges to databases, schemas, and tables. Grant access roles into functional roles so privilege management stays reusable."], ["Ownership is different", "OWNERSHIP is not just another object privilege. It determines control of an object and changes how grants are managed. Ownership transfer deserves more caution than granting SELECT or USAGE."], ["Container privileges matter", "A role with SELECT on a table may still need access to the containing database and schema, plus compute to execute a query. Exam distractors often omit one of these layers."], ["Least privilege wins", "Avoid direct user grants and routine use of ACCOUNTADMIN. When two options both work technically, the exam generally favors the design with narrower, role-based authority."]]
   },
   {
-    id: "warehouse-costs",
-    tag: "Performance · Cost",
-    title: "Virtual warehouses: the cost questions that matter",
-    summary: "Auto-suspend, minimum billing, resizing, cache behavior, concurrency, and when another cluster is justified.",
-    body: [
-      ["Cost follows running compute", "Virtual warehouses consume credits while running. Auto-suspend reduces idle time, while auto-resume keeps the user workflow simple. Choose a suspension interval that reflects workload cadence rather than applying one value everywhere."],
-      ["Size for elapsed work", "A larger warehouse costs more per unit of time but can finish suitable workloads faster. The right comparison is total credits and service-level outcome, not hourly rate alone."],
-      ["Separate workloads deliberately", "Independent warehouses isolate performance and cost attribution. Use multi-cluster warehouses for concurrency pressure, not as a substitute for inefficient queries or poor workload design."],
-      ["Observe before changing", "Use query history, warehouse load, queueing, and resource monitors to establish evidence. Cost tuning should be an operational loop, not a one-time configuration exercise."],
-    ],
+    id: "warehouse-scale-up-out", tag: "Performance · Warehouses", title: "Scale up vs scale out: the Snowflake warehouse decision rule", summary: "Separate single-query performance, concurrency pressure, and idle spend before changing compute.", skill: "warehouse-cost-control",
+    body: [["Scale up", "Resize a warehouse when individual queries need more compute. This is a per-cluster compute decision."], ["Scale out", "Use multi-cluster capacity when queries are healthy once they run but users spend time queued during concurrency peaks."], ["Control idle cost", "AUTO_SUSPEND and AUTO_RESUME solve a different problem: compute that sits running while no work is arriving. Aggressive suspension can trade away warm warehouse cache, so choose intervals based on workload cadence."], ["Measure credits, not intuition", "A larger warehouse costs more per unit of time but may complete suitable work faster. Compare total credits and service-level outcome rather than assuming either bigger or smaller is always cheaper."]]
   },
+  {
+    id: "snowflake-cache-exam", tag: "Performance · Query Profile", title: "Result cache, warehouse cache, and query troubleshooting", summary: "The fastest way to lose points is to treat every Snowflake cache or performance symptom as the same thing.", skill: "query-performance-history",
+    body: [["Persisted result reuse", "An eligible repeated query can reuse a persisted result without re-executing the full query. This is different from data cached on warehouse disks."], ["Warehouse-local cache", "Running warehouses can retain local data cache. Suspending a warehouse discards that local cache, which explains why suspend decisions can affect repeated-workload latency."], ["Read Query Profile", "Poor pruning, spilling, expensive operators, and queueing point to different remedies. Query Profile should usually precede a resize decision."], ["Control benchmarks", "When testing tuning changes, account for result reuse and warm cache. Otherwise a fast repeat run can make an ineffective optimization look successful."]]
+  },
+  {
+    id: "copy-stage-file-format", tag: "Data Loading · COPY INTO", title: "Stage vs file format vs COPY INTO", summary: "Three objects, three responsibilities: location, parsing rules, and load execution.", skill: "stage-file-format-copy",
+    body: [["Stage", "A stage represents a location for files. Named internal and external stages are reusable objects, while user and table stages provide implicit locations."], ["File format", "A file format stores reusable parsing or serialization options such as CSV delimiters and header handling. It does not store the files themselves."], ["COPY INTO", "COPY INTO executes the load from staged files into a table. Validation and error-handling options let you control what happens when data does not parse cleanly."], ["Exam shortcut", "When a question asks where files live, think stage. When it asks how files are parsed, think file format. When it asks how staged files enter the table, think COPY INTO."]]
+  },
+  {
+    id: "snowpipe-vs-copy", tag: "Data Loading · Snowpipe", title: "Snowpipe vs warehouse COPY INTO", summary: "Use the ingestion requirement—continuous event-driven or controlled batch—to choose the right loading pattern.", skill: "snowpipe-continuous-load",
+    body: [["Snowpipe", "Snowpipe is a serverless file-ingestion service. A pipe contains COPY semantics and auto-ingest relies on cloud event notifications to detect new files."], ["Batch COPY", "Ordinary COPY INTO can be run through a user warehouse when a scheduled or manually controlled batch is sufficient."], ["Do not mix compute models", "Snowpipe ingestion uses Snowflake-managed serverless compute. It is not simply a COPY statement scheduled on a permanently running user warehouse."], ["Troubleshoot the whole path", "A functioning auto-ingest design requires the Snowflake pipe and the cloud-side notification path. Creating one without the other does not produce an end-to-end continuous load."]]
+  },
+  {
+    id: "variant-flatten", tag: "Semi-Structured · VARIANT", title: "VARIANT, pathing, and LATERAL FLATTEN", summary: "A compact mental model for the JSON questions that combine storage, navigation, casting, and row expansion.", skill: "variant-flatten-json",
+    body: [["Store flexibly", "PARSE_JSON converts JSON text into VARIANT, allowing Snowflake to retain nested objects and arrays while exposing path-navigation semantics."], ["Navigate", "Path expressions retrieve nested values from a VARIANT column. Those values often need explicit casts when they participate in typed SQL operations."], ["Expand", "FLATTEN is a table function that turns nested collections into rows. LATERAL lets the function reference the VARIANT value from each source row."], ["Watch row multiplication", "Flattening nested arrays can multiply row counts quickly. Understand which collection level is being expanded before stacking multiple FLATTEN operations."]]
+  },
+  {
+    id: "time-travel-clone-failsafe", tag: "Protection · Recovery", title: "Time Travel, zero-copy clone, and Fail-safe are not the same thing", summary: "Historical access, writable copies, and Snowflake-managed recovery each solve a different recovery problem.", skill: "time-travel-clone-failsafe",
+    body: [["Time Travel", "Time Travel provides user-accessible historical querying and recovery within retention. It supports patterns such as AT/BEFORE, UNDROP, and cloning from a historical point."], ["Zero-copy clone", "A clone is a writable metadata-based copy that initially shares existing micro-partition storage. New storage appears as source and clone diverge."], ["Fail-safe", "Fail-safe is a separate Snowflake-managed recovery period for eligible permanent data. It is not simply a longer queryable Time Travel window."], ["DR is broader", "Time Travel and Fail-safe are recovery mechanisms, not a complete cross-account or cross-region disaster-recovery architecture. Replication and failover address that broader requirement."]]
+  },
+  {
+    id: "secure-sharing-policies", tag: "Collaboration · Governance", title: "Secure Data Sharing, masking, and row access policies", summary: "Sharing controls distribution; masking and row policies control what consumers can see.", skill: "secure-sharing-governance",
+    body: [["Share without copying", "Secure Data Sharing gives a consumer governed access to provider data without building a file-export and reload pipeline."], ["Mask columns", "Masking policies change the values a principal sees in protected columns according to policy context."], ["Filter rows", "Row access policies determine which rows are visible. They solve a different problem from masking."], ["Reader accounts", "Reader accounts can support consumers that do not maintain their own Snowflake account. They are a consumption pattern, not a substitute for governance design."]]
+  },
+  {
+    id: "streams-tasks", tag: "Pipelines · Incremental", title: "Streams answer what changed; tasks answer when to run", summary: "The simplest reliable mental model for incremental Snowflake pipelines.", skill: "streams-tasks-incremental",
+    body: [["Streams", "A stream exposes change data relative to its offset. It is designed for incremental processing, not as a permanent immutable audit-history table."], ["Tasks", "Tasks schedule SQL or procedural work and can form dependency graphs. They orchestrate processing but do not themselves track source-row changes."], ["Use them together", "A common pattern is a stream on the source plus a task that conditionally MERGEs changes into a target. SYSTEM$STREAM_HAS_DATA can help avoid unnecessary scheduled work."], ["Make retries safe", "Operational pipelines fail and retry. MERGE logic and downstream actions should be designed so re-execution does not duplicate or corrupt data."]]
+  }
 ];
 
 export default async function mount(container, params = {}) {
+  const trackId = params.track_id || activeTrack();
   const selected = articles.find((item) => item.id === params.id);
-  if (selected) {
-    container.innerHTML = articlePage(selected);
-    return;
-  }
-  container.innerHTML = `
-    <div class="replica-page replica-enter">
-      <section class="replica-page-heading compact-heading">
-        <p class="replica-kicker">Journal</p>
-        <h1>Articles &amp; study guides.</h1>
-        <p>Focused explanations for Snowflake certification, data engineering, production AI, and architecture decisions.</p>
-      </section>
-      <section class="replica-journal-grid">
-        ${articles.map((item, index) => `
-          <a class="replica-article-card accent-${index + 1}" href="#/article?id=${encodeURIComponent(item.id)}">
-            <span>${escapeHtml(item.tag)}</span>
-            <h2>${escapeHtml(item.title)}</h2>
-            <p>${escapeHtml(item.summary)}</p>
-            <small>Study guide · 6 min ↗</small>
-          </a>`).join("")}
-      </section>
-    </div>`;
+  if (selected) { container.innerHTML = articlePage(selected, trackId); return; }
+  container.innerHTML = `<div class="replica-page replica-enter"><section class="replica-page-heading compact-heading"><p class="replica-kicker">Snowflake Certification Blog</p><h1>Exam guides &amp; technical deep dives.</h1><p>Original Snowflake explanations organized around the same task lessons, decision rules, and exam traps used throughout the certification studio.</p></section><section class="replica-journal-grid">${articles.map((item, index) => `<a class="replica-article-card accent-${(index % 3) + 1}" href="#/article?id=${encodeURIComponent(item.id)}&track_id=${encodeURIComponent(trackId)}"><span>${escapeHtml(item.tag)}</span><h2>${escapeHtml(item.title)}</h2><p>${escapeHtml(item.summary)}</p><small>Certification guide · Read →</small></a>`).join("")}</section></div>`;
 }
 
-function articlePage(article) {
-  return `
-    <article class="replica-article replica-enter">
-      <a class="replica-back-link" href="#/journal">← Journal</a>
-      <header><p class="replica-kicker">${escapeHtml(article.tag)}</p><h1>${escapeHtml(article.title)}</h1><p>${escapeHtml(article.summary)}</p></header>
-      ${article.body.map(([title, copy]) => `<section><h2>${escapeHtml(title)}</h2><p>${escapeHtml(copy)}</p></section>`).join("")}
-      <footer><span>Generated English study guide</span><a href="#/practice">Practise this topic →</a></footer>
-    </article>`;
+function articlePage(article, trackId) {
+  const lessonTrack = trackId || "snowpro-core";
+  return `<article class="replica-article replica-enter"><a class="replica-back-link" href="#/journal?track_id=${encodeURIComponent(lessonTrack)}">← Blog</a><header><p class="replica-kicker">${escapeHtml(article.tag)}</p><h1>${escapeHtml(article.title)}</h1><p>${escapeHtml(article.summary)}</p></header>${article.body.map(([title, copy]) => `<section><h2>${escapeHtml(title)}</h2><p>${escapeHtml(copy)}</p></section>`).join("")}<footer><span>Snowflake certification editorial</span><a href="#/skill?track_id=snowpro-core&skill_id=${encodeURIComponent(article.skill)}">Study the linked task →</a></footer></article>`;
 }
-
