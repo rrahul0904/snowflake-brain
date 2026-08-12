@@ -1,15 +1,14 @@
 const items = [
   ["#/curriculum", "Curriculum"],
-  ["#/practice", "Practice"],
-  ["#/reference", "Reference"],
-  ["#/journal", "Journal"],
-  ["#/progress", "Progress"],
+  ["#/mock", "Practice"],
+  ["#/quick-reference", "Reference"],
+  ["#/journal", "Blog"],
 ];
 
 const aliases = new Map([
   ["#/", "#/home"],
   ["#/command", "#/home"],
-  ["#/today", "#/progress"],
+  ["#/today", "#/curriculum"],
   ["#/academy", "#/curriculum"],
   ["#/learn", "#/curriculum"],
   ["#/lessons", "#/curriculum"],
@@ -18,19 +17,22 @@ const aliases = new Map([
   ["#/skill", "#/curriculum"],
   ["#/lesson", "#/curriculum"],
   ["#/video", "#/curriculum"],
-  ["#/quiz", "#/practice"],
-  ["#/diagnostic", "#/practice"],
-  ["#/exercises", "#/practice"],
-  ["#/labs", "#/practice"],
-  ["#/readiness", "#/progress"],
-  ["#/intelligence", "#/progress"],
-  ["#/analytics", "#/progress"],
+  ["#/quiz", "#/mock"],
+  ["#/practice", "#/mock"],
+  ["#/diagnostic", "#/mock"],
+  ["#/drill", "#/mock"],
+  ["#/exercises", "#/mock"],
+  ["#/labs", "#/mock"],
+  ["#/progress", "#/curriculum"],
+  ["#/readiness", "#/curriculum"],
+  ["#/intelligence", "#/curriculum"],
+  ["#/analytics", "#/curriculum"],
+  ["#/search", "#/quick-reference"],
+  ["#/reference", "#/quick-reference"],
+  ["#/glossary", "#/quick-reference"],
+  ["#/ai", "#/quick-reference"],
+  ["#/review", "#/mock"],
   ["#/career", "#/journal"],
-  ["#/search", "#/reference"],
-  ["#/quick-reference", "#/reference"],
-  ["#/glossary", "#/reference"],
-  ["#/ai", "#/reference"],
-  ["#/review", "#/practice"],
 ]);
 
 export async function renderNav() {
@@ -38,7 +40,7 @@ export async function renderNav() {
   nav.className = "replica-header";
   nav.innerHTML = `
     <div class="replica-nav-inner">
-      <a class="replica-brand" href="#/home" aria-label="Snowflake Certification Studio home">
+      <a class="replica-brand" href="#/home" aria-label="Snowflake Certification Guide home">
         <span class="replica-brand-mark" aria-hidden="true">S</span>
         <span>Snowflake Certified</span>
       </a>
@@ -48,7 +50,7 @@ export async function renderNav() {
       </div>
       <div class="replica-nav-actions">
         <label class="replica-cert-control"><span class="sr-only">Certification</span><select id="replica-track-select" aria-label="Certification"><option>Loading certifications...</option></select></label>
-        <a class="replica-primary-action" href="#/practice">Mock Exam</a>
+        <a class="replica-primary-action" href="#/mock">Mock Exam</a>
       </div>
     </div>
   `;
