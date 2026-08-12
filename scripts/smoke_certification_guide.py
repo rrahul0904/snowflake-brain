@@ -21,20 +21,22 @@ from app.main import app
 
 REQUIRED_CONTENT_KEYS = {"summary", "what_you_need_to_know", "key_concept", "decision_rules", "anti_patterns", "trap_explanations", "worked_example", "scenario", "build_exercise", "sources"}
 EXPECTED_OFFICIAL = {"associate-platform", "snowpro-core", "snowpark", "native-apps", "cortex-genai", "advanced-architect", "advanced-security-engineer", "advanced-data-engineer", "advanced-data-scientist", "advanced-administrator", "advanced-data-analyst"}
+CORE_WEIGHTS = [31, 20, 18, 21, 10]
+CORE_TASK_CODES = ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "2.1", "2.2", "2.3", "3.1", "3.2", "3.3", "4.1", "4.2", "4.3", "4.4", "5.1", "5.2", "5.3"]
 
 
 def seed_reviewed_core_questions() -> None:
     samples = [
-        ("q-rbac-1", "rbac-role-hierarchy", "account-security", "Which RBAC design follows least privilege?"),
-        ("q-auth-1", "network-policy-authentication", "account-security", "Which control restricts allowed network origins?"),
-        ("q-wh-1", "warehouse-cost-control", "virtual-warehouses", "Which warehouse change best addresses concurrency queueing?"),
-        ("q-perf-1", "query-performance-history", "virtual-warehouses", "What should you inspect for poor pruning?"),
-        ("q-copy-1", "stage-file-format-copy", "data-loading", "Which object stores reusable CSV parsing rules?"),
-        ("q-pipe-1", "snowpipe-continuous-load", "data-loading", "Which service continuously loads new cloud files?"),
-        ("q-var-1", "variant-flatten-json", "semi-structured-data", "Which table function expands a JSON array?"),
-        ("q-tt-1", "time-travel-clone-failsafe", "continuity-governance-sharing", "Which feature queries historical data in retention?"),
-        ("q-share-1", "secure-sharing-governance", "continuity-governance-sharing", "How do accounts share live governed data without copies?"),
-        ("q-stream-1", "streams-tasks-incremental", "data-pipelines", "Which object exposes changed rows?"),
+        ("q-feature-1", "ai-data-cloud-features", "features-architecture", "Which Snowflake design separates shared data from independent compute?"),
+        ("q-arch-1", "three-layer-architecture", "features-architecture", "Which architectural layer provides virtual warehouse compute?"),
+        ("q-security-1", "security-access-principles", "account-governance", "Which security design follows least privilege through roles?"),
+        ("q-gov-1", "data-governance-policies", "account-governance", "Which policy filters rows based on user context?"),
+        ("q-load-1", "bulk-load-unload", "loading-connectivity", "Which object stores reusable CSV parsing rules?"),
+        ("q-ingest-1", "automated-ingestion-pipelines", "loading-connectivity", "Which service loads newly arriving staged files continuously?"),
+        ("q-perf-1", "query-performance-optimization", "performance-transformation", "What should you inspect when pruning is poor?"),
+        ("q-wh-1", "warehouse-sizing-scaling", "performance-transformation", "Which warehouse change best addresses concurrency queueing?"),
+        ("q-tt-1", "time-travel-failsafe", "data-collaboration", "Which feature queries historical table state inside retention?"),
+        ("q-share-1", "secure-sharing-collaboration", "data-collaboration", "How can accounts share live governed data without an export-copy pipeline?"),
     ]
     with connect() as conn:
         conn.execute("INSERT OR IGNORE INTO certification_tracks(id, title, description, position) VALUES ('snowpro-core','SnowPro Core','',1)")
@@ -90,13 +92,21 @@ def main() -> None:
         for track_id in ["associate-platform", "native-apps", "advanced-security-engineer", "advanced-data-scientist", "advanced-administrator", "advanced-data-analyst"]:
             assert mapped[track_id]["weight_source"] == "normalized_public_overview"
 
+        core = mapped["snowpro-core"]
+        assert [int(domain["weight"]) for domain in core["domains"]] == CORE_WEIGHTS
+        core_tasks = [skill for domain in core["domains"] for skill in domain.get("skills", [])]
+        assert len(core_tasks) == 19
+        assert [skill.get("task_code") for skill in core_tasks] == CORE_TASK_CODES
+        assert core.get("blueprint_version") == "2026-08-12-cof-c03-blueprint-v1"
+
         coverage = client.get("/api/skills/content-coverage")
         assert coverage.status_code == 200, coverage.text
         coverage_body = coverage.json()
         assert coverage_body["official_tracks"] == 11
         core_coverage = next(row for row in coverage_body["tracks"] if row["track_id"] == "snowpro-core")
-        assert core_coverage["tasks"] == 10
-        assert core_coverage["curated_tasks"] == 10
+        assert core_coverage["tasks"] == 19
+        assert core_coverage["curated_tasks"] == 19
+        assert core_coverage["generated_tasks"] == 0
         assert all(row["usable_tasks"] == row["tasks"] and row["tasks"] > 0 for row in coverage_body["tracks"])
 
         for cert in certifications:
@@ -110,6 +120,7 @@ def main() -> None:
                     assert body["content"]["sources"]
                     if cert["id"] == "snowpro-core":
                         assert body["content_quality"] == "curated"
+                        assert body["content_version"] == "2026-08-12-core-c03-v2-full-19-task-guide"
 
         # Every official certification must be able to supply a full-size unique mock on a clean database.
         for track_id in sorted(EXPECTED_OFFICIAL):
@@ -121,9 +132,9 @@ def main() -> None:
             assert len({question["id"] for question in full_body["questions"]}) == 65, track_id
             assert full_body["mapping_provenance"].get("persisted_high_confidence", 0) > 0, track_id
 
-        cert = mapped["snowpro-core"]
+        cert = core
         track_id = cert["id"]
-        skills = [skill for domain in cert.get("domains", []) for skill in domain.get("skills", [])]
+        skills = core_tasks
         skill_id = skills[0]["id"]
 
         before = client.get("/api/skills/task-progress", params={"track_id": track_id})
@@ -135,18 +146,18 @@ def main() -> None:
 
         seed_reviewed_core_questions()
 
-        targeted = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "drill", "skill_id": "warehouse-cost-control", "count": 1})
+        targeted = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "drill", "skill_id": "warehouse-sizing-scaling", "count": 1})
         assert targeted.status_code == 200, targeted.text
         target_body = targeted.json()
         assert target_body["selection_strategy"] == "skill_targeted"
         assert target_body["total"] == 1
-        assert "warehouse-cost-control" in target_body["skill_ids"]
+        assert "warehouse-sizing-scaling" in target_body["skill_ids"]
         assert target_body["mapping_provenance"].get("human_reviewed") == 1, target_body
 
         diagnostic = client.post("/api/certification-quiz/start", json={"track_id": track_id, "mode": "diagnostic", "count": 30})
         assert diagnostic.status_code == 200, diagnostic.text
         assert diagnostic.json()["selection_strategy"] == "domain_balanced"
-        assert len(diagnostic.json()["domain_counts"]) >= 6
+        assert len(diagnostic.json()["domain_counts"]) >= 5
 
         mock_record = client.post("/api/certification-mock/record", json={"track_id": track_id, "mode": "full-mock", "score": 52, "total": 65, "elapsed_seconds": 6000, "selection_strategy": "blueprint_weighted"})
         assert mock_record.status_code == 200, mock_record.text
@@ -176,7 +187,7 @@ def main() -> None:
         invalid = client.post("/api/skills/task-progress", json={"track_id": track_id, "skill_id": "missing-skill", "completed": True})
         assert invalid.status_code == 404, invalid.text
 
-    print("Complete all-certification Snowflake product smoke passed.")
+    print("Complete all-certification Snowflake product smoke passed with canonical 19-task COF-C03 Core guide.")
 
 
 if __name__ == "__main__":
