@@ -7,13 +7,22 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .config import CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG, SKILL_MAP_CONFIG
+from .config import CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG, CORE_C03_BLUEPRINT_CONFIG, SKILL_MAP_CONFIG
 
 
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {"version": "missing", "certifications": []}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def load_core_c03_blueprint() -> dict[str, Any]:
+    """Load the current canonical SnowPro Core COF-C03 exam blueprint."""
+    data = _read_json(CORE_C03_BLUEPRINT_CONFIG)
+    data.setdefault("track_id", "snowpro-core")
+    data.setdefault("domains", [])
+    return data
 
 
 @lru_cache(maxsize=1)
@@ -26,6 +35,25 @@ def load_skill_map() -> dict[str, Any]:
         if cert.get("id") not in existing:
             data["certifications"].append(copy.deepcopy(cert))
             existing.add(cert.get("id"))
+
+    # The historical skill-map file predates COF-C03 and contains the older six-domain
+    # SnowPro Core taxonomy. Replace only the Core curriculum with the versioned current
+    # blueprint so curriculum, question mapping, mastery, drill, and readiness all resolve
+    # against the same five-domain / 19-task exam model.
+    core_blueprint = load_core_c03_blueprint()
+    if core_blueprint.get("domains"):
+        track_id = core_blueprint.get("track_id") or "snowpro-core"
+        for cert in data["certifications"]:
+            if cert.get("id") != track_id:
+                continue
+            cert["domains"] = copy.deepcopy(core_blueprint["domains"])
+            cert["exam_code"] = core_blueprint.get("exam_code") or cert.get("exam_code")
+            cert["weight_source"] = core_blueprint.get("weight_source") or "cof_c03_blueprint"
+            cert["blueprint_version"] = core_blueprint.get("version")
+            cert["blueprint_source"] = copy.deepcopy(core_blueprint.get("source") or {})
+            break
+        data["core_blueprint_version"] = core_blueprint.get("version")
+
     data["supplement_version"] = supplement.get("version")
     data["weight_note"] = supplement.get("weight_note")
     return data
