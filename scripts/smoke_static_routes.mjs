@@ -6,29 +6,81 @@ import { fileURLToPath } from "url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const router = fs.readFileSync(path.join(root, "frontend", "router.js"), "utf8");
 const index = fs.readFileSync(path.join(root, "frontend", "index.html"), "utf8");
-const required = ["command", "career", "academy", "intelligence", "video", "quiz", "labs", "readiness", "search", "flashcards", "analytics", "ai"];
+const app = fs.readFileSync(path.join(root, "frontend", "app.js"), "utf8");
 const failures = [];
+const assetVersion = "20260731-v21-editorial-replica";
 
-if (!router.includes('ASSET_VERSION = "20260714-v20-ai-academy"')) failures.push("router asset version is not v20 AI Academy");
-if (!index.includes("20260714-v20-ai-academy")) failures.push("index.html does not reference v20 AI Academy assets");
-if (/overhaulv8|recoveryv9/.test(router + index)) failures.push("stale v8/v9 asset version found in router/index");
-if (!router.includes('"#/learn": () => import(`./views/video.js?v=${ASSET_VERSION}`)')) failures.push("Learn route must load video.js");
-if (!router.includes('"#/practice": () => import(`./views/quiz.js?v=${ASSET_VERSION}`)')) failures.push("Practice route must load quiz.js");
-if (!router.includes('"#/career": () => import(`./views/career.js?v=${ASSET_VERSION}`)')) failures.push("Career route must load career.js");
-if (!router.includes('"#/academy": () => import(`./views/academy.js?v=${ASSET_VERSION}`)')) failures.push("Academy route must load academy.js");
-const video = fs.readFileSync(path.join(root, "frontend", "views", "video.js"), "utf8");
-const quiz = fs.readFileSync(path.join(root, "frontend", "views", "quiz.js"), "utf8");
-if (!video.includes('VIEW_ID = "learn"')) failures.push("video.js must identify as learn view");
-if (!video.includes("Watch the actual lessons") || !video.includes("video-stage")) failures.push("video.js no longer contains the real course player");
-if (video.includes("Timed practice, source tests, and diagnostic evidence")) failures.push("video.js appears to contain Exam Studio content");
-if (!quiz.includes('VIEW_ID = "practice"')) failures.push("quiz.js must identify as practice view");
+const routes = [
+  ["#/curriculum", "curriculum.js", "curriculum"],
+  ["#/lesson", "lesson.js", "lesson"],
+  ["#/practice", "quiz.js", "practice"],
+  ["#/reference", "reference.js", "reference"],
+  ["#/journal", "journal.js", "journal"],
+  ["#/article", "journal.js", "journal"],
+];
 
-for (const name of required) {
-  const file = path.join(root, "frontend", "views", `${name}.js`);
-  if (!fs.existsSync(file)) failures.push(`missing route view ${name}.js`);
-  const body = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-  if (/overhaulv8|recoveryv9/.test(body)) failures.push(`stale asset import in ${name}.js`);
-  if (!/export default async function mount|export default function mount/.test(body)) failures.push(`view ${name}.js lacks default mount export`);
+const aliases = {
+  "#/": "#/curriculum",
+  "#/command": "#/curriculum",
+  "#/today": "#/curriculum",
+  "#/academy": "#/curriculum",
+  "#/intelligence": "#/curriculum",
+  "#/learn": "#/lesson",
+  "#/video": "#/lesson",
+  "#/quiz": "#/practice",
+  "#/readiness": "#/practice",
+  "#/career": "#/journal",
+  "#/search": "#/reference",
+  "#/ai": "#/reference",
+};
+
+if (!router.includes(`const ASSET_VERSION = "${assetVersion}"`)) {
+  failures.push(`router asset version is not ${assetVersion}`);
+}
+if (!index.includes(`/static/app.js?v=${assetVersion}`)) {
+  failures.push("index.html does not load the v21 application entry point");
+}
+if (!index.includes(`/static/replica.css?v=${assetVersion}`)) {
+  failures.push("index.html does not load the v21 editorial stylesheet");
+}
+if (!app.includes(`./router.js?v=${assetVersion}`)) {
+  failures.push("app.js does not load the v21 router");
+}
+if (!index.includes("<title>Snowflake Certification Studio</title>")) {
+  failures.push("index.html is missing the current product title");
+}
+
+for (const [route, moduleName, viewId] of routes) {
+  const expected = `"${route}": () => import(\`./views/${moduleName}?v=\${ASSET_VERSION}\`)`;
+  if (!router.includes(expected)) {
+    failures.push(`${route} must load ${moduleName}`);
+  }
+
+  const file = path.join(root, "frontend", "views", moduleName);
+  if (!fs.existsSync(file)) {
+    failures.push(`missing routed view ${moduleName}`);
+    continue;
+  }
+  const body = fs.readFileSync(file, "utf8");
+  if (!body.includes(`export const VIEW_ID = "${viewId}"`)) {
+    failures.push(`${moduleName} must identify as ${viewId}`);
+  }
+  if (!/export default async function mount|export default function mount/.test(body)) {
+    failures.push(`${moduleName} lacks a default mount export`);
+  }
+}
+
+for (const [legacyRoute, targetRoute] of Object.entries(aliases)) {
+  if (!router.includes(`"${legacyRoute}": "${targetRoute}"`)) {
+    failures.push(`legacy alias ${legacyRoute} must resolve to ${targetRoute}`);
+  }
+}
+
+if (!router.includes('routes["#/curriculum"]')) {
+  failures.push("unknown routes must fall back to curriculum");
+}
+if (!router.includes("window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__")) {
+  failures.push("router must expose route health status for browser smoke tests");
 }
 
 if (failures.length) {
@@ -36,4 +88,5 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Static route smoke passed.");
+
+console.log("Static route smoke passed for v21 editorial workspace.");
