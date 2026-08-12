@@ -1,263 +1,851 @@
 {
-  "version": "2026-08-12-core-c03-v1",
+  "version": "2026-08-12-core-c03-v2-full-19-task-guide",
   "track_id": "snowpro-core",
+  "exam_code": "COF-C03",
+  "verified_on": "2026-08-12",
+  "source_policy": "Editorial study content is independently written and grounded in current Snowflake documentation. Exam-blueprint scope is versioned separately in snowpro_core_cof_c03_blueprint.json.",
   "skills": {
-    "rbac-role-hierarchy": {
-      "summary": "Snowflake access control is role based: privileges are granted to roles, roles are granted to users or other roles, and ownership determines who controls an object. Exam questions usually test the difference between functional roles, access roles, inherited privileges, and ownership.",
+    "ai-data-cloud-features": {
+      "summary": "Snowflake is a managed AI Data Cloud platform rather than only a SQL warehouse. The Core exam expects you to recognize the advantages created by shared governed data, independent elastic compute, cross-cloud availability, collaboration, application development, and AI services without managing traditional infrastructure.",
       "what_you_need_to_know": [
-        "Prefer granting privileges to roles instead of directly to users.",
-        "Role hierarchies let higher-level roles inherit privileges from lower-level roles.",
-        "Object OWNERSHIP is a single powerful privilege and is distinct from ordinary object privileges such as SELECT or USAGE.",
-        "USAGE on parent containers is commonly required before a role can use privileges on child objects.",
-        "Managed access schemas centralize grant management with the schema owner or a role with MANAGE GRANTS.",
-        "Least privilege means giving a role only the privileges and scope required for its job."
+        "Snowflake separates persistent data from compute so multiple workloads can use the same governed data without sharing the same warehouse resources.",
+        "Snowflake is delivered as a managed cloud service; users manage logical objects, access, compute choices, and workloads rather than database servers and storage infrastructure.",
+        "Independent virtual warehouses support workload isolation and elastic compute for analytics, ingestion, transformation, data science, and application workloads.",
+        "Secure collaboration features let organizations share or publish governed data without relying on repeated file exports and copied pipelines.",
+        "Snowflake extends beyond SQL analytics through Snowpark, Streamlit, Notebooks, Cortex AI, machine-learning capabilities, and Native Apps.",
+        "Cross-region and cross-cloud capabilities exist, but not every feature or object automatically becomes global; replication, listings, and account design still matter."
       ],
-      "key_concept": "Model access around roles and inheritance. A user should normally receive job-oriented roles; those roles inherit narrower access roles that own or receive privileges on Snowflake objects.",
+      "key_concept": "When an exam scenario asks why Snowflake can serve many workloads on the same data, think shared governed storage plus independent elastic compute and managed cloud services—not separate physical databases for every workload.",
       "decision_rules": [
-        {"when": "A user needs access to a table", "choose": "Grant privileges to an appropriate role, then grant the role to the user", "why": "Role-based grants are auditable, reusable, and easier to revoke."},
-        {"when": "Many teams need consistent grants inside a schema", "choose": "Consider a managed access schema", "why": "Grant authority is centralized instead of distributed across individual object owners."},
-        {"when": "A role must control an object", "choose": "Transfer OWNERSHIP deliberately", "why": "Ownership changes authority and must be handled differently from ordinary grants."}
+        {"when": "Two teams need different performance characteristics against the same governed data", "choose": "Separate virtual warehouses over the same data", "why": "Compute can be isolated without making duplicate table copies merely for workload separation."},
+        {"when": "A partner needs governed access to a provider's current data", "choose": "Evaluate Snowflake collaboration/sharing features", "why": "They are designed to provide controlled access without a traditional export-copy-import loop."},
+        {"when": "A requirement combines data, application logic, and AI inside Snowflake", "choose": "Evaluate native Snowflake platform capabilities before exporting the workload", "why": "The AI Data Cloud includes developer and AI services alongside governed data."}
       ],
       "anti_patterns": [
-        "Granting broad privileges directly to individual users.",
-        "Using ACCOUNTADMIN as a normal working role.",
-        "Treating OWNERSHIP as if it were only another SELECT-like privilege."
+        "Describing Snowflake as a server cluster whose storage must be manually attached to compute nodes.",
+        "Creating duplicate databases only because two workloads need separate compute performance.",
+        "Assuming every capability is available identically in every region, cloud, account, and edition."
       ],
       "trap_explanations": [
-        {"trap": "Functional roles and access roles are interchangeable labels.", "correction": "Functional roles represent job responsibilities; access roles usually encapsulate privileges to a resource. They can be composed through hierarchy."},
-        {"trap": "Granting a privilege on a table is always sufficient.", "correction": "The active role may also need access to the containing database/schema and an active warehouse for compute."}
+        {"trap": "Workload isolation requires separate copies of the data.", "correction": "Independent warehouses can query the same Snowflake data while isolating compute resources."},
+        {"trap": "Snowflake is only a cloud data warehouse.", "correction": "The current platform also includes collaboration, application-development, AI/ML, governance, ingestion, and engineering capabilities."}
       ],
       "worked_example": {
-        "scenario": "Analysts need read access to curated tables but should not own them or receive grants individually.",
-        "reasoning": ["Create or reuse a narrow read-access role for the curated schema.", "Grant required container USAGE and table SELECT privileges to that role.", "Grant the access role to the analyst functional role, then grant the functional role to users."],
-        "answer": "Use a layered RBAC model rather than direct user grants."
+        "scenario": "Finance runs predictable reporting while data scientists run bursty experimentation on the same curated tables. Finance performance must not be disrupted by experimentation.",
+        "reasoning": ["The data does not need to be copied simply to isolate compute.", "Give the two workloads separate warehouses sized and governed for their needs.", "Keep access to the governed data controlled through roles and policies."],
+        "answer": "Use independent warehouses against the same governed Snowflake data."
       },
       "scenario": {
-        "question": "A new analyst needs read-only access to a governed reporting schema. Which design best follows Snowflake least-privilege practice?",
-        "options": ["Grant SELECT on every table directly to the user", "Grant ACCOUNTADMIN to the user during business hours", "Grant the required privileges to a role and grant that role through the analyst role hierarchy", "Transfer table ownership to the analyst"],
-        "correct_index": 2,
-        "explanation": "Privileges should normally be granted to roles and inherited through a role hierarchy. Direct user grants and elevated administrative roles make access harder to govern."
+        "question": "Two business units need to query the same governed tables, but one unit's heavy workload must not consume the other's compute capacity. Which Snowflake characteristic most directly supports this?",
+        "options": ["Every team receives a physical copy of each database", "Compute can be isolated in independent virtual warehouses while data remains shared", "All queries must run through one account warehouse", "Data must be unloaded before a second workload can query it"],
+        "correct_index": 1,
+        "explanation": "Snowflake separates compute from persistent data, allowing independent warehouses to access the same governed objects while isolating compute resources."
       },
       "build_exercise": {
-        "title": "Design a least-privilege analyst role hierarchy",
-        "prompt": "Write SQL that creates an access role for read-only access to ANALYTICS.CURATED, grants it to an ANALYST functional role, and avoids direct user privileges.",
-        "starter_sql": "CREATE ROLE IF NOT EXISTS ANALYTICS_READER;\nCREATE ROLE IF NOT EXISTS ANALYST;\n-- add least-privilege grants\n",
-        "checks": ["Database and schema USAGE are granted", "SELECT is granted to a role rather than a user", "The access role is granted into the functional role"]
+        "title": "Design two isolated workloads over shared data",
+        "prompt": "Sketch a Snowflake design for BI and data-science teams that share CURATED.SALES but require separate compute, roles, and cost attribution.",
+        "starter_sql": "-- Example compute isolation\nCREATE WAREHOUSE IF NOT EXISTS BI_WH AUTO_SUSPEND = 60 AUTO_RESUME = TRUE;\nCREATE WAREHOUSE IF NOT EXISTS DS_WH AUTO_SUSPEND = 60 AUTO_RESUME = TRUE;\n-- Add role and usage grants for the shared governed data.\n",
+        "checks": ["The design uses separate compute rather than duplicate tables", "Access is granted through roles", "Each warehouse can be monitored and cost-attributed independently"]
       },
       "sources": [
-        {"title": "Snowflake access control overview", "url": "https://docs.snowflake.com/en/user-guide/security-access-control-overview"}
+        {"title": "Snowflake key concepts and architecture", "url": "https://docs.snowflake.com/en/user-guide/intro-key-concepts"}
       ]
     },
-    "network-policy-authentication": {
-      "summary": "Authentication proves who a principal is; network policies restrict where connections may originate; federation, MFA, OAuth, and SCIM solve different identity and lifecycle problems. Exam questions often combine these controls in one scenario.",
+    "three-layer-architecture": {
+      "summary": "Snowflake's architecture is commonly reasoned about as database storage, query-processing compute, and cloud services. Knowing which layer owns a responsibility is essential for questions about scaling, caching, metadata, authentication, optimization, and workload isolation.",
       "what_you_need_to_know": [
-        "Network policies control allowed or blocked network locations; they are not an identity provider.",
-        "MFA adds an authentication factor and should not be confused with network restriction.",
-        "SSO/federation delegates authentication to an identity provider through a security integration.",
-        "OAuth is used for delegated/token-based access patterns.",
-        "SCIM automates identity and group provisioning; it does not authenticate an interactive session by itself.",
-        "Security controls can exist at account and user scope, so understand which policy takes precedence in a scenario."
+        "The storage layer persists Snowflake-managed table data and organizes it into immutable micro-partitions with metadata used for pruning and optimization.",
+        "Virtual warehouses provide compute for many SQL and data-processing operations and can be started, stopped, resized, or separated by workload.",
+        "The cloud-services layer coordinates platform functions such as authentication, metadata, query parsing/optimization, access control, and transaction management.",
+        "Multiple warehouses can query the same stored data because warehouse compute is not where the durable table data lives.",
+        "A warehouse has local cache behavior that is different from persisted query-result reuse and metadata-based optimization.",
+        "Some Snowflake features use serverless or Snowflake-managed compute instead of a user-created virtual warehouse, so do not assume every operation consumes warehouse credits."
       ],
-      "key_concept": "Choose the control that matches the problem: identity proof, identity lifecycle, token authorization, or network-origin restriction.",
+      "key_concept": "Map each requirement to its layer: durable data belongs to storage, user-managed query compute belongs to virtual warehouses, and coordination/metadata/security functions are cloud services.",
       "decision_rules": [
-        {"when": "The requirement is to allow connections only from corporate egress IPs", "choose": "Network policy", "why": "The constraint is network origin, not user identity."},
-        {"when": "Users should authenticate through the enterprise identity provider", "choose": "Federated SSO/security integration", "why": "Authentication is delegated to the IdP."},
-        {"when": "Users and groups must be provisioned automatically", "choose": "SCIM", "why": "SCIM manages identity lifecycle and group membership."}
+        {"when": "A query workload needs more or isolated compute", "choose": "Change or isolate the virtual warehouse", "why": "Warehouse compute can be changed without redistributing the underlying table storage."},
+        {"when": "The question is about persisted table data or micro-partitions", "choose": "Reason about the storage layer", "why": "Durable Snowflake table data is independent of a particular warehouse."},
+        {"when": "The scenario concerns metadata, authentication, access control, or query optimization coordination", "choose": "Reason about cloud services", "why": "These platform-control responsibilities are not the warehouse's durable data store."}
       ],
-      "anti_patterns": ["Using a network policy as a substitute for MFA.", "Assuming SCIM authenticates browser sessions.", "Leaving service integrations with broader network access than required."],
+      "anti_patterns": ["Assuming suspending a warehouse removes table data.", "Assuming every warehouse maintains its own permanent copy of tables.", "Treating result cache and warehouse-local cache as the same mechanism."],
       "trap_explanations": [
-        {"trap": "MFA and a network policy solve the same problem.", "correction": "MFA strengthens authentication; a network policy filters connection origins."}
+        {"trap": "A suspended warehouse makes its databases unavailable because the warehouse stores them.", "correction": "Warehouses provide compute; persistent Snowflake table data remains in storage."},
+        {"trap": "Adding a second warehouse duplicates storage automatically.", "correction": "Warehouses can independently query the same persistent Snowflake objects."}
       ],
-      "worked_example": {"scenario": "A company uses Okta for workforce identities and wants Snowflake users automatically created and removed.", "reasoning": ["SSO handles login.", "SCIM handles provisioning/deprovisioning.", "A network policy can be layered separately if location restrictions are required."], "answer": "Use federation for authentication and SCIM for lifecycle management."},
-      "scenario": {"question": "A security team wants to block Snowflake logins from all networks except two corporate CIDR ranges. Which feature directly addresses the requirement?", "options": ["SCIM integration", "Network policy", "Resource monitor", "Masking policy"], "correct_index": 1, "explanation": "Network policies are the Snowflake control for allowed and blocked network origins."},
-      "build_exercise": {"title": "Plan layered authentication controls", "prompt": "Describe which Snowflake control you would use for corporate network restriction, workforce SSO, and automated user provisioning.", "starter_sql": "-- Network policy example\nCREATE NETWORK POLICY corp_only\n  ALLOWED_IP_LIST = ('203.0.113.0/24');\n", "checks": ["Network policy is used for origin restriction", "Federation/SSO is used for interactive identity", "SCIM is used for provisioning"]},
-      "sources": [{"title": "Network policies", "url": "https://docs.snowflake.com/en/user-guide/network-policies"}, {"title": "Federated authentication", "url": "https://docs.snowflake.com/en/user-guide/admin-security-fed-auth-overview"}]
+      "worked_example": {
+        "scenario": "An ETL warehouse is suspended after a nightly load. Analysts later query the same tables using a BI warehouse.",
+        "reasoning": ["The ETL warehouse was compute, not the durable data store.", "The loaded tables remain persisted after ETL_WH suspends.", "BI_WH can independently access the same objects if privileges allow it."],
+        "answer": "No data copy or ETL warehouse restart is required merely to make the tables exist for BI_WH."
+      },
+      "scenario": {
+        "question": "Which Snowflake component most directly provides user-configurable compute resources for SQL queries?",
+        "options": ["Micro-partitions", "Virtual warehouses", "Database schemas", "Fail-safe"],
+        "correct_index": 1,
+        "explanation": "Virtual warehouses are Snowflake compute clusters used for many query and data-processing workloads."
+      },
+      "build_exercise": {
+        "title": "Map Snowflake responsibilities to architectural layers",
+        "prompt": "Classify table persistence, query execution, authentication, query optimization, warehouse cache, and micro-partition metadata into the appropriate architectural responsibility.",
+        "starter_sql": "-- Create two warehouses and reason about which objects persist independently of them.\nCREATE WAREHOUSE IF NOT EXISTS LOAD_WH AUTO_SUSPEND = 60;\nCREATE WAREHOUSE IF NOT EXISTS QUERY_WH AUTO_SUSPEND = 60;\n",
+        "checks": ["Persistent table data is not assigned to a warehouse", "Query execution compute is assigned to a virtual warehouse when applicable", "Cloud-services responsibilities are distinguished from warehouse compute"]
+      },
+      "sources": [
+        {"title": "Snowflake key concepts and architecture", "url": "https://docs.snowflake.com/en/user-guide/intro-key-concepts"},
+        {"title": "Virtual warehouses", "url": "https://docs.snowflake.com/en/user-guide/warehouses"}
+      ]
     },
-    "warehouse-cost-control": {
-      "summary": "Virtual warehouses provide compute. Size controls compute available to work; multi-cluster behavior addresses concurrency; auto-suspend and auto-resume control idle operation; resource monitors and budgets are spend guardrails.",
+    "interfaces-tools": {
+      "summary": "Snowflake can be accessed through Snowsight, command-line tools, drivers, language connectors, APIs, and ecosystem connectors. Core questions test whether you can match the interface to the user or application rather than treating every connection mechanism as equivalent.",
       "what_you_need_to_know": [
-        "Scale up when individual queries need more compute; scale out with multi-cluster when concurrency and queueing are the main problem.",
-        "Auto-suspend stops idle warehouse compute after the configured inactivity period.",
-        "Auto-resume allows a suspended warehouse to start when work arrives.",
-        "A larger warehouse can finish work faster but is not automatically cheaper; compare elapsed time and credits consumed.",
-        "Warehouse caches are lost when the warehouse is suspended, so aggressive suspension has a performance trade-off for some workloads.",
-        "Resource monitors enforce credit thresholds for warehouses but do not optimize SQL."
+        "Snowsight is Snowflake's web interface for worksheets, object exploration, monitoring, administration, and other interactive workflows.",
+        "Snowflake CLI is a developer-oriented command-line interface for Snowflake development and operational workflows; SnowSQL is the classic SQL command-line client.",
+        "JDBC and ODBC drivers support applications and BI tools that use those standard database connectivity interfaces.",
+        "Snowflake provides language connectors such as the Python Connector for applications that need programmatic SQL/session access.",
+        "Kafka and Spark connectors solve ecosystem integration patterns and should not be confused with JDBC/ODBC drivers merely because both connect systems to Snowflake.",
+        "Authentication method, network reachability, role, warehouse, database, and schema context are separate concerns from the choice of client interface."
       ],
-      "key_concept": "Diagnose whether the bottleneck is single-query compute, concurrent queueing, or idle spend before changing the warehouse.",
+      "key_concept": "First identify who or what is connecting—human analyst, command-line operator, application, BI tool, or data platform—then choose the matching interface or connector.",
       "decision_rules": [
-        {"when": "Queries are individually slow and CPU/compute constrained", "choose": "Scale up", "why": "A larger warehouse gives more compute to each query."},
-        {"when": "Queries are healthy but users queue during peaks", "choose": "Scale out / multi-cluster", "why": "Additional clusters increase concurrency capacity."},
-        {"when": "The warehouse sits idle for long periods", "choose": "Shorter auto-suspend", "why": "Idle compute is a common avoidable cost."}
+        {"when": "A BI product expects a standard database driver", "choose": "JDBC or ODBC as supported by the product", "why": "These are standard application/BI connectivity mechanisms."},
+        {"when": "A Python application must create sessions and execute Snowflake SQL", "choose": "Snowflake Connector for Python or an appropriate Snowpark API", "why": "A language-native connector is designed for programmatic application access."},
+        {"when": "A developer needs command-line Snowflake project workflows", "choose": "Snowflake CLI", "why": "The CLI is designed for current developer-oriented command-line workflows rather than being a GUI or ingestion service."}
       ],
-      "anti_patterns": ["Increasing warehouse size before checking query profile.", "Using multi-cluster to solve one inherently slow query.", "Setting extremely long auto-suspend for sporadic workloads without a cache-based reason."],
+      "anti_patterns": ["Calling a JDBC driver a file-ingestion service.", "Assuming selecting an interface automatically grants access privileges.", "Treating Snowflake CLI, SnowSQL, and Snowsight as interchangeable products with identical purposes."],
       "trap_explanations": [
-        {"trap": "A larger warehouse always lowers cost.", "correction": "Larger warehouses consume credits at a higher rate; savings depend on whether runtime improves enough."},
-        {"trap": "Multi-cluster is the same as resizing.", "correction": "Multi-cluster adds clusters for concurrency; resizing changes the size of compute clusters."}
+        {"trap": "A client driver determines what tables a user may access.", "correction": "Drivers establish connectivity; authorization still depends on Snowflake roles and privileges."},
+        {"trap": "Kafka Connector and ODBC solve the same use case.", "correction": "Kafka Connector integrates Kafka data flows; ODBC provides a standard database connectivity interface for compatible clients."}
       ],
-      "worked_example": {"scenario": "A dashboard has good query runtimes once queries start, but many users see queueing at 9 AM.", "reasoning": ["The issue is concurrency rather than per-query execution time.", "Increasing a single cluster's size is not the first-choice concurrency control.", "Use multi-cluster capacity with appropriate scaling policy."], "answer": "Scale out rather than simply scale up."},
-      "scenario": {"question": "A BI warehouse has short queries but heavy queueing when hundreds of users arrive at once. What is the most direct warehouse change?", "options": ["Increase Time Travel retention", "Enable or expand multi-cluster capacity", "Create a larger file format", "Disable result caching"], "correct_index": 1, "explanation": "Queueing caused by concurrency is addressed by additional warehouse clusters; warehouse resizing is primarily a scale-up decision."},
-      "build_exercise": {"title": "Create a cost-safe reporting warehouse", "prompt": "Create a reporting warehouse with auto-resume, a short auto-suspend period, and conservative multi-cluster settings.", "starter_sql": "CREATE WAREHOUSE IF NOT EXISTS REPORTING_WH\n  WAREHOUSE_SIZE = 'XSMALL'\n  AUTO_SUSPEND = 60\n  AUTO_RESUME = TRUE;\n", "checks": ["AUTO_SUSPEND is explicitly set", "AUTO_RESUME is enabled", "The design distinguishes size from cluster count"]},
-      "sources": [{"title": "Virtual warehouses overview", "url": "https://docs.snowflake.com/en/user-guide/warehouses-overview"}, {"title": "Multi-cluster warehouses", "url": "https://docs.snowflake.com/en/user-guide/warehouses-multicluster"}]
+      "worked_example": {
+        "scenario": "A Tableau deployment needs to execute interactive Snowflake queries using a supported database connectivity standard.",
+        "reasoning": ["The requirement is application/BI query connectivity, not event-stream ingestion.", "Use the supported Snowflake driver mechanism expected by the BI tool.", "Then configure authentication, network access, role, and warehouse separately."],
+        "answer": "Use the appropriate Snowflake ODBC/JDBC connectivity supported by the BI application."
+      },
+      "scenario": {
+        "question": "A Python service needs to open Snowflake sessions and execute SQL programmatically. Which option is the most directly aligned?",
+        "options": ["A masking policy", "Snowflake Connector for Python", "A resource monitor", "A reader account"],
+        "correct_index": 1,
+        "explanation": "The Snowflake Connector for Python is a programmatic client connectivity option for Python applications."
+      },
+      "build_exercise": {
+        "title": "Choose the correct Snowflake interface",
+        "prompt": "For an analyst, a CI/CD shell workflow, a Java service, a Python service, and a Kafka pipeline, choose the most appropriate Snowflake interface or connector and state what authentication still needs to be configured.",
+        "starter_sql": "-- No special SQL is required. Document the interface decision for each persona/workload.\nSELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE();\n",
+        "checks": ["Human web workflow maps to Snowsight", "Java/Python application access maps to suitable drivers/connectors", "Kafka integration is not mislabeled as JDBC/ODBC"]
+      },
+      "sources": [
+        {"title": "Snowflake developer guides", "url": "https://docs.snowflake.com/en/developer-guide"},
+        {"title": "Snowflake CLI", "url": "https://docs.snowflake.com/en/developer-guide/snowflake-cli/index"}
+      ]
     },
-    "query-performance-history": {
-      "summary": "Troubleshooting starts with evidence: query history identifies what ran and how long it took; Query Profile explains execution behavior; pruning, spilling, queueing, and caching indicate different fixes.",
+    "snowflake-editions": {
+      "summary": "Snowflake editions package platform capabilities and service levels; they are not warehouse sizes. For Core, know the progression from Standard to Enterprise to Business Critical and that Virtual Private Snowflake is a distinct isolated offering for specific requirements.",
       "what_you_need_to_know": [
-        "Use Query Profile to identify expensive operators, data movement, pruning effectiveness, and spill behavior.",
-        "Query history and ACCOUNT_USAGE provide operational history; INFORMATION_SCHEMA table functions can be useful for more immediate troubleshooting windows.",
-        "Persisted query result reuse, warehouse-local cache, and metadata services are distinct mechanisms.",
-        "Poor micro-partition pruning can cause excessive scans even when warehouse compute is large.",
-        "Queueing suggests concurrency/warehouse capacity issues; spilling can suggest memory pressure or inefficient operations.",
-        "Tune the query or data layout when evidence points there before reflexively resizing compute."
+        "Standard Edition provides core Snowflake capabilities for many workloads.",
+        "Enterprise Edition adds enterprise-oriented capabilities such as multi-cluster warehouses and additional features beyond Standard.",
+        "Business Critical builds on Enterprise with enhanced security and data-protection capabilities for organizations with stronger regulatory or security requirements.",
+        "Virtual Private Snowflake provides a more isolated Snowflake environment and is not simply the next warehouse size.",
+        "Edition determines feature availability; warehouse size determines compute capacity and credit rate for a warehouse.",
+        "When an exam scenario names a feature or compliance requirement, verify the required edition rather than assuming all features exist in Standard."
       ],
-      "key_concept": "Different performance symptoms have different causes. Read the profile before prescribing a warehouse change.",
+      "key_concept": "Edition answers 'which platform capabilities are licensed/available?'; warehouse size answers 'how much compute does this warehouse provide?'.",
       "decision_rules": [
-        {"when": "Most partitions are scanned for a selective filter", "choose": "Investigate pruning, predicates, and clustering/data layout", "why": "The query is reading more data than necessary."},
-        {"when": "Execution waits in queue but running queries are healthy", "choose": "Investigate concurrency capacity", "why": "The bottleneck is admission/queueing, not the SQL itself."},
-        {"when": "A repeated identical query returns without compute", "choose": "Recognize persisted result reuse", "why": "Result reuse is distinct from warehouse-local cache."}
+        {"when": "The requirement explicitly needs a feature documented as Enterprise or higher", "choose": "Enterprise or an edition above it", "why": "A larger warehouse in Standard does not unlock edition-gated features."},
+        {"when": "The requirement centers on enhanced security/compliance capabilities", "choose": "Evaluate Business Critical", "why": "Business Critical is designed for stronger security and data-protection requirements."},
+        {"when": "The question is only about making a query run with more compute", "choose": "Warehouse sizing, not an edition upgrade", "why": "Compute size and product edition solve different concerns."}
       ],
-      "anti_patterns": ["Benchmarking without controlling for cached results.", "Increasing compute before reading Query Profile.", "Assuming every scan-heavy query needs a clustering key."],
-      "trap_explanations": [{"trap": "All Snowflake caching is one cache.", "correction": "Persisted results, warehouse-local data cache, and metadata optimizations have different lifecycles and effects."}],
-      "worked_example": {"scenario": "A selective date query scans almost every micro-partition.", "reasoning": ["The profile indicates pruning is ineffective.", "Changing warehouse size does not reduce bytes scanned.", "Review predicates and whether clustering/data organization matches access patterns."], "answer": "Fix scan/pruning behavior before scaling compute."},
-      "scenario": {"question": "A query is slow because it scans nearly all micro-partitions despite a selective predicate. What should you investigate first?", "options": ["MFA configuration", "Pruning effectiveness and data organization", "Reader accounts", "Auto-resume"], "correct_index": 1, "explanation": "Excessive scanning for a selective query points to pruning/data-layout behavior, not authentication or warehouse startup."},
-      "build_exercise": {"title": "Diagnose a slow query", "prompt": "Given a Query Profile showing high scan volume and poor pruning, list the evidence you would inspect before changing warehouse size.", "starter_sql": "SELECT *\nFROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY\nWHERE START_TIME >= DATEADD('hour', -1, CURRENT_TIMESTAMP());\n", "checks": ["Inspect bytes/partitions scanned", "Inspect queueing/spilling", "Separate query/data-layout fixes from warehouse sizing"]},
-      "sources": [{"title": "Query Profile", "url": "https://docs.snowflake.com/en/user-guide/ui-query-profile"}, {"title": "QUERY_HISTORY", "url": "https://docs.snowflake.com/en/sql-reference/account-usage/query_history"}]
+      "anti_patterns": ["Calling X-Large an Enterprise edition feature tier.", "Upgrading edition to solve ordinary query CPU pressure without an edition-gated requirement.", "Assuming Standard exposes every governance, security, and scaling feature."],
+      "trap_explanations": [
+        {"trap": "Snowflake edition and virtual warehouse size are two names for the same scale setting.", "correction": "Edition controls platform feature/service availability; warehouse size controls compute resources."},
+        {"trap": "Business Critical is required for every production workload.", "correction": "Choose an edition based on required capabilities and security/compliance needs, not merely because a workload is production."}
+      ],
+      "worked_example": {
+        "scenario": "A workload has hundreds of concurrent BI users and needs multi-cluster warehouse scaling.",
+        "reasoning": ["The requirement is a platform feature, not just a bigger single cluster.", "Check the edition feature matrix for multi-cluster warehouse availability.", "Then configure warehouse min/max clusters separately."],
+        "answer": "Use an edition that supports the required multi-cluster feature and configure the warehouse appropriately."
+      },
+      "scenario": {
+        "question": "Which statement correctly distinguishes a Snowflake edition from a warehouse size?",
+        "options": ["Editions control platform feature availability; warehouse sizes control compute capacity", "Editions and warehouse sizes are synonyms", "Warehouse size determines whether masking policies exist", "Edition determines the number of rows a table may store"],
+        "correct_index": 0,
+        "explanation": "Edition is a platform capability/service tier; warehouse size is a compute sizing choice."
+      },
+      "build_exercise": {
+        "title": "Separate edition requirements from compute requirements",
+        "prompt": "Classify five requirements—more query CPU, multi-cluster concurrency, enhanced compliance/security, shorter idle timeout, and isolated virtual-private deployment—as edition or compute/configuration decisions.",
+        "starter_sql": "-- Inspect warehouse settings separately from account edition decisions.\nSHOW WAREHOUSES;\n",
+        "checks": ["Warehouse size is not treated as an edition", "Feature-gated requirements trigger edition evaluation", "Operational settings such as auto-suspend remain warehouse configuration decisions"]
+      },
+      "sources": [
+        {"title": "Snowflake editions", "url": "https://docs.snowflake.com/en/user-guide/intro-editions"}
+      ]
     },
-    "stage-file-format-copy": {
-      "summary": "Bulk loading usually combines a stage, a file format, and COPY INTO. Know the four common stage scopes, how reusable file formats work, validation/error behavior, and how load metadata prevents accidental duplicate file loading.",
+    "storage-table-view-concepts": {
+      "summary": "Snowflake storage questions span automatic micro-partitioning, pruning and clustering plus a growing set of table and view types. The exam is less about memorizing names than recognizing durability, recovery, ownership of storage, refresh behavior, and the workload each object type is designed for.",
       "what_you_need_to_know": [
-        "Named internal and external stages are reusable objects; table and user stages are implicit stage locations.",
-        "Named file formats centralize parsing options and can be referenced by stages and COPY commands.",
-        "COPY INTO loads files from a stage into a table and supports pattern matching, transformations, validation, and error handling.",
-        "VALIDATION_MODE can inspect files without committing the normal load.",
-        "ON_ERROR controls behavior when parsing/loading errors occur.",
-        "Load history helps Snowflake avoid reloading the same file under normal COPY behavior."
+        "Snowflake automatically organizes table data into micro-partitions and records metadata that helps prune irrelevant partitions during query execution.",
+        "Clustering can improve pruning for selected large-table access patterns, but it is not a default requirement for every table and has maintenance cost.",
+        "Permanent, transient, and temporary tables differ in lifecycle and data-protection characteristics; temporary tables are session-scoped, while transient tables persist until dropped but have reduced recovery protection compared with permanent tables.",
+        "Dynamic tables declaratively refresh query results toward a target freshness/lag and are different from a stream, task, or materialized view.",
+        "Iceberg tables use the Apache Iceberg table format and support architectures where table metadata/data ownership choices differ from standard Snowflake-managed tables.",
+        "Hybrid tables, external tables, ordinary views, secure views, and materialized views solve different access, transactional, external-data, security, and performance patterns."
       ],
-      "key_concept": "Separate location (stage), parsing rules (file format), and load execution (COPY INTO).",
+      "key_concept": "Choose an object type by its semantic contract—lifecycle, storage ownership, refresh behavior, transactional needs, external-data access, or query-performance need—not because its name sounds more advanced.",
       "decision_rules": [
-        {"when": "Many loads use the same CSV parsing rules", "choose": "Named file format", "why": "Parsing configuration becomes reusable and consistent."},
-        {"when": "You need to inspect load errors before committing data", "choose": "Validation options / VALIDATION_MODE", "why": "You can test parsing and error conditions first."},
-        {"when": "Files are in cloud object storage", "choose": "External stage with the appropriate storage integration/credentials pattern", "why": "The stage represents the external location for COPY."}
+        {"when": "A result set should refresh declaratively based on a query and freshness target", "choose": "Dynamic table", "why": "Dynamic tables manage refresh toward a target lag rather than requiring you to hand-code stream consumption and task scheduling for the same pattern."},
+        {"when": "A large table repeatedly suffers poor pruning on a stable selective access pattern", "choose": "Evaluate clustering or another targeted optimization", "why": "Clustering should be justified by pruning benefit relative to maintenance cost."},
+        {"when": "The architecture requires Apache Iceberg interoperability/table format", "choose": "Evaluate Iceberg tables", "why": "Iceberg is a table-format decision, not simply another synonym for a standard Snowflake table."}
       ],
-      "anti_patterns": ["Hard-coding the same file-format options into every COPY statement.", "Confusing a stage with a table.", "Ignoring ON_ERROR semantics in production ingestion."],
-      "trap_explanations": [{"trap": "A file format stores files.", "correction": "A file format stores parsing/serialization options; a stage represents a file location."}, {"trap": "Every stage must be a named object.", "correction": "User and table stages are implicit; named internal/external stages are explicit objects."}],
-      "worked_example": {"scenario": "Ten ingestion jobs load CSV files with identical delimiters and header rules.", "reasoning": ["Create one named CSV file format.", "Create/reuse a stage for the file location.", "Reference the named format from COPY INTO."], "answer": "Use reusable stage/file-format objects instead of repeating parsing options."},
-      "scenario": {"question": "Which Snowflake object primarily stores reusable CSV parsing rules such as field delimiter and skip-header settings?", "options": ["Virtual warehouse", "File format", "Network policy", "Share"], "correct_index": 1, "explanation": "A named file format stores reusable parsing options; stages represent file locations."},
-      "build_exercise": {"title": "Create a reusable bulk-load pattern", "prompt": "Create a named CSV file format, a stage, and a COPY INTO statement that loads a target table.", "starter_sql": "CREATE FILE FORMAT IF NOT EXISTS FF_CSV\n  TYPE = CSV\n  SKIP_HEADER = 1;\n\nCREATE STAGE IF NOT EXISTS LOAD_STAGE\n  FILE_FORMAT = FF_CSV;\n\n-- COPY INTO target table\n", "checks": ["Named file format exists", "Stage references the format", "COPY INTO reads from the stage"]},
-      "sources": [{"title": "Data loading overview", "url": "https://docs.snowflake.com/en/user-guide/data-load-overview"}, {"title": "COPY INTO table", "url": "https://docs.snowflake.com/en/sql-reference/sql/copy-into-table"}]
+      "anti_patterns": ["Defining clustering keys on every table by default.", "Calling a dynamic table a CDC offset object like a stream.", "Treating temporary, transient, and permanent tables as having identical lifecycle and recovery behavior."],
+      "trap_explanations": [
+        {"trap": "Users manually create and manage Snowflake micro-partition boundaries.", "correction": "Snowflake automatically manages micro-partitioning; users reason about pruning and may define clustering where justified."},
+        {"trap": "Dynamic tables and streams are equivalent.", "correction": "A stream records change-tracking information; a dynamic table maintains query results toward a freshness target."}
+      ],
+      "worked_example": {
+        "scenario": "A team wants a derived CUSTOMER_METRICS table refreshed automatically from source tables with a defined freshness target and does not want to orchestrate a task graph manually.",
+        "reasoning": ["The desired object is a maintained query result.", "The requirement is declarative freshness rather than raw CDC offset tracking.", "A dynamic table directly fits this contract."],
+        "answer": "Use a dynamic table if its supported refresh semantics fit the transformation."
+      },
+      "scenario": {
+        "question": "Which Snowflake object is specifically designed to maintain query results automatically toward a configured target lag?",
+        "options": ["Dynamic table", "Network policy", "Resource monitor", "Reader account"],
+        "correct_index": 0,
+        "explanation": "Dynamic tables declaratively maintain query results according to refresh/target-lag semantics."
+      },
+      "build_exercise": {
+        "title": "Choose storage and table objects for four workloads",
+        "prompt": "Choose an object strategy for session scratch data, durable production data, a declaratively refreshed transformation, and an Iceberg-format interoperability requirement. Explain the lifecycle/recovery trade-off for each.",
+        "starter_sql": "CREATE TEMPORARY TABLE session_work(id NUMBER);\n-- Compare with TRANSIENT/PERMANENT and draft a DYNAMIC TABLE statement for a maintained transformation.\n",
+        "checks": ["Temporary and transient lifecycle/recovery are distinguished", "Dynamic table is selected for declarative refresh rather than CDC offset storage", "Clustering is recommended only when an access pattern justifies it"]
+      },
+      "sources": [
+        {"title": "Micro-partitions and data clustering", "url": "https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitions"},
+        {"title": "Dynamic tables", "url": "https://docs.snowflake.com/en/user-guide/dynamic-tables-about"},
+        {"title": "Apache Iceberg tables", "url": "https://docs.snowflake.com/en/user-guide/tables-iceberg"}
+      ]
     },
-    "snowpipe-continuous-load": {
-      "summary": "Snowpipe is Snowflake's serverless file-ingestion service. Auto-ingest uses cloud event notifications to detect new files and a pipe object defines the COPY statement used to load them.",
+    "ai-ml-app-development": {
+      "summary": "COF-C03 explicitly includes Snowflake's AI/ML and application-development surface. You should be able to distinguish Snowpark, Notebooks, Streamlit in Snowflake, Cortex AI functions, Cortex Search, Cortex Analyst, Document AI, and Snowflake ML by the problem each solves.",
       "what_you_need_to_know": [
-        "A pipe encapsulates a COPY INTO statement for continuous file loading.",
-        "Auto-ingest relies on cloud event-notification configuration in addition to Snowflake objects.",
-        "Snowpipe uses Snowflake-managed serverless compute rather than the user's virtual warehouse used by ordinary warehouse-executed COPY operations.",
-        "Load history and pipe status are important for troubleshooting ingestion.",
-        "Snowpipe is for ingestion; downstream transformation/orchestration is a separate design decision.",
-        "File size and event behavior affect ingestion efficiency and latency."
+        "Snowpark provides language APIs and server-side execution patterns for data processing without requiring data to be moved into a separate processing system for many workloads.",
+        "Snowflake Notebooks provide an interactive development environment close to Snowflake data and compute for SQL, Python, analysis, and ML workflows.",
+        "Streamlit in Snowflake supports interactive data applications that can run within Snowflake's governed environment.",
+        "Cortex AI functions/services provide managed AI capabilities, including LLM-oriented functions and services that operate with Snowflake data.",
+        "Cortex Search is designed for low-latency semantic/hybrid retrieval over textual data, while Cortex Analyst is oriented toward natural-language questions over structured data using semantic-model concepts.",
+        "Document AI extracts information from documents; Snowflake ML capabilities support ML workflows such as feature/model development and model lifecycle patterns."
       ],
-      "key_concept": "Snowpipe = event-driven, serverless file ingestion around a pipe/COPY definition; it is not a general-purpose transformation scheduler.",
+      "key_concept": "Match the AI/developer feature to the shape of the problem: code/data processing, interactive analysis, app UI, text retrieval, natural-language structured analytics, document extraction, or ML lifecycle.",
       "decision_rules": [
-        {"when": "Cloud files should load continuously with low operational overhead", "choose": "Snowpipe auto-ingest", "why": "Cloud notifications trigger Snowflake-managed ingestion."},
-        {"when": "A controlled batch window is sufficient", "choose": "Warehouse COPY INTO may be simpler", "why": "Batch loading can be scheduled and executed explicitly."}
+        {"when": "Users ask natural-language business questions that should become governed analytical queries over structured data", "choose": "Cortex Analyst", "why": "The problem is natural-language analytics over structured semantic meaning, not document retrieval."},
+        {"when": "An application needs semantic/hybrid search over chunks of text", "choose": "Cortex Search", "why": "The requirement is retrieval over textual content."},
+        {"when": "A team wants Python transformations to execute using Snowflake-native processing patterns", "choose": "Snowpark", "why": "Snowpark provides developer APIs that push processing toward Snowflake rather than requiring a separate data export workflow."}
       ],
-      "anti_patterns": ["Expecting Snowpipe to run arbitrary multi-step transformations.", "Configuring only the pipe but not the cloud event notification path.", "Assuming Snowpipe consumes the same user warehouse as manual COPY INTO."],
-      "trap_explanations": [{"trap": "Snowpipe is just COPY INTO scheduled on your warehouse.", "correction": "The pipe contains COPY semantics, but Snowpipe ingestion uses Snowflake-managed serverless compute."}],
-      "worked_example": {"scenario": "Files arrive in cloud storage every few minutes and should appear in Snowflake without running a warehouse continuously.", "reasoning": ["A continuous file-ingestion service is appropriate.", "Configure the external stage and notification path.", "Create a pipe with AUTO_INGEST and the target COPY statement."], "answer": "Use Snowpipe auto-ingest."},
-      "scenario": {"question": "Which statement best describes Snowpipe compute behavior?", "options": ["It requires a user virtual warehouse to stay running", "It uses Snowflake-managed serverless compute for ingestion", "It runs only inside a reader account", "It is a result-cache feature"], "correct_index": 1, "explanation": "Snowpipe is a serverless ingestion service and does not require the user's warehouse to remain running for the pipe load."},
-      "build_exercise": {"title": "Define a continuous file-ingestion pipe", "prompt": "Write the Snowflake side of an auto-ingest design: stage plus pipe COPY statement, and identify the external notification configuration still required.", "starter_sql": "CREATE PIPE IF NOT EXISTS EVENTS_PIPE\n  AUTO_INGEST = TRUE\nAS\nCOPY INTO EVENTS\nFROM @EVENTS_STAGE;\n", "checks": ["Pipe contains COPY INTO", "AUTO_INGEST is enabled", "External cloud notification configuration is acknowledged"]},
-      "sources": [{"title": "Snowpipe introduction", "url": "https://docs.snowflake.com/en/user-guide/data-load-snowpipe-intro"}]
+      "anti_patterns": ["Choosing Cortex Search for a structured semantic-model-to-SQL problem without a retrieval requirement.", "Exporting governed data merely because Python is required when Snowpark can satisfy the processing pattern.", "Treating Streamlit, Notebooks, Cortex Search, and Cortex Analyst as interchangeable front ends."],
+      "trap_explanations": [
+        {"trap": "Cortex Search and Cortex Analyst solve the same question-answering problem.", "correction": "Search retrieves relevant text; Analyst reasons over structured data with semantic context to answer analytical questions."},
+        {"trap": "Snowpark requires pulling all data into the client process first.", "correction": "Snowpark is designed to build operations that execute in Snowflake for supported workloads."}
+      ],
+      "worked_example": {
+        "scenario": "A support application must retrieve the most relevant paragraphs from thousands of product manuals for an LLM-powered answer.",
+        "reasoning": ["The source is textual content rather than a structured sales metric model.", "The application needs retrieval ranked by semantic relevance.", "Cortex Search is aligned with that retrieval pattern."],
+        "answer": "Use Cortex Search as the retrieval layer, then combine it with the appropriate application/LLM workflow."
+      },
+      "scenario": {
+        "question": "A business user asks, 'What were Northeast sales by product last quarter?' and the organization wants governed natural-language analytics over structured warehouse data. Which Snowflake capability is most directly aligned?",
+        "options": ["Cortex Analyst", "Cortex Search", "A network policy", "A resource monitor"],
+        "correct_index": 0,
+        "explanation": "Cortex Analyst is designed for natural-language analytical questions over structured data using semantic context."
+      },
+      "build_exercise": {
+        "title": "Choose the right Snowflake AI/developer capability",
+        "prompt": "Map six scenarios—Python transformation, notebook exploration, internal dashboard, document semantic retrieval, natural-language SQL analytics, and invoice-field extraction—to the appropriate Snowflake capability.",
+        "starter_sql": "-- Example Cortex function usage depends on account availability.\n-- Focus on explaining the product boundary for each scenario.\n",
+        "checks": ["Cortex Search and Cortex Analyst are differentiated", "Snowpark is used for developer/data-processing patterns", "Document extraction is not mislabeled as general semantic search"]
+      },
+      "sources": [
+        {"title": "Snowflake Cortex AI", "url": "https://docs.snowflake.com/en/user-guide/snowflake-cortex/overview"},
+        {"title": "Cortex Search", "url": "https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-search/cortex-search-overview"},
+        {"title": "Cortex Analyst", "url": "https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst"},
+        {"title": "Snowpark developer guide", "url": "https://docs.snowflake.com/en/developer-guide/snowpark/index"}
+      ]
     },
-    "variant-flatten-json": {
-      "summary": "Snowflake stores semi-structured values in types such as VARIANT. Path expressions navigate nested data, casting turns VARIANT values into typed SQL values, and FLATTEN expands nested arrays/objects into relational rows.",
+    "security-access-principles": {
+      "summary": "Snowflake security combines authorization, authentication, identity lifecycle, and network controls. Core scenarios frequently place RBAC, MFA, SSO, OAuth, key-pair authentication, authentication policies, network policies, and identity provisioning beside each other to test whether you know which control solves which layer.",
       "what_you_need_to_know": [
-        "PARSE_JSON converts JSON text into a VARIANT value.",
-        "Path notation accesses nested object fields and array elements from VARIANT.",
-        "VARIANT path results often need explicit casting for arithmetic, comparison, presentation, or joins.",
-        "FLATTEN is a table function that expands nested structures into rows.",
-        "LATERAL is commonly used so FLATTEN can reference a VARIANT column from each input row.",
-        "Flattening can multiply row counts substantially, so understand the nesting level being expanded."
+        "RBAC grants privileges to roles and roles to users or other roles; role hierarchies support reusable least-privilege access design.",
+        "OWNERSHIP is a powerful object privilege and should be treated differently from normal access privileges such as SELECT or USAGE.",
+        "MFA strengthens authentication; federated SSO delegates interactive authentication to an identity provider; OAuth supports token-based delegated access patterns; key-pair authentication is common for non-interactive/service patterns.",
+        "Authentication policies can constrain allowed authentication methods and related authentication behavior for users/accounts according to supported scope.",
+        "Network policies restrict allowed/blocked network origins; they do not replace identity authentication or authorization.",
+        "SCIM automates identity/group provisioning, while Trust Center and related security features help assess security posture; provisioning and posture assessment are not login authentication methods."
       ],
-      "key_concept": "VARIANT preserves flexible semi-structured data; pathing retrieves values; FLATTEN changes nested collections into a row set.",
+      "key_concept": "Ask what layer is being controlled: privileges, proof of identity, token authorization, network origin, identity provisioning, or security posture. Choose the control at that layer.",
       "decision_rules": [
-        {"when": "JSON arrives as text and should be stored/queryable as semi-structured data", "choose": "PARSE_JSON into VARIANT", "why": "Snowflake can navigate and process the structured value."},
-        {"when": "An array needs one output row per element", "choose": "LATERAL FLATTEN", "why": "FLATTEN expands the nested array into relational rows."},
-        {"when": "A VARIANT numeric field participates in arithmetic", "choose": "Cast to the required numeric type", "why": "The expression should operate on a typed SQL value."}
+        {"when": "A workforce user needs table access", "choose": "Grant privileges through an appropriate role hierarchy", "why": "RBAC keeps authorization reusable and auditable instead of tying grants directly to people."},
+        {"when": "Connections must originate from approved corporate ranges", "choose": "Network policy", "why": "The requirement is network origin restriction, not role authorization."},
+        {"when": "Users and groups should be created/deactivated from the enterprise identity provider", "choose": "SCIM", "why": "SCIM addresses identity lifecycle provisioning rather than session authentication itself."}
       ],
-      "anti_patterns": ["Treating every VARIANT path value as a VARCHAR automatically.", "Flattening multiple nested arrays without considering row multiplication.", "Parsing already-typed VARIANT repeatedly."],
-      "trap_explanations": [{"trap": "FLATTEN is a scalar function.", "correction": "FLATTEN is a table function that returns rows and columns."}, {"trap": "JSON path access always returns the final SQL type you need.", "correction": "Path access produces VARIANT values that often require casting."}],
-      "worked_example": {"scenario": "Each event contains an array of product objects and the report needs one row per product.", "reasoning": ["Read the payload as VARIANT.", "Use LATERAL FLATTEN on the products array.", "Select and cast fields from each flattened VALUE."], "answer": "Use path expressions plus LATERAL FLATTEN."},
-      "scenario": {"question": "A VARIANT column contains an array called items. Which construct is commonly used to return one row per array element?", "options": ["RESOURCE MONITOR", "LATERAL FLATTEN", "UNDROP", "CREATE SHARE"], "correct_index": 1, "explanation": "FLATTEN is the Snowflake table function for exploding semi-structured arrays/objects into rows and is commonly correlated with LATERAL."},
-      "build_exercise": {"title": "Flatten a JSON array", "prompt": "Parse a JSON payload and return one relational row per element in its items array.", "starter_sql": "WITH src AS (\n  SELECT PARSE_JSON('{\"items\":[{\"sku\":\"A\"},{\"sku\":\"B\"}]}') AS payload\n)\nSELECT f.value:sku::STRING AS sku\nFROM src, LATERAL FLATTEN(INPUT => payload:items) f;\n", "checks": ["JSON is represented as VARIANT", "LATERAL FLATTEN expands items", "Output field is explicitly cast"]},
-      "sources": [{"title": "Semi-structured data", "url": "https://docs.snowflake.com/en/user-guide/semistructured-concepts"}, {"title": "FLATTEN", "url": "https://docs.snowflake.com/en/sql-reference/functions/flatten"}]
+      "anti_patterns": ["Using ACCOUNTADMIN as a routine analyst role.", "Granting broad table privileges directly to every user.", "Assuming a network policy provides MFA or replaces SSO."],
+      "trap_explanations": [
+        {"trap": "MFA, SSO, SCIM, and network policies are interchangeable authentication controls.", "correction": "They address different layers: authentication factor/federation, lifecycle provisioning, and network-origin restriction."},
+        {"trap": "A table SELECT grant is always sufficient by itself.", "correction": "The active role may also need appropriate privileges on containing objects and compute resources for the intended operation."}
+      ],
+      "worked_example": {
+        "scenario": "Employees authenticate with an enterprise IdP, accounts should be automatically deprovisioned when employment ends, and access is allowed only from corporate networks.",
+        "reasoning": ["Use federation/SSO for interactive identity authentication.", "Use SCIM for automated identity lifecycle.", "Use a network policy for allowed origin ranges.", "Use RBAC separately for data privileges."],
+        "answer": "Layer SSO, SCIM, network policy, and RBAC because each solves a different security responsibility."
+      },
+      "scenario": {
+        "question": "A company wants Snowflake users and group memberships automatically provisioned from its identity provider. Which capability most directly addresses this?",
+        "options": ["SCIM", "Resource monitor", "Search Optimization Service", "Time Travel"],
+        "correct_index": 0,
+        "explanation": "SCIM is used for automated identity and group provisioning/deprovisioning."
+      },
+      "build_exercise": {
+        "title": "Design layered Snowflake access controls",
+        "prompt": "Design controls for analyst authorization, workforce SSO, automated provisioning, service authentication, and corporate-network restriction. State why each control is needed.",
+        "starter_sql": "CREATE ROLE IF NOT EXISTS REPORTING_READER;\n-- Add least-privilege object grants to the role.\n-- Authentication/network integrations are configured separately.\n",
+        "checks": ["Privileges are role-based", "Network restriction is not confused with authentication", "SCIM is used for provisioning rather than authorization"]
+      },
+      "sources": [
+        {"title": "Access control overview", "url": "https://docs.snowflake.com/en/user-guide/security-access-control-overview"},
+        {"title": "Authentication policies", "url": "https://docs.snowflake.com/en/user-guide/authentication-policies"},
+        {"title": "Network policies", "url": "https://docs.snowflake.com/en/user-guide/network-policies"},
+        {"title": "Trust Center", "url": "https://docs.snowflake.com/en/user-guide/security/trust-center/overview"}
+      ]
     },
-    "time-travel-clone-failsafe": {
-      "summary": "Time Travel is user-facing historical access and recovery within retention; Fail-safe is a separate Snowflake-managed recovery period; zero-copy cloning creates writable metadata-based clones that initially share underlying storage.",
+    "data-governance-policies": {
+      "summary": "Snowflake governance combines protection policies with metadata and audit capabilities. For Core, the most important distinction is that masking policies protect what value is returned from a column, while row access policies decide which rows are visible; tags, classification, lineage, and access history support scalable governance and discovery.",
       "what_you_need_to_know": [
-        "Time Travel enables historical queries, cloning at a past point, and object recovery such as UNDROP within supported retention.",
-        "Fail-safe follows Time Travel for eligible permanent data and is not normal user self-service historical querying.",
-        "Temporary and transient objects have different persistence/recovery characteristics from permanent objects.",
-        "A zero-copy clone initially shares existing micro-partition storage and consumes additional storage as data diverges.",
-        "AT/BEFORE clauses support historical query/clone patterns.",
-        "Retention configuration affects both recoverability and storage cost."
+        "Dynamic data masking uses masking policies to change the value returned from protected columns according to policy logic and context.",
+        "Row access policies determine whether rows are visible to a query based on policy conditions.",
+        "Tags attach governance metadata to supported Snowflake objects and can be used with governance processes and tag-based policy patterns.",
+        "Data classification helps identify sensitive data so governance teams can apply appropriate tags and protection controls.",
+        "Lineage capabilities help understand relationships and flows among data objects; Access History records information useful for auditing data access.",
+        "Governance controls still depend on roles, ownership, privileges, policy design, and edition/feature availability; tagging alone is not enforcement."
       ],
-      "key_concept": "Time Travel is a product feature you use; Fail-safe is a Snowflake-managed last-resort recovery window. They are not interchangeable backup mechanisms.",
+      "key_concept": "Mask columns, filter rows, tag/classify meaning, and audit/trace usage—these governance tools complement rather than replace each other.",
       "decision_rules": [
-        {"when": "A table was accidentally dropped within retention", "choose": "UNDROP / Time Travel", "why": "The object is still within the user-accessible recovery window."},
-        {"when": "A safe writable copy is needed quickly for testing", "choose": "Zero-copy clone", "why": "The clone is created without immediately duplicating all existing table storage."},
-        {"when": "A disaster-recovery architecture is required", "choose": "Replication/failover design rather than relying only on Time Travel", "why": "Historical retention is not a full cross-account/region DR strategy."}
+        {"when": "A user may see a row but a sensitive column must be obscured", "choose": "Masking policy", "why": "The requirement concerns the returned column value rather than whether the row exists for the user."},
+        {"when": "Users should see only rows belonging to their region or tenant", "choose": "Row access policy", "why": "The policy determines row visibility."},
+        {"when": "The organization needs scalable metadata to identify sensitive objects", "choose": "Classification and tags", "why": "They help label and organize governance context that policies/processes can use."}
       ],
-      "anti_patterns": ["Treating Fail-safe as a normal queryable backup.", "Assuming a clone will never consume additional storage.", "Using Time Travel as the only disaster-recovery plan."],
-      "trap_explanations": [{"trap": "Fail-safe is simply a longer Time Travel period.", "correction": "Fail-safe is Snowflake-managed and has different access/recovery semantics."}, {"trap": "Zero-copy clone means zero storage forever.", "correction": "Existing storage is shared initially; changes create divergent storage usage."}],
-      "worked_example": {"scenario": "A developer needs yesterday's version of a table as an isolated test copy.", "reasoning": ["Time Travel can address the historical point.", "CLONE can create a writable copy from that point.", "No full physical copy is required at creation."], "answer": "Create a zero-copy clone using the desired Time Travel point."},
-      "scenario": {"question": "Which statement about Fail-safe is correct?", "options": ["Users query it with AT(OFFSET) whenever they want", "It is Snowflake-managed recovery and is not normal user self-service Time Travel", "It is identical to zero-copy cloning", "It applies only to virtual warehouses"], "correct_index": 1, "explanation": "Fail-safe is distinct from user-accessible Time Travel and is intended as a Snowflake-managed recovery mechanism."},
-      "build_exercise": {"title": "Recover and clone historical data", "prompt": "Write examples for querying a table at an earlier timestamp and creating a clone for safe testing.", "starter_sql": "SELECT * FROM ORDERS AT (OFFSET => -60*60);\n\nCREATE TABLE ORDERS_TEST CLONE ORDERS;\n", "checks": ["Historical access uses Time Travel syntax", "Clone is created without CTAS copying", "Fail-safe is not used as the normal workflow"]},
-      "sources": [{"title": "Time Travel", "url": "https://docs.snowflake.com/en/user-guide/data-time-travel"}, {"title": "Cloning considerations", "url": "https://docs.snowflake.com/en/user-guide/object-clone"}]
+      "anti_patterns": ["Using masking when the actual requirement is to remove unauthorized rows.", "Assuming a tag by itself prevents SELECT access.", "Treating Access History as an access-grant mechanism rather than audit evidence."],
+      "trap_explanations": [
+        {"trap": "A masking policy and row access policy both simply hide columns.", "correction": "Masking changes protected values; row access policies control which rows a query can see."},
+        {"trap": "Tags automatically enforce security without any other configuration.", "correction": "Tags are governance metadata; enforcement requires policies, privileges, or processes that use that metadata."}
+      ],
+      "worked_example": {
+        "scenario": "Support agents may access customers only in their assigned region, and they should see masked SSNs even for allowed customers.",
+        "reasoning": ["Regional visibility is a row-filtering requirement.", "SSN protection is a column-value requirement.", "Apply row access and masking as complementary policies."],
+        "answer": "Use a row access policy for regional filtering and a masking policy for SSN values."
+      },
+      "scenario": {
+        "question": "A table contains all customers, but a user should query only rows for the user's assigned region. Which Snowflake governance feature most directly fits?",
+        "options": ["Row access policy", "Resource monitor", "File format", "Fail-safe"],
+        "correct_index": 0,
+        "explanation": "Row access policies evaluate policy logic to determine which table rows are visible to a query."
+      },
+      "build_exercise": {
+        "title": "Design row and column governance together",
+        "prompt": "Design a governed CUSTOMER table where users see only authorized regions and sensitive EMAIL/SSN values are masked unless the active role is privileged.",
+        "starter_sql": "-- Draft a MASKING POLICY for sensitive values and a ROW ACCESS POLICY for region visibility.\n-- Attach the policies to the appropriate columns/table.\n",
+        "checks": ["Row filtering and column masking are separate controls", "Role/context logic follows least privilege", "Tags/classification are treated as metadata/governance inputs, not automatic grants"]
+      },
+      "sources": [
+        {"title": "Dynamic data masking", "url": "https://docs.snowflake.com/en/user-guide/security-column-ddm-intro"},
+        {"title": "Row access policies", "url": "https://docs.snowflake.com/en/user-guide/security-row-intro"},
+        {"title": "Object tagging", "url": "https://docs.snowflake.com/en/user-guide/object-tagging"},
+        {"title": "Access History", "url": "https://docs.snowflake.com/en/user-guide/access-history"}
+      ]
     },
-    "secure-sharing-governance": {
-      "summary": "Secure Data Sharing exposes governed Snowflake objects to consumers without copying data. Reader accounts support consumers without their own Snowflake account, while masking policies, row access policies, and tags address governance rather than data movement.",
+    "monitoring-cost-management": {
+      "summary": "Snowflake cost management starts by identifying which service consumed credits or storage, attributing usage, and then applying the correct guardrail. Resource monitors, budgets, ACCOUNT_USAGE views, metering history, warehouse configuration, and query evidence answer different cost questions.",
       "what_you_need_to_know": [
-        "Secure Data Sharing shares access to provider data; it does not unload or physically copy the underlying data into the consumer account.",
-        "Consumers use their own compute to query shared data in normal provider/consumer patterns.",
-        "Reader accounts can provide access for consumers that do not have their own Snowflake account.",
-        "Masking policies protect column values; row access policies determine which rows are visible.",
-        "Tags attach governance metadata and can support policy and classification workflows.",
-        "Listings/Marketplace build distribution and discovery experiences on top of sharing capabilities."
+        "Running virtual warehouses consume credits based on warehouse size and runtime; auto-suspend is a primary control for avoidable idle warehouse spend.",
+        "Resource monitors track credit usage for assigned warehouses/account scope according to supported configuration and can trigger notifications/actions at thresholds.",
+        "Budgets provide spending-monitoring capabilities across supported Snowflake resources and are conceptually different from resource monitors.",
+        "SNOWFLAKE.ACCOUNT_USAGE and related usage/metering views help analyze historical query, warehouse, storage, and service consumption.",
+        "Serverless and Snowflake-managed features may consume credits outside a traditional user warehouse, so a warehouse-only view can miss part of total spend.",
+        "Cost optimization should start with attribution and workload evidence: idle time, warehouse size, queueing, query profile, storage use, and service consumption."
       ],
-      "key_concept": "Sharing answers 'how do I expose governed data without copying it?' Governance policies answer 'what can this principal see?'",
+      "key_concept": "Measure before optimizing: determine which workload/service consumed credits, whether spend is idle or productive, then choose the guardrail or tuning action that addresses that cause.",
       "decision_rules": [
-        {"when": "Another Snowflake account needs governed access to live provider data", "choose": "Secure Data Sharing / listing", "why": "Access is shared without an ETL copy."},
-        {"when": "A consumer lacks a Snowflake account", "choose": "Reader account where appropriate", "why": "It provides a Snowflake-managed consumer account pattern."},
-        {"when": "Sensitive column values must change by role", "choose": "Masking policy", "why": "The policy applies conditional protection to column values."}
+        {"when": "A user-managed warehouse is frequently idle but running", "choose": "Shorten or appropriately configure AUTO_SUSPEND", "why": "Suspending idle compute directly reduces avoidable warehouse runtime."},
+        {"when": "A team needs threshold-based warehouse credit guardrails", "choose": "Resource monitor", "why": "Resource monitors are designed around warehouse/account credit-usage thresholds and actions."},
+        {"when": "Leadership asks what drove last month's Snowflake spend", "choose": "Use ACCOUNT_USAGE/organization usage and metering data before tuning", "why": "Attribution requires historical usage evidence across relevant services and resources."}
       ],
-      "anti_patterns": ["Building export/import pipelines when secure sharing meets the requirement.", "Using a masking policy to filter rows.", "Assuming tags themselves enforce access without a policy/process."],
-      "trap_explanations": [{"trap": "Secure sharing copies the provider table into the consumer account.", "correction": "The provider shares access; the data remains governed by the provider and is not copied through the share."}, {"trap": "Masking and row access policies are the same.", "correction": "Masking changes visible column values; row access filters row visibility."}],
-      "worked_example": {"scenario": "A data provider wants customers to query current reference data without daily file exports.", "reasoning": ["The requirement is live governed access, not a batch copy.", "Use a share/listing and grant the required database objects to it.", "Consumers query the shared database with their compute."], "answer": "Use Secure Data Sharing rather than exporting files."},
-      "scenario": {"question": "A provider wants another Snowflake account to query current data without copying files between accounts. Which capability is designed for this?", "options": ["Secure Data Sharing", "AUTO_SUSPEND", "FLATTEN", "Fail-safe"], "correct_index": 0, "explanation": "Secure Data Sharing provides governed access to provider data without a data-copy pipeline."},
-      "build_exercise": {"title": "Design a secure provider share", "prompt": "Write the high-level SQL grants for a share that exposes a database/schema/table read-only to a consumer.", "starter_sql": "CREATE SHARE IF NOT EXISTS CUSTOMER_SHARE;\n-- Grant database/schema usage and table select to the share\n", "checks": ["Share is created", "Required container/object privileges are granted to the share", "No unload/copy pipeline is used"]},
-      "sources": [{"title": "Secure Data Sharing", "url": "https://docs.snowflake.com/en/user-guide/data-sharing-intro"}, {"title": "Column-level security", "url": "https://docs.snowflake.com/en/user-guide/security-column-intro"}]
+      "anti_patterns": ["Increasing warehouse size as a universal cost fix.", "Assuming resource monitors rewrite inefficient queries.", "Analyzing only warehouse credits when serverless features also contribute to spend."],
+      "trap_explanations": [
+        {"trap": "Resource monitors optimize query plans to reduce credits.", "correction": "They are usage guardrails/notification-action mechanisms; SQL and warehouse optimization are separate."},
+        {"trap": "If warehouses are inexpensive, total Snowflake spend must be inexpensive.", "correction": "Storage and Snowflake-managed/serverless services can also contribute to consumption, depending on features used."}
+      ],
+      "worked_example": {
+        "scenario": "A development warehouse runs only a few minutes of queries each day but remains active for hours between sessions.",
+        "reasoning": ["The issue is idle runtime rather than query complexity.", "Inspect warehouse metering and load history to confirm idle periods.", "Use a suitable auto-suspend and auto-resume configuration; optionally add guardrails."],
+        "answer": "Reduce idle warehouse runtime before attempting query-level tuning."
+      },
+      "scenario": {
+        "question": "A warehouse routinely sits idle for 45 minutes between short development queries. Which setting most directly reduces this avoidable compute spend?",
+        "options": ["AUTO_SUSPEND", "DATA_RETENTION_TIME_IN_DAYS", "ROW ACCESS POLICY", "DIRECTORY TABLE"],
+        "correct_index": 0,
+        "explanation": "AUTO_SUSPEND controls how long an inactive warehouse remains running before it suspends."
+      },
+      "build_exercise": {
+        "title": "Build a cost-attribution checklist",
+        "prompt": "Create a one-day cost investigation for a BI warehouse and identify idle runtime, warehouse size, query volume, queueing, and non-warehouse/serverless consumption that should be checked before recommending changes.",
+        "starter_sql": "SELECT *\nFROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY\nWHERE START_TIME >= DATEADD('day', -1, CURRENT_TIMESTAMP());\n",
+        "checks": ["Idle runtime is distinguished from active workload cost", "Historical usage views are used for attribution", "Serverless/service consumption is not assumed to be part of warehouse metering"]
+      },
+      "sources": [
+        {"title": "Resource monitors", "url": "https://docs.snowflake.com/en/user-guide/resource-monitors"},
+        {"title": "Budgets", "url": "https://docs.snowflake.com/en/user-guide/budgets"},
+        {"title": "Warehouse metering history", "url": "https://docs.snowflake.com/en/sql-reference/account-usage/warehouse_metering_history"}
+      ]
     },
-    "streams-tasks-incremental": {
-      "summary": "Streams expose change data for a table-like source; tasks run SQL/procedural work on a schedule or dependency graph. Together they form a common incremental pipeline pattern, but they solve different parts of the problem.",
+    "bulk-load-unload": {
+      "summary": "File-based Snowflake data movement separates location, parsing, and execution: stages identify file locations, file formats define parsing/serialization rules, COPY INTO <table> loads data, and COPY INTO <location> unloads query/table results. Validation, transformations, and error handling are common exam decision points.",
       "what_you_need_to_know": [
-        "A stream tracks change metadata relative to an offset; it is not a permanent audit-history table.",
-        "DML that consumes stream data successfully advances the stream offset as part of the transaction semantics.",
-        "Streams expose metadata such as action/update information alongside changed rows.",
-        "Tasks run work on schedules or through predecessor dependencies and can form task graphs.",
-        "SYSTEM$STREAM_HAS_DATA can be used as a task WHEN condition to avoid unnecessary runs in common patterns.",
-        "Incremental pipelines should be idempotent or otherwise safe to retry after failures."
+        "Internal and external stages represent file locations; named stages are reusable objects, while table/user stage concepts are scoped differently.",
+        "Named file formats centralize options for CSV, JSON, Parquet, and other supported file parsing/serialization behavior.",
+        "COPY INTO <table> loads staged data into a Snowflake table; COPY INTO <location> unloads table/query results to a stage/location.",
+        "VALIDATION_MODE and related validation functions/options help inspect load problems before or after a load according to the command used.",
+        "ON_ERROR controls COPY load behavior when problematic records/files are encountered; choose it according to data-quality and atomicity requirements.",
+        "COPY transformations can project, cast, reorder, and transform supported staged fields during load; directory tables expose metadata about files in a stage rather than replacing the files themselves."
       ],
-      "key_concept": "Streams answer 'what changed?' Tasks answer 'when/how should processing run?'",
+      "key_concept": "Remember the three-part model: stage = where files are, file format = how files are interpreted, COPY = the load/unload operation.",
       "decision_rules": [
-        {"when": "You need incremental change rows from a source table", "choose": "Stream", "why": "The stream records change information relative to its offset."},
-        {"when": "A transformation should execute on a cadence or dependency", "choose": "Task/task graph", "why": "Tasks provide scheduling and orchestration."},
-        {"when": "A scheduled task should skip empty change windows", "choose": "Use an appropriate stream-data condition", "why": "Avoid unnecessary compute when there is no work."}
+        {"when": "Many loads share the same CSV delimiter/header/null rules", "choose": "Named file format", "why": "Reusable parsing configuration prevents repeated option drift across COPY statements."},
+        {"when": "Files must be inspected for load errors before committing the normal load", "choose": "Use COPY validation behavior such as VALIDATION_MODE where supported", "why": "Validation separates inspection from the intended production load."},
+        {"when": "A query result must be exported as files", "choose": "COPY INTO <location>", "why": "The target is a stage/storage location, which is the unload form of COPY."}
       ],
-      "anti_patterns": ["Using a stream as a permanent immutable audit log.", "Creating retryable tasks with non-idempotent transformation logic.", "Confusing stream change tracking with task scheduling."],
-      "trap_explanations": [{"trap": "Reading a stream like a normal SELECT always advances it.", "correction": "The offset advances through qualifying transactional consumption semantics, not merely because someone previews rows."}, {"trap": "A task tracks table changes.", "correction": "Tasks schedule/execute work; streams track source changes."}],
-      "worked_example": {"scenario": "Orders arrive continuously and an aggregate table should update only when new changes exist.", "reasoning": ["Create a stream on the source changes.", "Create a task that MERGEs stream rows into the target.", "Use a stream-data condition and make MERGE logic safe for retries."], "answer": "Combine a stream for CDC with a task for orchestration."},
-      "scenario": {"question": "Which Snowflake object is primarily responsible for exposing row-change information used by an incremental pipeline?", "options": ["Stream", "Resource monitor", "Share", "File format"], "correct_index": 0, "explanation": "Streams expose change data; tasks schedule the processing of that change data."},
-      "build_exercise": {"title": "Create an incremental stream-and-task pipeline", "prompt": "Create a stream on RAW_ORDERS and a task that periodically MERGEs changed rows into CURATED_ORDERS.", "starter_sql": "CREATE STREAM IF NOT EXISTS RAW_ORDERS_STREAM ON TABLE RAW_ORDERS;\n\nCREATE TASK IF NOT EXISTS APPLY_ORDERS\n  WAREHOUSE = ETL_WH\n  SCHEDULE = '5 MINUTE'\n  WHEN SYSTEM$STREAM_HAS_DATA('RAW_ORDERS_STREAM')\nAS\n-- MERGE stream rows into target\nSELECT 1;\n", "checks": ["A stream is created on the source", "Task has schedule or dependency", "Task checks for stream data", "Transformation is designed for safe incremental processing"]},
-      "sources": [{"title": "Streams introduction", "url": "https://docs.snowflake.com/en/user-guide/streams-intro"}, {"title": "Tasks introduction", "url": "https://docs.snowflake.com/en/user-guide/tasks-intro"}]
+      "anti_patterns": ["Calling a file format the cloud storage bucket itself.", "Using COPY INTO <table> syntax when the requirement is to unload query results.", "Ignoring load validation/error policy for files with known data-quality risk."],
+      "trap_explanations": [
+        {"trap": "Stages and file formats are two names for the same object.", "correction": "A stage identifies a file location; a file format describes how file contents should be parsed or written."},
+        {"trap": "COPY INTO always means loading into a Snowflake table.", "correction": "COPY INTO <table> loads; COPY INTO <location> unloads."}
+      ],
+      "worked_example": {
+        "scenario": "Daily CSV files land in cloud storage. The same parsing rules apply every day and invalid rows should be inspected before the production load.",
+        "reasoning": ["Represent the cloud location with an external stage/integration pattern.", "Create a named CSV file format for reusable parsing rules.", "Validate the staged input, then run COPY INTO the target table with the intended error policy."],
+        "answer": "Use a reusable stage + file format + validated COPY INTO <table> workflow."
+      },
+      "scenario": {
+        "question": "Which Snowflake object is best for storing reusable CSV parsing options such as delimiter and header handling?",
+        "options": ["Named file format", "Resource monitor", "Network policy", "Share"],
+        "correct_index": 0,
+        "explanation": "Named file formats store reusable parsing/serialization options for supported file types."
+      },
+      "build_exercise": {
+        "title": "Load staged CSV data safely",
+        "prompt": "Create a named CSV file format, a stage, and a COPY INTO target-table command that demonstrates validation/error handling before the production load.",
+        "starter_sql": "CREATE FILE FORMAT IF NOT EXISTS exam_csv TYPE = CSV SKIP_HEADER = 1;\nCREATE STAGE IF NOT EXISTS exam_stage FILE_FORMAT = exam_csv;\n-- COPY INTO target_table FROM @exam_stage ...\n",
+        "checks": ["Stage and file format are separate concepts", "The load form is COPY INTO <table>", "Validation/error behavior is explicitly considered"]
+      },
+      "sources": [
+        {"title": "Data loading overview", "url": "https://docs.snowflake.com/en/user-guide/data-load-overview"},
+        {"title": "COPY INTO table", "url": "https://docs.snowflake.com/en/sql-reference/sql/copy-into-table"},
+        {"title": "COPY INTO location", "url": "https://docs.snowflake.com/en/sql-reference/sql/copy-into-location"},
+        {"title": "Transform data during load", "url": "https://docs.snowflake.com/en/user-guide/data-load-transform"}
+      ]
+    },
+    "automated-ingestion-pipelines": {
+      "summary": "Continuous data movement is not one feature. Snowpipe automates staged-file ingestion, Snowpipe Streaming ingests rows without requiring the file-based Snowpipe path, streams track table changes, tasks schedule/trigger work, and dynamic tables maintain declarative transformation results. Core questions frequently test these boundaries.",
+      "what_you_need_to_know": [
+        "Snowpipe continuously loads new staged files using Snowflake-managed/serverless ingestion rather than a user warehouse running a scheduled COPY loop.",
+        "Snowpipe auto-ingest architectures use cloud event notifications/integrations so newly arrived files can trigger loading.",
+        "Snowpipe Streaming supports low-latency row ingestion without first requiring the traditional staged-file Snowpipe flow; current high-performance architecture uses server-side PIPE concepts for supported clients/workflows.",
+        "Streams record change-tracking information and an offset over source objects; they do not schedule transformations by themselves.",
+        "Tasks schedule or trigger Snowflake work and can form task graphs; they are orchestration/execution controls, not CDC storage.",
+        "Dynamic tables declaratively maintain transformation results toward a target lag, which can replace hand-built stream/task pipelines for suitable transformation requirements."
+      ],
+      "key_concept": "Separate ingestion from change tracking from orchestration from declarative transformation: Snowpipe/Snowpipe Streaming, streams, tasks, and dynamic tables occupy different layers.",
+      "decision_rules": [
+        {"when": "Files land continuously in an object-store stage and should load automatically", "choose": "Snowpipe with the appropriate auto-ingest notification architecture", "why": "Snowpipe is designed for continuous staged-file ingestion."},
+        {"when": "Applications must ingest rows with low latency without first writing batch files", "choose": "Snowpipe Streaming", "why": "The streaming path is designed for row-oriented low-latency ingestion."},
+        {"when": "A transformation can be expressed declaratively and should refresh toward a freshness target", "choose": "Dynamic table", "why": "The platform can manage refresh rather than requiring explicit stream consumption and task orchestration for that pattern."}
+      ],
+      "anti_patterns": ["Assuming Snowpipe executes COPY using the user's currently active warehouse.", "Calling a stream a scheduler.", "Using staged-file Snowpipe terminology for a direct row-streaming requirement."],
+      "trap_explanations": [
+        {"trap": "Snowpipe and Snowpipe Streaming both require files to be placed on a stage first.", "correction": "Traditional Snowpipe is file-oriented; Snowpipe Streaming is intended for row streaming without the same staged-file prerequisite."},
+        {"trap": "Streams execute transformations when rows change.", "correction": "Streams expose change tracking; a task or another consumer performs processing."}
+      ],
+      "worked_example": {
+        "scenario": "An application emits individual events continuously and needs seconds-level ingestion without accumulating files in object storage first.",
+        "reasoning": ["The requirement is direct low-latency row ingestion.", "Traditional Snowpipe's staged-file pattern is not the direct match.", "Use Snowpipe Streaming with the supported current architecture/client pattern."],
+        "answer": "Choose Snowpipe Streaming for the row-streaming requirement."
+      },
+      "scenario": {
+        "question": "Which Snowflake feature records change-tracking information for a table so downstream processing can consume inserted/updated/deleted changes?",
+        "options": ["Stream", "Resource monitor", "Masking policy", "Reader account"],
+        "correct_index": 0,
+        "explanation": "Streams provide change-tracking information and offsets over supported source objects."
+      },
+      "build_exercise": {
+        "title": "Choose ingestion and transformation components",
+        "prompt": "Design two pipelines: one for files arriving in cloud storage and one for application events arriving as rows. Then add an incremental downstream transformation and explain whether stream/task or dynamic-table semantics fit it better.",
+        "starter_sql": "-- File path: create a PIPE around COPY INTO ...\n-- Change path example:\nCREATE STREAM IF NOT EXISTS orders_stream ON TABLE orders;\n-- Add task/dynamic-table design based on the required semantics.\n",
+        "checks": ["File and row-streaming ingestion are distinguished", "Streams are not treated as schedulers", "Dynamic-table vs stream/task choice is justified by transformation semantics"]
+      },
+      "sources": [
+        {"title": "Snowpipe", "url": "https://docs.snowflake.com/en/user-guide/data-load-snowpipe-intro"},
+        {"title": "Snowpipe Streaming", "url": "https://docs.snowflake.com/en/user-guide/snowpipe-streaming/overview"},
+        {"title": "Streams", "url": "https://docs.snowflake.com/en/user-guide/streams-intro"},
+        {"title": "Dynamic tables", "url": "https://docs.snowflake.com/en/user-guide/dynamic-tables-about"}
+      ]
+    },
+    "connectors-integrations": {
+      "summary": "Connectivity questions test whether you can distinguish client drivers, ecosystem connectors, and Snowflake integration objects. JDBC/ODBC/language connectors connect applications; Kafka/Spark connectors integrate platforms; storage, API, and external access integrations establish governed trust/configuration for external services.",
+      "what_you_need_to_know": [
+        "JDBC and ODBC are standard database connectivity drivers used by compatible applications and BI tools.",
+        "Snowflake language connectors provide programmatic access from languages such as Python.",
+        "The Kafka Connector supports Kafka-to-Snowflake integration patterns; the Spark Connector integrates Spark workloads with Snowflake.",
+        "Storage integrations create governed trust/configuration between Snowflake and supported cloud storage rather than embedding long-lived cloud credentials in every stage definition.",
+        "API integrations support external-function/API gateway style integration patterns; external access integrations govern outbound access from supported Snowflake code to external network locations and secrets.",
+        "A connector/integration does not replace RBAC, authentication, network policy, or warehouse/data-object privileges; connectivity and authorization remain separate."
+      ],
+      "key_concept": "Driver = client database connection; ecosystem connector = platform data/compute integration; integration object = governed external trust/access configuration.",
+      "decision_rules": [
+        {"when": "An external stage needs governed access to cloud object storage", "choose": "Storage integration", "why": "It centralizes the cloud-storage trust relationship instead of scattering static credentials."},
+        {"when": "A Kafka pipeline must deliver data into Snowflake", "choose": "Snowflake Connector for Kafka / supported streaming architecture", "why": "It is purpose-built for Kafka integration rather than generic BI connectivity."},
+        {"when": "Snowflake-hosted code needs controlled outbound access to an external API", "choose": "External access integration with supported network rule/secret configuration", "why": "The requirement is governed outbound connectivity from Snowflake code."}
+      ],
+      "anti_patterns": ["Embedding permanent cloud access keys in every external stage when an integration is appropriate.", "Using ODBC terminology for Kafka event ingestion.", "Assuming an integration object automatically grants SELECT on business tables."],
+      "trap_explanations": [
+        {"trap": "Storage integration is another name for a JDBC connection.", "correction": "A storage integration manages trust/configuration for cloud storage access; JDBC is a client database driver."},
+        {"trap": "External access integration grants arbitrary internet access to every procedure.", "correction": "Outbound access is governed through explicitly configured integration/network/secret controls and privileges."}
+      ],
+      "worked_example": {
+        "scenario": "A security team prohibits hard-coded AWS keys in Snowflake but a stage must read an approved S3 location.",
+        "reasoning": ["The requirement is a cloud-storage trust configuration.", "Use a storage integration and the supported cloud IAM trust model.", "Grant Snowflake object privileges separately."],
+        "answer": "Use a storage integration rather than distributing long-lived cloud credentials in stage SQL."
+      },
+      "scenario": {
+        "question": "Which Snowflake object is designed to centralize a trust relationship for supported external cloud storage used by stages?",
+        "options": ["Storage integration", "Resource monitor", "Masking policy", "Fail-safe"],
+        "correct_index": 0,
+        "explanation": "Storage integrations provide a governed configuration/trust mechanism for supported cloud storage access."
+      },
+      "build_exercise": {
+        "title": "Classify Snowflake connectivity mechanisms",
+        "prompt": "For a Tableau client, Java service, Kafka topic, external S3 stage, and procedure calling an external REST API, identify the driver/connector/integration category and the separate security controls required.",
+        "starter_sql": "-- Example object type only; cloud-specific properties omitted.\n-- CREATE STORAGE INTEGRATION ...\n-- CREATE EXTERNAL ACCESS INTEGRATION ...\n",
+        "checks": ["Drivers, connectors, and integrations are not conflated", "Storage access avoids unnecessary embedded credentials", "RBAC/authentication remain separate from connectivity choice"]
+      },
+      "sources": [
+        {"title": "Storage integrations", "url": "https://docs.snowflake.com/en/sql-reference/sql/create-storage-integration"},
+        {"title": "Snowflake developer guides", "url": "https://docs.snowflake.com/en/developer-guide"},
+        {"title": "External network access", "url": "https://docs.snowflake.com/en/developer-guide/external-network-access/external-network-access-overview"}
+      ]
+    },
+    "query-performance-optimization": {
+      "summary": "Snowflake performance tuning is evidence-driven. Query Profile, queueing, spilling, pruning, caching, clustering, Search Optimization Service, and Query Acceleration Service point to different causes and remedies. A warehouse resize is only one possible response.",
+      "what_you_need_to_know": [
+        "Persisted query-result reuse can return a previously computed result under eligible conditions and is different from data cached on a running warehouse.",
+        "Warehouse-local cache can speed repeated access to data while that warehouse remains available; suspending the warehouse affects that cache behavior.",
+        "Micro-partition pruning reduces data scanned when metadata can eliminate irrelevant partitions; poor pruning can dominate performance regardless of warehouse size.",
+        "Query Profile exposes operators and signals such as scan volume, partitions, data movement, queueing, and spilling that help identify the actual bottleneck.",
+        "Search Optimization Service is targeted at supported selective lookup/search patterns and should be justified by workload benefit and cost.",
+        "Query Acceleration Service can offload supported portions of eligible queries; it is not a universal replacement for SQL/data-layout/warehouse tuning."
+      ],
+      "key_concept": "Read the symptom before choosing the fix: queueing suggests concurrency, poor pruning suggests scan/data organization, spilling may suggest memory/plan pressure, and repeated eligible queries may benefit from cache/reuse behavior.",
+      "decision_rules": [
+        {"when": "A selective predicate scans nearly all micro-partitions", "choose": "Investigate pruning, predicates, and data organization before resizing", "why": "A larger warehouse does not inherently reduce unnecessary bytes/partitions scanned."},
+        {"when": "Queries wait in queue but run quickly once admitted", "choose": "Investigate concurrency capacity / multi-cluster design", "why": "The bottleneck is admission concurrency rather than individual-query execution."},
+        {"when": "Point-lookups on a large table remain expensive and fit supported search-optimization patterns", "choose": "Evaluate Search Optimization Service", "why": "It is designed for targeted access patterns, not every scan workload."}
+      ],
+      "anti_patterns": ["Resizing the warehouse before reading Query Profile.", "Defining clustering/search optimization everywhere without a workload case.", "Benchmarking identical queries without understanding result and warehouse cache effects."],
+      "trap_explanations": [
+        {"trap": "All Snowflake caches are one cache with one lifecycle.", "correction": "Persisted query results and warehouse-local data cache are distinct mechanisms with different eligibility/lifecycle behavior."},
+        {"trap": "More compute always fixes poor pruning.", "correction": "If a query reads far more data than needed, improve predicates/data organization or use the relevant optimization before relying solely on compute."}
+      ],
+      "worked_example": {
+        "scenario": "A query filtering on a highly selective customer key scans most micro-partitions and consumes high scan volume.",
+        "reasoning": ["The profile points to scan/pruning inefficiency.", "Warehouse resizing changes compute but not the fact that too much data is scanned.", "Investigate pruning, table organization, and whether a targeted optimization is appropriate."],
+        "answer": "Address scan/pruning behavior before treating warehouse size as the primary fix."
+      },
+      "scenario": {
+        "question": "A query is slow because its selective filter scans almost every micro-partition. What should be investigated first?",
+        "options": ["Pruning effectiveness and data organization", "MFA enrollment", "Reader-account creation", "Time Travel retention"],
+        "correct_index": 0,
+        "explanation": "Excessive partition scanning for a selective query is a pruning/data-layout symptom, not an authentication or collaboration problem."
+      },
+      "build_exercise": {
+        "title": "Diagnose before scaling",
+        "prompt": "Create a troubleshooting decision tree for four Query Profile symptoms: queueing, poor pruning/high bytes scanned, local spilling, and repeated identical query execution.",
+        "starter_sql": "SELECT QUERY_ID, QUERY_TEXT, TOTAL_ELAPSED_TIME, BYTES_SCANNED\nFROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY\nWHERE START_TIME >= DATEADD('hour', -2, CURRENT_TIMESTAMP())\nORDER BY TOTAL_ELAPSED_TIME DESC;\n",
+        "checks": ["Each symptom maps to a different investigation path", "Cache types are distinguished", "Warehouse resizing is not the default first action for every symptom"]
+      },
+      "sources": [
+        {"title": "Query Profile", "url": "https://docs.snowflake.com/en/user-guide/ui-query-profile"},
+        {"title": "Query Acceleration Service", "url": "https://docs.snowflake.com/en/user-guide/query-acceleration-service"},
+        {"title": "Search Optimization Service", "url": "https://docs.snowflake.com/en/user-guide/search-optimization-service"},
+        {"title": "Micro-partitions and pruning", "url": "https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitions"}
+      ]
+    },
+    "warehouse-sizing-scaling": {
+      "summary": "Warehouse optimization separates three concerns: size for per-query compute, cluster count for concurrency, and suspend/resume settings for idle cost. Core scenarios frequently disguise a scale-up versus scale-out decision as a generic 'make it faster' question.",
+      "what_you_need_to_know": [
+        "Resizing a warehouse changes compute capacity of its cluster and can help supported workloads where individual queries need more compute.",
+        "Multi-cluster warehouses add clusters to serve concurrency and reduce queueing; they do not simply make one query use all clusters as one giant machine.",
+        "AUTO_SUSPEND stops idle compute after the configured period and AUTO_RESUME allows suspended warehouses to start when new work arrives.",
+        "Larger warehouses consume credits at a higher rate while running, but may finish work faster; evaluate total runtime/credits rather than assuming either direction is always cheaper.",
+        "Scaling policy and min/max cluster settings affect how multi-cluster capacity responds to concurrency and cost objectives.",
+        "Suspension can remove warehouse-local cache benefit, creating a trade-off between minimizing idle cost and retaining warm-cache performance for frequently recurring workloads."
+      ],
+      "key_concept": "Scale up for a single-query compute problem, scale out for concurrency queueing, and tune suspend/resume for idle spend.",
+      "decision_rules": [
+        {"when": "One complex query is compute/memory constrained", "choose": "Evaluate scaling up the warehouse", "why": "More compute per cluster can improve individual-query execution where the query can use it."},
+        {"when": "Many short queries queue during peaks but execute quickly once started", "choose": "Evaluate multi-cluster scale-out", "why": "Additional clusters increase concurrency capacity."},
+        {"when": "A sporadic warehouse remains idle for long periods", "choose": "Use an appropriately short AUTO_SUSPEND with AUTO_RESUME", "why": "Idle runtime is avoidable credit consumption for that workload pattern."}
+      ],
+      "anti_patterns": ["Using multi-cluster as the first fix for one slow query.", "Keeping a development warehouse running all day solely to avoid a short resume delay.", "Assuming an X-Large query always costs more total credits than a Small query regardless of runtime."],
+      "trap_explanations": [
+        {"trap": "Scale out and scale up mean the same thing in Snowflake.", "correction": "Scale up changes warehouse size; scale out adds clusters for concurrent workload capacity."},
+        {"trap": "The cheapest warehouse size is always X-Small.", "correction": "Total cost depends on credit rate and runtime/work performed; right-size using workload evidence."}
+      ],
+      "worked_example": {
+        "scenario": "At 9 AM, 300 dashboard users cause long queueing, but each dashboard query finishes in seconds once it begins.",
+        "reasoning": ["Per-query execution is healthy.", "The symptom is concurrent queueing.", "Increase concurrency capacity with a multi-cluster strategy rather than only making the single cluster larger."],
+        "answer": "Scale out for concurrency."
+      },
+      "scenario": {
+        "question": "A BI warehouse has fast query execution but heavy queueing during a morning login surge. Which change most directly targets the bottleneck?",
+        "options": ["Increase Time Travel retention", "Use multi-cluster warehouse scaling", "Create a masking policy", "Change the CSV delimiter"],
+        "correct_index": 1,
+        "explanation": "When queries are fast after they start but wait in queue, concurrency capacity is the direct warehouse concern."
+      },
+      "build_exercise": {
+        "title": "Configure a cost-aware BI warehouse",
+        "prompt": "Draft a multi-cluster warehouse for bursty BI traffic with auto-resume, a reasonable auto-suspend, and min/max cluster settings. Explain how you would validate the choice with load history and cost data.",
+        "starter_sql": "CREATE WAREHOUSE IF NOT EXISTS BI_WH\n  WAREHOUSE_SIZE = 'SMALL'\n  MIN_CLUSTER_COUNT = 1\n  MAX_CLUSTER_COUNT = 3\n  AUTO_SUSPEND = 120\n  AUTO_RESUME = TRUE;\n",
+        "checks": ["Cluster count is used for concurrency", "Warehouse size is treated separately", "Auto-suspend/resume and cost validation are included"]
+      },
+      "sources": [
+        {"title": "Virtual warehouses", "url": "https://docs.snowflake.com/en/user-guide/warehouses"},
+        {"title": "Warehouse overview", "url": "https://docs.snowflake.com/en/user-guide/warehouses-overview"},
+        {"title": "Multi-cluster warehouses", "url": "https://docs.snowflake.com/en/user-guide/warehouses-multicluster"}
+      ]
+    },
+    "sql-query-transformation": {
+      "summary": "Core transformation questions mix SQL semantics with programmable Snowflake objects. Know when to use QUALIFY, window functions, PIVOT/UNPIVOT, MERGE, UDFs, stored procedures, tasks, and Snowpark, and be able to distinguish a value-returning function from procedural orchestration.",
+      "what_you_need_to_know": [
+        "QUALIFY filters results after window functions are evaluated and avoids an extra subquery for many window-result filters.",
+        "PIVOT turns row values into columns for supported aggregation patterns; UNPIVOT converts columns back toward row-oriented form.",
+        "MERGE applies matched/not-matched DML logic in one statement and is common for upsert/synchronization patterns.",
+        "A UDF returns a value/table result according to its function contract; a stored procedure is used for procedural logic and can execute multiple operations according to its language/runtime capabilities.",
+        "Tasks schedule/trigger execution; the SQL, procedure, or other target still contains the transformation logic.",
+        "Snowpark provides language APIs for building transformations and application logic that executes against Snowflake data using Snowflake compute patterns."
+      ],
+      "key_concept": "Choose SQL/programming constructs by execution semantics: filter window output, reshape, synchronize DML, calculate a reusable value, run procedural operations, schedule work, or author transformations through a language API.",
+      "decision_rules": [
+        {"when": "Rows must be filtered based on ROW_NUMBER/RANK or another window result", "choose": "QUALIFY", "why": "QUALIFY filters after window-function evaluation."},
+        {"when": "A target table needs update-if-matched and insert-if-new logic from a source", "choose": "MERGE", "why": "MERGE expresses conditional matched/not-matched DML in one statement."},
+        {"when": "The reusable unit must perform procedural multi-step operations rather than simply return a computed value", "choose": "Stored procedure", "why": "Procedures are the procedural abstraction; UDFs follow function-return semantics."}
+      ],
+      "anti_patterns": ["Using WHERE to filter a window alias at a stage where it has not been evaluated.", "Calling a UDF a general-purpose transaction orchestration procedure.", "Using a task as though it stores CDC changes instead of scheduling work."],
+      "trap_explanations": [
+        {"trap": "HAVING and QUALIFY are interchangeable in every query.", "correction": "HAVING filters grouped results; QUALIFY is specifically useful for filtering after window-function evaluation."},
+        {"trap": "UDF and stored procedure are synonyms.", "correction": "They have different invocation and behavioral contracts: functions return values/results; procedures support procedural operations."}
+      ],
+      "worked_example": {
+        "scenario": "A query must return only the latest event per CUSTOMER_ID using ROW_NUMBER ordered by event timestamp.",
+        "reasoning": ["ROW_NUMBER is a window function.", "The filter depends on the calculated window value.", "Use QUALIFY ROW_NUMBER() ... = 1 or an equivalent subquery pattern."],
+        "answer": "QUALIFY provides a direct Snowflake SQL pattern for the window-result filter."
+      },
+      "scenario": {
+        "question": "Which Snowflake SQL clause is designed to filter rows based on the result of a window function in the same query block?",
+        "options": ["QUALIFY", "FILE_FORMAT", "WAREHOUSE", "NETWORK_POLICY"],
+        "correct_index": 0,
+        "explanation": "QUALIFY evaluates after window functions and filters based on their results."
+      },
+      "build_exercise": {
+        "title": "Implement three transformation patterns",
+        "prompt": "Write one query that keeps the latest row per business key with QUALIFY, one MERGE upsert, and explain whether a reusable multi-step maintenance workflow belongs in a UDF or stored procedure.",
+        "starter_sql": "SELECT *\nFROM events\nQUALIFY ROW_NUMBER() OVER (PARTITION BY business_key ORDER BY event_ts DESC) = 1;\n\n-- MERGE INTO target USING source ...\n",
+        "checks": ["QUALIFY is used with a window result", "MERGE separates matched and not-matched actions", "UDF vs stored-procedure choice is based on behavior rather than naming"]
+      },
+      "sources": [
+        {"title": "QUALIFY", "url": "https://docs.snowflake.com/en/sql-reference/constructs/qualify"},
+        {"title": "MERGE", "url": "https://docs.snowflake.com/en/sql-reference/sql/merge"},
+        {"title": "PIVOT", "url": "https://docs.snowflake.com/en/sql-reference/constructs/pivot"},
+        {"title": "Snowpark", "url": "https://docs.snowflake.com/en/developer-guide/snowpark/index"}
+      ]
+    },
+    "semi-unstructured-data": {
+      "summary": "Snowflake supports semi-structured values such as JSON through VARIANT, OBJECT, and ARRAY and supports unstructured files through stages and file metadata/access patterns. The exam expects correct JSON pathing and FLATTEN semantics as well as the distinction between file metadata and file contents.",
+      "what_you_need_to_know": [
+        "VARIANT can store semi-structured values such as parsed JSON; OBJECT represents key-value structure and ARRAY represents ordered collections.",
+        "PARSE_JSON converts a JSON string into a semi-structured value; JSON path expressions navigate nested fields and values often need explicit casting for scalar SQL operations.",
+        "FLATTEN is a table function that expands compound VARIANT/OBJECT/ARRAY structures into rows and is commonly used with LATERAL semantics.",
+        "Semi-structured data can be loaded directly from supported file formats and transformed during or after load depending on the workload.",
+        "Unstructured files can be stored on supported stages and described through directory-table metadata/file URL patterns; metadata rows are not the binary/text file contents themselves.",
+        "Document AI is a higher-level capability for extracting information from documents and should not be confused with basic JSON VARIANT querying."
+      ],
+      "key_concept": "For semi-structured data: parse/store, navigate/cast, then flatten collections when rows are needed. For unstructured data: distinguish staged file bytes from metadata and access URLs.",
+      "decision_rules": [
+        {"when": "A JSON payload with evolving nested attributes must be retained flexibly", "choose": "VARIANT", "why": "VARIANT is Snowflake's core semi-structured value type for JSON-like data."},
+        {"when": "A nested JSON array must become one relational row per element", "choose": "LATERAL FLATTEN", "why": "FLATTEN expands compound values into table rows."},
+        {"when": "A query needs to discover staged files and their metadata", "choose": "Directory table", "why": "Directory tables expose metadata about files in a stage rather than parsing the file content into ordinary table columns."}
+      ],
+      "anti_patterns": ["Treating a VARIANT path expression as automatically typed for every numeric/date operation.", "Using FLATTEN as though it were a scalar function returning one value.", "Assuming a directory-table row contains the full file contents."],
+      "trap_explanations": [
+        {"trap": "FLATTEN directly modifies the source JSON and permanently normalizes it.", "correction": "FLATTEN is a table function used at query time to produce rows from compound values."},
+        {"trap": "Semi-structured and unstructured mean the same storage/query model.", "correction": "VARIANT/OBJECT/ARRAY represent semi-structured values; unstructured files use file/stage access and metadata patterns."}
+      ],
+      "worked_example": {
+        "scenario": "A VARIANT column PAYLOAD contains an items array and analysts need one row for each item.",
+        "reasoning": ["Navigate from PAYLOAD to the items array.", "Use LATERAL FLATTEN over that array.", "Project and cast fields from each flattened element as needed."],
+        "answer": "Use a lateral FLATTEN table-function pattern."
+      },
+      "scenario": {
+        "question": "Which Snowflake table function is commonly used to expand elements of a VARIANT array into rows?",
+        "options": ["FLATTEN", "WAREHOUSE", "UNDROP", "SYSTEM$CLUSTERING_INFORMATION"],
+        "correct_index": 0,
+        "explanation": "FLATTEN expands compound semi-structured values into relational rows."
+      },
+      "build_exercise": {
+        "title": "Query nested JSON and flatten an array",
+        "prompt": "Create a small table with a VARIANT JSON payload, select nested scalar attributes with casts, and flatten an array into one row per element.",
+        "starter_sql": "SELECT\n  payload:customer_id::STRING AS customer_id,\n  item.value:sku::STRING AS sku\nFROM events,\nLATERAL FLATTEN(INPUT => payload:items) item;\n",
+        "checks": ["Nested paths are explicit", "Scalar values are cast appropriately", "FLATTEN is used as a table function with lateral correlation"]
+      },
+      "sources": [
+        {"title": "Semi-structured data types", "url": "https://docs.snowflake.com/en/sql-reference/data-types-semistructured"},
+        {"title": "FLATTEN", "url": "https://docs.snowflake.com/en/sql-reference/functions/flatten"},
+        {"title": "Unstructured data", "url": "https://docs.snowflake.com/en/user-guide/unstructured-intro"},
+        {"title": "Directory tables", "url": "https://docs.snowflake.com/en/user-guide/data-load-dirtables"}
+      ]
+    },
+    "time-travel-failsafe": {
+      "summary": "Time Travel is the user-facing historical/recovery window; Fail-safe is a separate Snowflake-managed recovery period for eligible permanent data after Time Travel and is not normal user self-service. Table type and configured retention determine what recovery operations are available.",
+      "what_you_need_to_know": [
+        "Time Travel lets authorized users query historical data using AT/BEFORE semantics and recover dropped supported objects with UNDROP during the applicable retention window.",
+        "The Time Travel retention period is configurable within limits determined by object/account/edition behavior and table type.",
+        "Permanent tables have Time Travel and, after that applicable period, Fail-safe protection according to Snowflake behavior.",
+        "Transient and temporary tables are designed for data that does not require the same Fail-safe protection as permanent data; recovery expectations therefore differ.",
+        "Fail-safe is a Snowflake-operated emergency-recovery capability, not an extra period in which users run historical SELECT ... AT queries.",
+        "Longer retention increases historical storage considerations, so choose retention based on recovery requirements rather than maximizing it automatically."
+      ],
+      "key_concept": "Time Travel is your query/UNDROP recovery window; Fail-safe is a separate Snowflake-managed last-resort recovery mechanism, not user-queryable history.",
+      "decision_rules": [
+        {"when": "A table was accidentally dropped and is still within Time Travel retention", "choose": "UNDROP", "why": "UNDROP is the supported user recovery operation during the retention window."},
+        {"when": "A query must compare current data with an earlier point within retention", "choose": "AT/BEFORE Time Travel query", "why": "Time Travel exposes historical table state within the applicable retention period."},
+        {"when": "A dataset is reproducible scratch/staging data that does not need Fail-safe protection", "choose": "Evaluate transient/temporary table semantics", "why": "These table types trade recovery protection for their intended lifecycle/storage characteristics."}
+      ],
+      "anti_patterns": ["Planning routine historical reporting against Fail-safe.", "Assuming transient and permanent tables have identical recovery guarantees.", "Setting maximum retention everywhere without considering storage/recovery requirements."],
+      "trap_explanations": [
+        {"trap": "Fail-safe is simply additional Time Travel days available to SQL users.", "correction": "Fail-safe is separate Snowflake-managed recovery and is not a user historical-query period."},
+        {"trap": "UNDROP can recover an object indefinitely.", "correction": "User recovery depends on the applicable Time Travel retention window and supported object behavior."}
+      ],
+      "worked_example": {
+        "scenario": "A production table was dropped 20 minutes ago and its Time Travel retention is still active.",
+        "reasoning": ["This is user-facing recovery during Time Travel.", "The object is eligible and still inside retention.", "Use UNDROP rather than opening a Fail-safe support-recovery process."],
+        "answer": "Recover the table with UNDROP."
+      },
+      "scenario": {
+        "question": "Which statement about Fail-safe is correct?",
+        "options": ["It is a normal SQL historical-query window after Time Travel", "It is a Snowflake-managed recovery mechanism distinct from user Time Travel", "It is a virtual warehouse cache", "It is a row access policy"],
+        "correct_index": 1,
+        "explanation": "Fail-safe is a separate Snowflake-managed recovery capability and is not an extension of normal user Time Travel querying."
+      },
+      "build_exercise": {
+        "title": "Practice Time Travel recovery reasoning",
+        "prompt": "Create a disposable table, modify it, query an earlier state using Time Travel syntax supported by your environment, and document how UNDROP differs from Fail-safe recovery.",
+        "starter_sql": "CREATE OR REPLACE TABLE tt_demo(id NUMBER);\nINSERT INTO tt_demo VALUES (1);\n-- Record a timestamp/query ID, change data, then query with AT/BEFORE.\n",
+        "checks": ["Historical query uses Time Travel semantics", "UNDROP is placed inside user retention reasoning", "Fail-safe is not represented as a SQL-queryable history tier"]
+      },
+      "sources": [
+        {"title": "Time Travel", "url": "https://docs.snowflake.com/en/user-guide/data-time-travel"},
+        {"title": "Fail-safe", "url": "https://docs.snowflake.com/en/user-guide/data-failsafe"},
+        {"title": "UNDROP TABLE", "url": "https://docs.snowflake.com/en/sql-reference/sql/undrop-table"}
+      ]
+    },
+    "secure-sharing-collaboration": {
+      "summary": "Snowflake collaboration is designed around governed access rather than mandatory data copies. Direct shares, listings/Marketplace, reader accounts, Native Apps, and Data Clean Rooms serve different provider-consumer and collaboration needs while keeping authorization and governance central.",
+      "what_you_need_to_know": [
+        "Secure Data Sharing lets providers grant consumers read access to shared Snowflake objects without a traditional ETL copy of the provider's underlying data into the consumer account.",
+        "Consumers with Snowflake accounts can create databases from shared data according to the sharing model and provider grants; the provider controls which objects are exposed.",
+        "Reader accounts support data consumers that do not have their own Snowflake account, with provider-managed considerations and cost/responsibility implications.",
+        "Listings provide a richer distribution/discovery model and power private/public collaboration patterns including Snowflake Marketplace experiences.",
+        "Snowflake Native Apps package application logic and related data/application capabilities for distribution inside Snowflake-oriented workflows.",
+        "Data Clean Rooms support privacy-preserving collaboration patterns where parties analyze combined/approved data under governed rules rather than freely exposing raw datasets."
+      ],
+      "key_concept": "Choose the collaboration mechanism by who the consumer is and what they need: direct governed data access, a discoverable listing, access without their own account, an application package, or privacy-preserving joint analysis.",
+      "decision_rules": [
+        {"when": "A known Snowflake customer needs live governed access to selected provider data", "choose": "Secure sharing/direct share or an appropriate private listing", "why": "The consumer can access shared data without a conventional exported copy pipeline."},
+        {"when": "A consumer does not have a Snowflake account but must access shared data", "choose": "Reader account when appropriate", "why": "Reader accounts are specifically intended for this consumer situation."},
+        {"when": "Two parties need governed joint analysis while restricting raw-data exposure", "choose": "Data Clean Room", "why": "Clean rooms are designed for controlled privacy-preserving collaboration."}
+      ],
+      "anti_patterns": ["Building an unload-and-email process when the requirement is live governed Snowflake sharing.", "Creating reader accounts for every consumer regardless of whether they already have Snowflake.", "Assuming a share automatically grants consumers ownership or write access to provider base tables."],
+      "trap_explanations": [
+        {"trap": "Secure Data Sharing copies the provider's table storage into each consumer account.", "correction": "The core sharing model provides governed access without requiring a traditional provider-to-consumer physical copy pipeline."},
+        {"trap": "A reader account is mandatory for every data-sharing consumer.", "correction": "Reader accounts address consumers without their own Snowflake accounts; consumers that already have Snowflake use normal sharing/listing patterns as appropriate."}
+      ],
+      "worked_example": {
+        "scenario": "A data provider wants 20 existing Snowflake customers to see current reference data without receiving nightly CSV exports.",
+        "reasoning": ["The consumers already have Snowflake accounts.", "The requirement is governed current access, not a file-copy distribution pipeline.", "Use secure sharing/listing capabilities and expose only approved objects."],
+        "answer": "Distribute the data through Snowflake sharing/listing rather than nightly file copies."
+      },
+      "scenario": {
+        "question": "A partner needs access to shared Snowflake data but does not have a Snowflake account. Which feature is specifically designed for this situation?",
+        "options": ["Reader account", "Query Acceleration Service", "Resource monitor", "Search Optimization Service"],
+        "correct_index": 0,
+        "explanation": "Reader accounts enable providers to share with consumers who do not have their own Snowflake account."
+      },
+      "build_exercise": {
+        "title": "Choose a collaboration mechanism",
+        "prompt": "For four cases—existing Snowflake partner, non-Snowflake consumer, public data product, and privacy-preserving joint audience analysis—choose direct share/private listing, reader account, Marketplace/listing, or Data Clean Room and justify the choice.",
+        "starter_sql": "-- Direct sharing concepts can include CREATE SHARE and grants on approved objects.\n-- Do not expose unrelated schemas or ownership privileges.\n",
+        "checks": ["No-copy access principle is understood", "Reader account is used only for the appropriate consumer case", "Clean room is chosen for governed joint analysis rather than ordinary sharing"]
+      },
+      "sources": [
+        {"title": "Secure Data Sharing", "url": "https://docs.snowflake.com/en/user-guide/data-sharing-intro"},
+        {"title": "Listings", "url": "https://docs.snowflake.com/en/collaboration/collaboration-listings-about"},
+        {"title": "Reader accounts", "url": "https://docs.snowflake.com/en/user-guide/data-sharing-reader-create"},
+        {"title": "Snowflake Data Clean Rooms", "url": "https://docs.snowflake.com/en/user-guide/cleanrooms/overview"}
+      ]
+    },
+    "cloning-replication": {
+      "summary": "Zero-copy cloning and replication solve different problems. Cloning creates a fast writable copy that initially shares underlying storage and then incurs storage as data diverges; replication/failover copies supported Snowflake objects and state across accounts/regions for distribution or resilience according to the configured replication model.",
+      "what_you_need_to_know": [
+        "Zero-copy clone creates a metadata-based copy of supported objects without immediately duplicating all underlying micro-partition storage.",
+        "After cloning, source and clone are independent logical objects; changes to one do not automatically change the other.",
+        "As source and clone diverge, changed/new data creates additional storage; 'zero-copy' describes creation behavior, not zero storage forever.",
+        "Cloning is valuable for development/test, experimentation, and point-in-time environment copies where supported.",
+        "Replication copies supported databases/account objects between Snowflake accounts/regions according to database, replication-group, or failover-group capabilities and configuration.",
+        "Failover/resilience design involves replication plus promotion/failover procedures and scope; a local clone by itself is not a cross-region disaster-recovery strategy."
+      ],
+      "key_concept": "Clone for an instant independent copy; replicate for another account/region and resilience/distribution. Do not confuse storage-efficient local copying with disaster recovery.",
+      "decision_rules": [
+        {"when": "Developers need a fast writable copy of production-like data in the same supported environment", "choose": "Zero-copy clone", "why": "Clone creation is fast and initially storage-efficient while producing an independent logical copy."},
+        {"when": "A database must exist in another region/account for resilience", "choose": "Replication/failover capabilities", "why": "The requirement crosses account/region boundaries and is not solved by a local clone alone."},
+        {"when": "A cloned test environment is expected to receive heavy divergent writes", "choose": "Plan for additional storage", "why": "New/changed micro-partitions no longer remain shared with the source forever."}
+      ],
+      "anti_patterns": ["Calling a same-region zero-copy clone a complete disaster-recovery plan.", "Assuming changes to a clone automatically update the source.", "Assuming zero-copy clone means permanent zero storage cost regardless of divergence."],
+      "trap_explanations": [
+        {"trap": "Cloning and replication are synonyms.", "correction": "Cloning creates an independent logical copy using shared storage initially; replication moves supported state across configured Snowflake accounts/regions."},
+        {"trap": "A clone remains storage-free forever.", "correction": "Source/clone divergence creates new storage as changed data is written."}
+      ],
+      "worked_example": {
+        "scenario": "A QA team needs a writable copy of a multi-terabyte production database in minutes for a two-day test cycle.",
+        "reasoning": ["The requirement is a fast independent environment copy, not regional DR.", "Immediate full physical duplication would be wasteful.", "Use a zero-copy clone and account for storage created by test changes."],
+        "answer": "Create a zero-copy clone for the QA environment."
+      },
+      "scenario": {
+        "question": "A company must maintain supported Snowflake data in a second region for disaster-recovery planning. Which concept is more directly applicable than zero-copy cloning?",
+        "options": ["Replication/failover", "Masking policy", "File format", "QUALIFY"],
+        "correct_index": 0,
+        "explanation": "Cross-region/account resilience is a replication/failover problem; a clone is an independent copy within its supported cloning scope, not the cross-region mechanism."
+      },
+      "build_exercise": {
+        "title": "Choose clone versus replication",
+        "prompt": "Design one strategy for ephemeral QA copies and a separate strategy for cross-region disaster recovery. Explain storage divergence, refresh/replication cadence, and failover responsibilities.",
+        "starter_sql": "CREATE DATABASE QA_DB CLONE PROD_DB;\n-- Separately document the replication/failover group or database-replication design for DR.\n",
+        "checks": ["QA uses cloning for fast independent copy", "DR uses replication/failover rather than clone terminology", "Storage divergence after clone writes is acknowledged"]
+      },
+      "sources": [
+        {"title": "Zero-copy cloning", "url": "https://docs.snowflake.com/en/user-guide/object-clone"},
+        {"title": "Replication and failover", "url": "https://docs.snowflake.com/en/user-guide/account-replication-intro"}
+      ]
     }
   }
 }
