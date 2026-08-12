@@ -83,6 +83,7 @@ export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/
 export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
 export const getMistakeQueue = (params = {}) => api(`/api/intelligence/mistake-queue?${new URLSearchParams(params)}`);
 export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);
+export const getEvidenceAudit = (params = {}) => api(`/api/intelligence/evidence-audit?${new URLSearchParams(params)}`);
 export const reindexSkillMap = (trackId = "") => api(`/api/intelligence/reindex-skill-map?${new URLSearchParams({ track_id: trackId })}`, { method: "POST", body: "{}" });
 
 export const getSkillResources = (skillId, params = {}) => api(`/api/skills/${encodeURIComponent(skillId)}/resources?${new URLSearchParams(params)}`);
@@ -107,7 +108,6 @@ export const submitDataAiLab = (id, code) =>
     method: "POST",
     body: JSON.stringify({ code }),
   });
-
 
 export async function streamAi(question, onDelta, onDone) {
   const response = await fetch("/api/ai/ask", {
