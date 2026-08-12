@@ -17,6 +17,9 @@ python3 -m compileall app
 echo "== Database migrations =="
 python3 -c "from app.database import run_migrations; run_migrations(); print('migrations ok')"
 
+echo "== Evidence workflow smoke =="
+python3 scripts/smoke_evidence.py
+
 echo "== API smoke tests =="
 python3 scripts/smoke_api.py
 
