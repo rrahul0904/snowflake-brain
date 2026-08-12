@@ -1,0 +1,62 @@
+name: Foundation Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - agent/editorial-replica
+      - agent/v22-evidence-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  foundation-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Compile Python sources
+        run: python -m compileall app scripts/smoke_evidence.py
+
+      - name: Verify evidence audit and review workflow
+        run: python scripts/smoke_evidence.py
+
+      - name: Verify v21 editorial route contract
+        run: node scripts/smoke_static_routes.mjs
+
+      - name: Verify current frontend syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            frontend/app.js
+            frontend/router.js
+            frontend/api.js
+            frontend/ui.js
+            frontend/components/nav.js
+            frontend/components/topbar.js
+            frontend/components/toast.js
+            frontend/views/curriculum.js
+            frontend/views/lesson.js
+            frontend/views/quiz.js
+            frontend/views/reference.js
+            frontend/views/journal.js
+          )
+          for file in "${files[@]}"; do
+            node --check "$file"
+          done
