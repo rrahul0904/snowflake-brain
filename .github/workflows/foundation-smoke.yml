@@ -32,10 +32,13 @@ jobs:
           node-version: "22"
 
       - name: Compile Python sources
-        run: python -m compileall app scripts/smoke_evidence.py
+        run: python -m compileall app scripts/smoke_evidence.py scripts/smoke_certification_guide.py
 
       - name: Verify evidence audit and review workflow
         run: python scripts/smoke_evidence.py
+
+      - name: Verify certification task progress workflow
+        run: python scripts/smoke_certification_guide.py
 
       - name: Verify current certification route contract
         run: node scripts/smoke_static_routes.mjs
