@@ -1,8 +1,9 @@
-import { showToast } from "./components/toast.js?v=20260812-v25-production-mock";
-import { updateActiveNav } from "./components/nav.js?v=20260812-v25-production-mock";
+import { showToast } from "./components/toast.js?v=20260813-v25-production-mock-r7";
+import { updateActiveNav } from "./components/nav.js?v=20260813-v25-production-mock-r7";
+import { refreshTopbar } from "./components/topbar.js?v=20260813-v25-production-mock-r7";
 import { errorPanel, skeleton } from "./ui.js?v=20260731-v21-editorial-replica";
 
-const ASSET_VERSION = "20260813-v25-production-mock-r5";
+const ASSET_VERSION = "20260813-v25-production-mock-r7";
 const guide = () => import(`./views/guide.js?v=${ASSET_VERSION}`);
 const mock = () => import(`./views/mock.js?v=${ASSET_VERSION}`);
 
@@ -61,6 +62,7 @@ export async function route() {
   try {
     currentView = await loader();
     await currentView.default(root, Object.fromEntries(new URLSearchParams(query)));
+    await refreshTopbar();
     root.dataset.routeOk = "true";
     root.dataset.routePath = path;
     root.dataset.viewId = currentView.VIEW_ID || "unknown";
