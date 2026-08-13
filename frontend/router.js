@@ -1,9 +1,10 @@
-import { showToast } from "./components/toast.js?v=20260812-v24-cert-native";
-import { updateActiveNav } from "./components/nav.js?v=20260812-v24-cert-native";
+import { showToast } from "./components/toast.js?v=20260812-v25-production-mock";
+import { updateActiveNav } from "./components/nav.js?v=20260812-v25-production-mock";
 import { errorPanel, skeleton } from "./ui.js?v=20260731-v21-editorial-replica";
 
-const ASSET_VERSION = "20260812-v24-cert-native";
+const ASSET_VERSION = "20260812-v25-production-mock-r4";
 const guide = () => import(`./views/guide.js?v=${ASSET_VERSION}`);
+const mock = () => import(`./views/mock.js?v=${ASSET_VERSION}`);
 
 const routes = {
   "#/home": guide,
@@ -13,7 +14,11 @@ const routes = {
   "#/skill": guide,
   "#/diagnostic": guide,
   "#/drill": guide,
-  "#/mock": guide,
+  "#/mock": mock,
+  "#/mock/start": mock,
+  "#/mock/session": mock,
+  "#/mock/result": mock,
+  "#/mock/history": mock,
   "#/exercises": guide,
   "#/quick-reference": guide,
   "#/glossary": guide,

@@ -1,4 +1,4 @@
-import { escapeHtml, formatNumber } from "./api.js?v=20260714-v20-ai-academy";
+import { escapeHtml, formatNumber } from "./api.js?v=20260812-v25-production-mock";
 
 export const TRACK_STORAGE_KEY = "snowflake-brain.active-track.v10";
 export const DEFAULT_TRACK = "snowpro-core";

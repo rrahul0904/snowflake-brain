@@ -1,7 +1,7 @@
 const items = [
   ["#/home", "Overview"],
   ["#/curriculum", "Curriculum"],
-  ["#/practice", "Practice"],
+  ["#/mock", "Practice"],
   ["#/progress", "Progress"],
   ["#/quick-reference", "Quick Reference"],
   ["#/glossary", "Glossary"],
@@ -13,14 +13,18 @@ const aliases = new Map([
   ["#/learn", "#/curriculum"],
   ["#/domain", "#/curriculum"],
   ["#/skill", "#/curriculum"],
-  ["#/quiz", "#/practice"],
-  ["#/diagnostic", "#/practice"],
-  ["#/drill", "#/practice"],
-  ["#/mock", "#/practice"],
-  ["#/exercises", "#/practice"],
-  ["#/labs", "#/practice"],
+  ["#/quiz", "#/mock"],
+  ["#/diagnostic", "#/mock"],
+  ["#/drill", "#/mock"],
+  ["#/mock/start", "#/mock"],
+  ["#/mock/session", "#/mock"],
+  ["#/mock/result", "#/mock"],
+  ["#/mock/history", "#/mock"],
+  ["#/practice", "#/mock"],
+  ["#/exercises", "#/mock"],
+  ["#/labs", "#/mock"],
   ["#/readiness", "#/progress"],
-  ["#/review", "#/practice"],
+  ["#/review", "#/mock"],
   ["#/article", "#/journal"],
 ]);
 
@@ -39,7 +43,7 @@ export async function renderNav() {
       </div>
       <div class="replica-nav-actions">
         <label class="replica-cert-control"><span class="sr-only">Certification</span><select id="replica-track-select" aria-label="Certification"><option>Loading certifications...</option></select></label>
-        <a class="replica-primary-action" href="#/mock">Full Mock</a>
+        <a class="replica-primary-action" href="#/mock/start?type=full-mock">Full Mock</a>
       </div>
     </div>
   `;
