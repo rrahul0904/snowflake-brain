@@ -1,4 +1,4 @@
-import { getSkillMap } from "../api.js?v=20260812-v23-cert-guide";
+import { getSkillMap } from "../api.js?v=20260812-v24-cert-native";
 import { activeTrack, navigateWithTrack, normalizeTrack, setActiveTrack, trackOptions } from "../ui.js?v=20260731-v21-editorial-replica";
 
 export async function renderTopbar() {

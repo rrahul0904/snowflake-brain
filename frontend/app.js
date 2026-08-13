@@ -1,6 +1,6 @@
-import { renderNav } from "./components/nav.js?v=20260812-v23-cert-guide";
-import { renderTopbar, refreshTopbar } from "./components/topbar.js?v=20260731-v21-editorial-replica";
-import { route } from "./router.js?v=20260812-v23-cert-guide";
+import { renderNav } from "./components/nav.js?v=20260812-v24-cert-native";
+import { renderTopbar, refreshTopbar } from "./components/topbar.js?v=20260812-v24-cert-native";
+import { route } from "./router.js?v=20260812-v24-cert-native";
 
 async function boot() {
   await Promise.all([renderNav(), renderTopbar()]);

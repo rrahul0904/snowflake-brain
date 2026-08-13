@@ -1,18 +1,18 @@
 services:
-  snowflake-brain:
+  snowflake-certification-guide:
     build: .
-    container_name: snowflake-brain-lab
+    container_name: snowflake-certification-guide
     ports:
       - "8010:8000"
     environment:
-      CONTENT_ROOT: /content
-      BRAIN_DB: /data/snowflake_brain.sqlite
-      AUTO_INGEST: "true"
-      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      BRAIN_DB: /data/snowflake_certification.sqlite
       SKILL_MAP_CONFIG: /app/config/certification_skill_map.json
+      CORE_C03_BLUEPRINT_CONFIG: /app/config/snowpro_core_cof_c03_blueprint.json
+      CERTIFICATION_CATALOG_CONFIG: /app/config/certification_catalog.json
+      CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG: /app/config/certification_curricula_supplement.json
+      STUDY_CONTENT_CORE_CONFIG: /app/config/study_content_core.json
       SNOWFLAKE_LABS_CONFIG: /app/config/snowflake_lab_challenges.json
       SNOWFLAKE_LABS_MODE: "${SNOWFLAKE_LABS_MODE:-offline}"
     volumes:
-      - "${CONTENT_ROOT_HOST:-./content}:/content:ro"
       - "./data:/data"
     restart: unless-stopped

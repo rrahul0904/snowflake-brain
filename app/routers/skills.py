@@ -18,24 +18,6 @@ class TaskProgressUpdate(BaseModel):
     completed: bool = True
 
 
-def _ensure_task_progress(conn) -> None:
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS certification_task_progress (
-          track_id TEXT NOT NULL,
-          skill_id TEXT NOT NULL,
-          completed INTEGER NOT NULL DEFAULT 0,
-          completed_at TEXT,
-          updated_at TEXT DEFAULT (datetime('now')),
-          PRIMARY KEY(track_id, skill_id)
-        )
-        """
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_cert_task_progress_track ON certification_task_progress(track_id, completed)"
-    )
-
-
 def _question_text(row: dict[str, Any]) -> str:
     return " ".join(
         [
@@ -43,7 +25,6 @@ def _question_text(row: dict[str, Any]) -> str:
             row.get("explanation") or "",
             row.get("tags") or "",
             row.get("test_title") or "",
-            row.get("course_title") or "",
         ]
     )
 
@@ -67,7 +48,6 @@ def skill_content_coverage() -> dict[str, Any]:
 def task_progress(track_id: str = "snowpro-core") -> dict[str, Any]:
     configured = {skill["id"]: skill for skill in flatten_skills(track_id)}
     with connect() as conn:
-        _ensure_task_progress(conn)
         rows = [
             dict(row)
             for row in conn.execute(
@@ -81,12 +61,13 @@ def task_progress(track_id: str = "snowpro-core") -> dict[str, Any]:
             )
         ]
     completed_ids = {row["skill_id"] for row in rows if int(row.get("completed") or 0) == 1}
+    current_ids = set(configured)
     return {
         "track_id": track_id,
         "total_tasks": len(configured),
-        "completed_tasks": len(completed_ids & set(configured)),
-        "completed_skill_ids": sorted(completed_ids & set(configured)),
-        "items": rows,
+        "completed_tasks": len(completed_ids & current_ids),
+        "completed_skill_ids": sorted(completed_ids & current_ids),
+        "items": [row for row in rows if row.get("skill_id") in current_ids],
     }
 
 
@@ -94,9 +75,8 @@ def task_progress(track_id: str = "snowpro-core") -> dict[str, Any]:
 def update_task_progress(payload: TaskProgressUpdate) -> dict[str, Any]:
     configured = {skill["id"]: skill for skill in flatten_skills(payload.track_id)}
     if payload.skill_id not in configured:
-        raise HTTPException(status_code=404, detail="Skill is not configured for this certification")
+        raise HTTPException(status_code=404, detail="Task is not configured for this certification")
     with connect() as conn:
-        _ensure_task_progress(conn)
         conn.execute(
             """
             INSERT INTO certification_task_progress(track_id, skill_id, completed, completed_at, updated_at)
@@ -108,38 +88,33 @@ def update_task_progress(payload: TaskProgressUpdate) -> dict[str, Any]:
             """,
             (payload.track_id, payload.skill_id, int(payload.completed), int(payload.completed)),
         )
-    return {
-        "track_id": payload.track_id,
-        "skill_id": payload.skill_id,
-        "completed": payload.completed,
-    }
+    return {"track_id": payload.track_id, "skill_id": payload.skill_id, "completed": payload.completed}
 
 
 @router.get("/skills/summary")
 def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
     cert = certification(track_id)
-    # Overlay current public metadata without changing the underlying curriculum ids.
-    cert = next((item for item in configured_skill_map().get("certifications", []) if item.get("id") == track_id), cert)
+    cert = next(
+        (item for item in configured_skill_map().get("certifications", []) if item.get("id") == track_id),
+        cert,
+    )
     skills = flatten_skills(track_id)
+    valid_ids = {skill["id"] for skill in skills}
     with connect() as conn:
-        _ensure_task_progress(conn)
         question_rows = [
             dict(row)
             for row in conn.execute(
                 """
-                SELECT q.id, q.question, q.explanation, q.tags, q.test_title, q.course_title,
-                       COALESCE(c.track_id, pt.track_id, '') AS track_id,
+                SELECT q.id, q.question, q.explanation, q.tags, q.test_title, q.source_kind,
                        COUNT(a.id) AS attempts,
-                       SUM(CASE WHEN COALESCE(a.correct, 0) = 1 THEN 1 ELSE 0 END) AS correct_attempts
+                       COALESCE(SUM(CASE WHEN a.correct = 1 THEN 1 ELSE 0 END), 0) AS correct_attempts
                 FROM questions q
                 LEFT JOIN question_attempts a ON a.question_id = q.id
-                LEFT JOIN courses c ON c.id = q.course_id
-                LEFT JOIN practice_tests pt ON pt.id = q.test_id
-                WHERE (? = '' OR COALESCE(c.track_id, pt.track_id, '') = ? OR COALESCE(q.course_id, '') IN (SELECT id FROM courses WHERE track_id = ?))
+                WHERE q.track_id = ? AND q.source_kind <> 'legacy'
                 GROUP BY q.id
                 LIMIT 8000
                 """,
-                (track_id or "", track_id or "", track_id or ""),
+                (track_id,),
             )
         ]
         reliable_edges = [
@@ -149,10 +124,11 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
                 SELECT question_id, skill_id, domain_id, confidence, reviewed
                 FROM question_skill_map
                 WHERE track_id = ? AND (reviewed = 1 OR confidence >= 0.70)
-                ORDER BY reviewed DESC, confidence DESC
+                ORDER BY question_id, reviewed DESC, confidence DESC, updated_at DESC
                 """,
                 (track_id,),
             )
+            if row["skill_id"] in valid_ids
         ]
         completed = {
             row["skill_id"]
@@ -160,17 +136,19 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
                 "SELECT skill_id FROM certification_task_progress WHERE track_id = ? AND completed = 1",
                 (track_id,),
             )
+            if row["skill_id"] in valid_ids
         }
         lab_events = [
             dict(row)
             for row in conn.execute(
                 """
-                SELECT lab_id, COUNT(*) AS attempts,
+                SELECT skill_id, COUNT(*) AS attempts,
                        SUM(CASE WHEN event_type = 'lab_passed' THEN 1 ELSE 0 END) AS passed
                 FROM learning_events
-                WHERE lab_id IS NOT NULL
-                GROUP BY lab_id
-                """
+                WHERE track_id = ? AND skill_id IS NOT NULL
+                GROUP BY skill_id
+                """,
+                (track_id,),
             )
         ]
 
@@ -202,6 +180,7 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
         output.append(
             {
                 "skill_id": skill.get("id"),
+                "task_code": skill.get("task_code"),
                 "skill": skill.get("title"),
                 "domain_id": skill.get("domain_id"),
                 "domain": skill.get("domain"),
@@ -219,11 +198,11 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
 
     domain_summary: dict[str, dict[str, Any]] = {}
     for row in output:
-        domain = row["domain"] or "Other"
+        key = row.get("domain_id") or row.get("domain") or "other"
         item = domain_summary.setdefault(
-            domain,
+            key,
             {
-                "domain": domain,
+                "domain": row.get("domain") or "Other",
                 "domain_id": row.get("domain_id") or "",
                 "skills": 0,
                 "completed_tasks": 0,
@@ -253,7 +232,7 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
 def skill_lesson(skill_id: str, track_id: str = "snowpro-core") -> dict[str, Any]:
     lesson = study_lesson(track_id, skill_id)
     if not lesson:
-        raise HTTPException(status_code=404, detail="Study lesson is not configured for this certification task")
+        raise HTTPException(status_code=404, detail="Written task lesson is not configured for this certification")
     return lesson
 
 
@@ -269,15 +248,20 @@ def skill_resources(skill_id: str, track_id: str = "snowpro-core", limit: int = 
             dict(row)
             for row in conn.execute(
                 """
-                SELECT q.id, q.question, q.options_json, q.correct_json, q.explanation,
-                       q.tags, q.test_title, q.course_title, qsm.confidence, qsm.reviewed
+                SELECT q.id, q.track_id, q.question, q.options_json, q.correct_json, q.explanation,
+                       q.tags, q.test_title, q.source_kind, qsm.confidence, qsm.reviewed
                 FROM question_skill_map qsm
                 JOIN questions q ON q.id = qsm.question_id
-                WHERE qsm.track_id = ? AND qsm.skill_id = ? AND (qsm.reviewed = 1 OR qsm.confidence >= 0.70)
-                ORDER BY qsm.reviewed DESC, qsm.confidence DESC, q.id
+                WHERE qsm.track_id = ? AND qsm.skill_id = ?
+                  AND q.track_id = ? AND q.source_kind <> 'legacy'
+                  AND (qsm.reviewed = 1 OR qsm.confidence >= 0.70)
+                ORDER BY qsm.reviewed DESC,
+                         CASE q.source_kind WHEN 'source' THEN 0 WHEN 'curated' THEN 1 WHEN 'canonical' THEN 2 ELSE 3 END,
+                         qsm.confidence DESC,
+                         q.id
                 LIMIT ?
                 """,
-                (track_id, skill_id, limit),
+                (track_id, skill_id, track_id, limit),
             )
         ]
         if persisted:
@@ -286,20 +270,18 @@ def skill_resources(skill_id: str, track_id: str = "snowpro-core", limit: int = 
             dict(row)
             for row in conn.execute(
                 """
-                SELECT q.id, q.question, q.options_json, q.correct_json, q.explanation,
-                       q.tags, q.test_title, q.course_title
+                SELECT q.id, q.track_id, q.question, q.options_json, q.correct_json, q.explanation,
+                       q.tags, q.test_title, q.source_kind
                 FROM questions q
-                LEFT JOIN courses c ON c.id = q.course_id
-                LEFT JOIN practice_tests pt ON pt.id = q.test_id
-                WHERE (? = '' OR COALESCE(c.track_id, pt.track_id, '') = ? OR COALESCE(q.course_id, '') IN (SELECT id FROM courses WHERE track_id = ?))
+                WHERE q.track_id = ? AND q.source_kind <> 'legacy'
                 LIMIT 2000
                 """,
-                (track_id or "", track_id or "", track_id or ""),
+                (track_id,),
             )
         ]
     question_scored = sorted(
         [(skill_score(_question_text(row), skill), row) for row in questions],
-        key=lambda item: item[0],
+        key=lambda item: (item[0], 1 if item[1].get("source_kind") == "source" else 0),
         reverse=True,
     )
     return {

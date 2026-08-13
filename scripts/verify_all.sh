@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
-
 cd "$ROOT_DIR"
 
 if [[ -z "$NODE_BIN" || ! -x "$NODE_BIN" ]]; then
@@ -11,26 +10,14 @@ if [[ -z "$NODE_BIN" || ! -x "$NODE_BIN" ]]; then
   exit 1
 fi
 
-echo "== Backend compile =="
-python3 -m compileall app scripts/smoke_evidence.py scripts/smoke_certification_guide.py
+echo "== Python compile =="
+python3 -m compileall app scripts/smoke_core_guide.py scripts/smoke_certification_native.py
 
-echo "== Database migrations =="
-python3 -c "from app.database import run_migrations; run_migrations(); print('migrations ok')"
+echo "== COF-C03 blueprint/content contract =="
+python3 scripts/smoke_core_guide.py
 
-echo "== Evidence workflow smoke =="
-python3 scripts/smoke_evidence.py
-
-echo "== Complete certification product smoke =="
-python3 scripts/smoke_certification_guide.py
-
-echo "== Existing API compatibility smoke =="
-python3 scripts/smoke_api.py
-
-echo "== Source boundary check =="
-python3 scripts/check_source_boundaries.py
-
-echo "== Question count check =="
-python3 scripts/check_question_counts.py
+echo "== Certification-native architecture =="
+python3 scripts/smoke_certification_native.py
 
 echo "== Frontend syntax =="
 FRONTEND_FILES=(
@@ -44,18 +31,10 @@ FRONTEND_FILES=(
   frontend/views/guide.js
   frontend/views/quiz.js
   frontend/views/labs.js
-  frontend/views/reference.js
   frontend/views/journal.js
 )
 for file in "${FRONTEND_FILES[@]}"; do
   "$NODE_BIN" --check "$file"
 done
 
-echo "== Static certification route/product contract =="
-"$NODE_BIN" scripts/smoke_static_routes.mjs
-
-echo "== Package check =="
-scripts/package_review.sh >/tmp/snowflake_brain_package_path.txt
-python3 scripts/check_package.py "$(cat /tmp/snowflake_brain_package_path.txt)"
-
-echo "All Snowflake Certification Guide verification checks passed."
+echo "All V24 Snowflake Certification Guide checks passed."

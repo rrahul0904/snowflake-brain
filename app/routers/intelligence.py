@@ -21,12 +21,10 @@ router = APIRouter()
 
 
 class MappingReviewRequest(BaseModel):
-    mapping_type: str
     item_id: str
     skill_id: str
     decision: str
-    track_id: str = ""
-    content_type: str = "lesson"
+    track_id: str = "snowpro-core"
     replacement_skill_id: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
@@ -88,12 +86,11 @@ def certification_evidence_review(payload: MappingReviewRequest) -> dict[str, An
         with connect() as conn:
             return review_mapping(
                 conn,
-                mapping_type=payload.mapping_type,
+                mapping_type="question",
                 item_id=payload.item_id,
                 skill_id=payload.skill_id,
                 decision=payload.decision,
                 track_id=payload.track_id,
-                content_type=payload.content_type,
                 replacement_skill_id=payload.replacement_skill_id,
                 confidence=payload.confidence,
             )
@@ -102,6 +99,6 @@ def certification_evidence_review(payload: MappingReviewRequest) -> dict[str, An
 
 
 @router.post("/intelligence/reindex-skill-map")
-def reindex_skill_map(track_id: str = "") -> dict[str, Any]:
+def reindex_skill_map(track_id: str = "snowpro-core") -> dict[str, Any]:
     with connect() as conn:
         return build_question_skill_map(conn, track_id)

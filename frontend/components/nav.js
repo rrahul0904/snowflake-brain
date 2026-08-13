@@ -1,38 +1,27 @@
 const items = [
+  ["#/home", "Overview"],
   ["#/curriculum", "Curriculum"],
-  ["#/mock", "Practice"],
-  ["#/quick-reference", "Reference"],
+  ["#/practice", "Practice"],
+  ["#/progress", "Progress"],
+  ["#/quick-reference", "Quick Reference"],
+  ["#/glossary", "Glossary"],
   ["#/journal", "Blog"],
 ];
 
 const aliases = new Map([
   ["#/", "#/home"],
-  ["#/command", "#/home"],
-  ["#/today", "#/curriculum"],
-  ["#/academy", "#/curriculum"],
   ["#/learn", "#/curriculum"],
-  ["#/lessons", "#/curriculum"],
-  ["#/archive", "#/curriculum"],
   ["#/domain", "#/curriculum"],
   ["#/skill", "#/curriculum"],
-  ["#/lesson", "#/curriculum"],
-  ["#/video", "#/curriculum"],
-  ["#/quiz", "#/mock"],
-  ["#/practice", "#/mock"],
-  ["#/diagnostic", "#/mock"],
-  ["#/drill", "#/mock"],
-  ["#/exercises", "#/mock"],
-  ["#/labs", "#/mock"],
-  ["#/progress", "#/curriculum"],
-  ["#/readiness", "#/curriculum"],
-  ["#/intelligence", "#/curriculum"],
-  ["#/analytics", "#/curriculum"],
-  ["#/search", "#/quick-reference"],
-  ["#/reference", "#/quick-reference"],
-  ["#/glossary", "#/quick-reference"],
-  ["#/ai", "#/quick-reference"],
-  ["#/review", "#/mock"],
-  ["#/career", "#/journal"],
+  ["#/quiz", "#/practice"],
+  ["#/diagnostic", "#/practice"],
+  ["#/drill", "#/practice"],
+  ["#/mock", "#/practice"],
+  ["#/exercises", "#/practice"],
+  ["#/labs", "#/practice"],
+  ["#/readiness", "#/progress"],
+  ["#/review", "#/practice"],
+  ["#/article", "#/journal"],
 ]);
 
 export async function renderNav() {
@@ -50,7 +39,7 @@ export async function renderNav() {
       </div>
       <div class="replica-nav-actions">
         <label class="replica-cert-control"><span class="sr-only">Certification</span><select id="replica-track-select" aria-label="Certification"><option>Loading certifications...</option></select></label>
-        <a class="replica-primary-action" href="#/mock">Mock Exam</a>
+        <a class="replica-primary-action" href="#/mock">Full Mock</a>
       </div>
     </div>
   `;
