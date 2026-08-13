@@ -1,0 +1,83 @@
+name: Certification Native Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - agent/v23-snowflake-certification-guide
+      - agent/v24-certification-native-cleanup
+
+permissions:
+  contents: read
+
+jobs:
+  certification-native-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+
+      - name: Compile certification runtime
+        run: python -m compileall app scripts/smoke_core_guide.py scripts/smoke_certification_native.py
+
+      - name: Verify canonical COF-C03 written guide
+        run: python scripts/smoke_core_guide.py
+
+      - name: Verify V24 certification-native architecture
+        run: python scripts/smoke_certification_native.py
+
+      - name: Verify current frontend syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            frontend/app.js
+            frontend/router.js
+            frontend/api.js
+            frontend/ui.js
+            frontend/components/nav.js
+            frontend/components/topbar.js
+            frontend/components/toast.js
+            frontend/views/guide.js
+            frontend/views/quiz.js
+            frontend/views/labs.js
+            frontend/views/journal.js
+          )
+          for file in "${files[@]}"; do
+            node --check "$file"
+          done
+
+      - name: Verify removed runtime files stay removed
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=(
+            app/ingest.py
+            app/routers/courses.py
+            app/routers/index.py
+            frontend/views/academy.js
+            frontend/views/search.js
+            frontend/views/flashcards.js
+          )
+          for file in "${forbidden[@]}"; do
+            if [[ -e "$file" ]]; then
+              echo "Forbidden legacy runtime file exists: $file"
+              exit 1
+            fi
+          done

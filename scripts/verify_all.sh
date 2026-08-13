@@ -2,37 +2,39 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NODE_BIN="${NODE_BIN:-/Users/297159/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node}"
-
+NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 cd "$ROOT_DIR"
 
-echo "== Backend compile =="
-python3 -m compileall app
+if [[ -z "$NODE_BIN" || ! -x "$NODE_BIN" ]]; then
+  echo "Node.js is required for frontend verification. Set NODE_BIN or install node." >&2
+  exit 1
+fi
 
-echo "== Database migrations =="
-python3 -c "from app.database import run_migrations; run_migrations(); print('migrations ok')"
+echo "== Python compile =="
+python3 -m compileall app scripts/smoke_core_guide.py scripts/smoke_certification_native.py
 
-echo "== API smoke tests =="
-python3 scripts/smoke_api.py
+echo "== COF-C03 blueprint/content contract =="
+python3 scripts/smoke_core_guide.py
 
-echo "== Source boundary check =="
-python3 scripts/check_source_boundaries.py
-
-echo "== Question count check =="
-python3 scripts/check_question_counts.py
+echo "== Certification-native architecture =="
+python3 scripts/smoke_certification_native.py
 
 echo "== Frontend syntax =="
-"$NODE_BIN" --check frontend/router.js
-"$NODE_BIN" --check frontend/api.js
-"$NODE_BIN" --check frontend/components/nav.js
-"$NODE_BIN" --check frontend/views/dashboard.js
-"$NODE_BIN" --check frontend/views/video.js
-"$NODE_BIN" --check frontend/views/quiz.js
-"$NODE_BIN" --check frontend/views/analytics.js
-"$NODE_BIN" --check frontend/views/plan.js
+FRONTEND_FILES=(
+  frontend/app.js
+  frontend/router.js
+  frontend/api.js
+  frontend/ui.js
+  frontend/components/nav.js
+  frontend/components/topbar.js
+  frontend/components/toast.js
+  frontend/views/guide.js
+  frontend/views/quiz.js
+  frontend/views/labs.js
+  frontend/views/journal.js
+)
+for file in "${FRONTEND_FILES[@]}"; do
+  "$NODE_BIN" --check "$file"
+done
 
-echo "== Package check =="
-scripts/package_review.sh >/tmp/snowflake_brain_package_path.txt
-python3 scripts/check_package.py "$(cat /tmp/snowflake_brain_package_path.txt)"
-
-echo "All verification checks passed."
+echo "All V24 Snowflake Certification Guide checks passed."
