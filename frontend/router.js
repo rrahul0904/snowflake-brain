@@ -7,8 +7,8 @@ const certifications = () => import("./views/certifications.js");
 const curriculum = () => import("./views/curriculum-v26.js");
 const lesson = () => import("./views/lesson-v26.js");
 const guide = () => import("./views/guide.js");
-const practice = () => import("./views/practice.js");
-const quiz = () => import("./views/quiz.js");
+const practice = () => import("./views/practice-v26.js");
+const legacyPractice = () => import("./views/quiz.js");
 const mockLanding = () => import("./views/mock-landing.js");
 const mockStart = () => import("./views/mock-start-v26.js");
 const examSession = () => import("./views/exam-session-v26.js");
@@ -27,9 +27,9 @@ const routes = {
   "#/glossary": guide,
   "#/exercises": guide,
   "#/practice": practice,
-  "#/quiz": quiz,
-  "#/diagnostic": quiz,
-  "#/drill": quiz,
+  "#/quiz": legacyPractice,
+  "#/diagnostic": legacyPractice,
+  "#/drill": legacyPractice,
   "#/mock": mockLanding,
   "#/mock/start": mockStart,
   "#/mock/session": examSession,
