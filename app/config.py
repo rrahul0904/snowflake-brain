@@ -44,3 +44,10 @@ SNOWFLAKE_LABS_CONFIG = Path(
     )
 ).expanduser()
 SNOWFLAKE_LABS_MODE = os.getenv("SNOWFLAKE_LABS_MODE", "offline").lower()
+
+EXAM_SIMULATION_CONFIG = Path(
+    os.getenv(
+        "EXAM_SIMULATION_CONFIG",
+        str(ROOT_DIR / "config" / "exam_simulation.json"),
+    )
+).expanduser()

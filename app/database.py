@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -6,7 +8,7 @@ from typing import Any, Iterator
 from .config import BRAIN_DB
 
 
-SCHEMA_VERSION = "20260812_001_certification_native_v24"
+SCHEMA_VERSION = "20260812_002_production_mock_v25"
 
 
 def _db_path() -> Path:
@@ -28,6 +30,9 @@ def connect() -> Iterator[sqlite3.Connection]:
     try:
         yield conn
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -134,6 +139,17 @@ def run_migrations() -> None:
               status TEXT DEFAULT 'in_progress'
             );
 
+            CREATE TABLE IF NOT EXISTS exam_session_questions (
+              session_id INTEGER NOT NULL REFERENCES exam_sessions(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+              position INTEGER NOT NULL,
+              options_json TEXT NOT NULL DEFAULT '[]',
+              correct_positions_json TEXT NOT NULL DEFAULT '[]',
+              flagged INTEGER NOT NULL DEFAULT 0,
+              PRIMARY KEY(session_id, question_id),
+              UNIQUE(session_id, position)
+            );
+
             CREATE TABLE IF NOT EXISTS exam_session_answers (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               session_id INTEGER NOT NULL REFERENCES exam_sessions(id) ON DELETE CASCADE,
@@ -192,17 +208,33 @@ def run_migrations() -> None:
               ON question_skill_map(track_id, domain_id, skill_id, confidence, reviewed);
             CREATE INDEX IF NOT EXISTS idx_exam_sessions_track
               ON exam_sessions(track_id, mode, status, finished_at);
+            CREATE INDEX IF NOT EXISTS idx_exam_session_questions_order
+              ON exam_session_questions(session_id, position);
             CREATE INDEX IF NOT EXISTS idx_learning_events_track
               ON learning_events(track_id, event_type, created_at);
             """
         )
+        _ensure_column(conn, "exam_sessions", "duration_seconds", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "exam_sessions", "submitted_reason", "TEXT DEFAULT ''")
+        _ensure_column(conn, "exam_sessions", "raw_correct", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "exam_sessions", "raw_accuracy", "REAL NOT NULL DEFAULT 0")
+        _ensure_column(conn, "exam_sessions", "weighted_accuracy", "REAL NOT NULL DEFAULT 0")
+        _ensure_column(conn, "exam_sessions", "scaled_score", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "exam_sessions", "elapsed_seconds", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "exam_sessions", "configuration_json", "TEXT NOT NULL DEFAULT '{}'")
         conn.execute(
             """
             INSERT OR IGNORE INTO schema_migrations(version, name)
             VALUES (?, ?)
             """,
-            (SCHEMA_VERSION, "Certification-native V24 schema; course/video architecture removed"),
+            (SCHEMA_VERSION, "Production persisted mock-exam sessions and scoring"),
         )
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, declaration: str) -> None:
+    columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
 
 
 def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:

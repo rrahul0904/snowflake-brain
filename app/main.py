@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import run_migrations
-from .routers import certification_practice, experience, intelligence, labs, questions, skills
+from .routers import certification_practice, experience, intelligence, labs, mock_exam, questions, skills
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
@@ -30,6 +30,7 @@ def health() -> dict[str, str]:
 app.include_router(skills.router, prefix="/api")
 app.include_router(questions.router, prefix="/api")
 app.include_router(certification_practice.router, prefix="/api")
+app.include_router(mock_exam.router, prefix="/api")
 app.include_router(intelligence.router, prefix="/api")
 app.include_router(experience.router, prefix="/api")
 app.include_router(labs.router, prefix="/api")

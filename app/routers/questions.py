@@ -63,7 +63,7 @@ def questions(
     with connect() as conn:
         total = conn.execute(f"SELECT COUNT(*) AS count FROM questions q {where}", params).fetchone()["count"]
         rows = [
-            question_public(dict(row), include_answer=include_answers)
+            question_public(dict(row), include_answer=False)
             for row in conn.execute(
                 f"""
                 SELECT q.*
@@ -120,7 +120,7 @@ def practice_test_questions(test_id: str, include_answers: bool = False) -> dict
         if not test:
             raise HTTPException(status_code=404, detail="Practice test not found")
         rows = [
-            question_public(dict(row), include_answer=include_answers)
+            question_public(dict(row), include_answer=False)
             for row in conn.execute(
                 """
                 SELECT * FROM questions
@@ -139,7 +139,7 @@ def question_detail(question_id: str) -> dict[str, Any]:
         row = conn.execute("SELECT * FROM questions WHERE id = ?", (question_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Question not found")
-    return question_public(dict(row), include_answer=True)
+    return question_public(dict(row), include_answer=False)
 
 
 @router.post("/quiz/start")
@@ -176,6 +176,18 @@ def quiz_grade(payload: QuizGradeRequest) -> dict[str, Any]:
         return {"score": 0, "total": 0, "results": []}
     placeholders = ",".join("?" for _ in ids)
     with connect() as conn:
+        active = conn.execute(
+            f"""
+            SELECT 1
+            FROM exam_session_questions sq
+            JOIN exam_sessions s ON s.id = sq.session_id
+            WHERE s.status = 'in_progress' AND sq.question_id IN ({placeholders})
+            LIMIT 1
+            """,
+            ids,
+        ).fetchone()
+        if active:
+            raise HTTPException(status_code=409, detail="Timed-exam questions can only be graded by submitting their session")
         rows = {
             row["id"]: dict(row)
             for row in conn.execute(f"SELECT * FROM questions WHERE id IN ({placeholders})", ids)
