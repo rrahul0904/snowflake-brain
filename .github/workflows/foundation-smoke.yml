@@ -1,83 +1,84 @@
-name: Certification Native Smoke
+name: Certification Guide Smoke
 
 on:
   pull_request:
   push:
     branches:
       - main
-      - agent/v23-snowflake-certification-guide
-      - agent/v24-certification-native-cleanup
+      - agent/v26-screen-recording-rebuild
 
 permissions:
   contents: read
 
 jobs:
-  certification-native-smoke:
+  certification-guide-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-
       - name: Install application dependencies
         run: pip install -r requirements.txt
-
-      - name: Compile certification runtime
-        run: python -m compileall app scripts/smoke_core_guide.py scripts/smoke_certification_native.py
-
-      - name: Verify canonical COF-C03 written guide
+      - name: Compile runtime
+        run: python -m compileall app scripts
+      - name: Verify COF-C03 written guide
         run: python scripts/smoke_core_guide.py
-
-      - name: Verify V24 certification-native architecture
+      - name: Verify certification-native architecture
         run: python scripts/smoke_certification_native.py
-
-      - name: Verify current frontend syntax
+      - name: Verify V26 end-to-end backend flow
+        run: python scripts/smoke_v26.py
+      - name: Verify active frontend syntax
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            frontend/app.js
-            frontend/router.js
+            frontend/app-complete.js
+            frontend/router-complete.js
             frontend/api.js
             frontend/ui.js
             frontend/components/nav.js
-            frontend/components/topbar.js
+            frontend/components/feedback.js
+            frontend/components/globe.js
+            frontend/components/home-extras.js
             frontend/components/toast.js
-            frontend/views/guide.js
-            frontend/views/quiz.js
-            frontend/views/labs.js
+            frontend/views/home-v26.js
+            frontend/views/certifications.js
+            frontend/views/curriculum-v26.js
+            frontend/views/lesson-v26.js
+            frontend/views/practice-v26.js
+            frontend/views/mock-landing.js
+            frontend/views/mock-start-v26.js
+            frontend/views/mock-start-bridge.js
+            frontend/views/exam-session-v26.js
+            frontend/views/exam-result-v26.js
+            frontend/views/progress-v26.js
+            frontend/views/lookup-v26.js
+            frontend/views/exercises-v26.js
+            frontend/views/reference.js
             frontend/views/journal.js
+            frontend/views/journal-v26.js
+            frontend/views/labs.js
+            frontend/views/info-v26.js
           )
-          for file in "${files[@]}"; do
-            node --check "$file"
-          done
-
-      - name: Verify removed runtime files stay removed
+          for file in "${files[@]}"; do node --check "$file"; done
+      - name: Verify legacy runtime remains inactive
         shell: bash
         run: |
           set -euo pipefail
-          forbidden=(
-            app/ingest.py
-            app/routers/courses.py
-            app/routers/index.py
-            frontend/views/academy.js
-            frontend/views/search.js
-            frontend/views/flashcards.js
-          )
+          grep -q 'app-complete.js' frontend/index-v26.html
+          if grep -Eq '/static/(styles|replica|guide|guide-study|mock)\.css' frontend/index-v26.html; then
+            echo 'Legacy stylesheet is active in the V26 shell'
+            exit 1
+          fi
+          forbidden=(app/ingest.py app/routers/courses.py frontend/views/quiz.js)
           for file in "${forbidden[@]}"; do
-            if [[ -e "$file" ]]; then
-              echo "Forbidden legacy runtime file exists: $file"
-              exit 1
-            fi
+            if [[ -e "$file" ]]; then echo "Forbidden legacy runtime file exists: $file"; exit 1; fi
           done
