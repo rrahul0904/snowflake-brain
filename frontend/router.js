@@ -2,7 +2,7 @@ import { showToast } from "./components/toast.js?v=20260812-v25-production-mock"
 import { updateActiveNav } from "./components/nav.js?v=20260812-v25-production-mock";
 import { errorPanel, skeleton } from "./ui.js?v=20260731-v21-editorial-replica";
 
-const ASSET_VERSION = "20260812-v25-production-mock-r4";
+const ASSET_VERSION = "20260813-v25-production-mock-r5";
 const guide = () => import(`./views/guide.js?v=${ASSET_VERSION}`);
 const mock = () => import(`./views/mock.js?v=${ASSET_VERSION}`);
 
@@ -43,7 +43,16 @@ export async function route() {
   const hash = window.location.hash || "#/home";
   const [rawPath, query = ""] = hash.split("?");
   const path = aliases[rawPath] || rawPath;
-  const loader = routes[path] || routes["#/home"];
+  if (!routes[path]) {
+    const params = new URLSearchParams(query);
+    const trackId = params.get("track_id");
+    const destination = trackId
+      ? `#/curriculum?track_id=${encodeURIComponent(trackId)}`
+      : "#/home";
+    window.history.replaceState(null, "", destination);
+    return route();
+  }
+  const loader = routes[path];
   window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "loading", route: path, error: null };
   document.body.classList.remove("player-mode", "quiz-active", "replica-exam-active");
   if (currentView?.unmount) currentView.unmount();
