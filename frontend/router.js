@@ -12,7 +12,7 @@ const legacyPractice = () => import("./views/quiz.js");
 const mockLanding = () => import("./views/mock-landing.js");
 const mockStart = () => import("./views/mock-start-v26.js");
 const examSession = () => import("./views/exam-session-v26.js");
-const mock = () => import("./views/mock.js");
+const examResult = () => import("./views/exam-result-v26.js");
 const reference = () => import("./views/reference.js");
 const journal = () => import("./views/journal.js");
 
@@ -33,8 +33,8 @@ const routes = {
   "#/mock": mockLanding,
   "#/mock/start": mockStart,
   "#/mock/session": examSession,
-  "#/mock/result": mock,
-  "#/mock/history": mock,
+  "#/mock/result": examResult,
+  "#/mock/history": examResult,
   "#/reference": reference,
   "#/journal": journal,
   "#/article": journal,
