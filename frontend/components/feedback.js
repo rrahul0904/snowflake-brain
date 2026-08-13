@@ -1,3 +1,4 @@
+import { submitFeedback } from "../api.js";
 import { activeTrack } from "../ui.js";
 
 const STORAGE_KEY = "snowflake-certification.feedback.v26";
@@ -40,8 +41,10 @@ export function renderFeedback() {
     panel.querySelector("input[name='title']")?.focus();
   });
   root.querySelector("[data-feedback-close]")?.addEventListener("click", () => { panel.hidden = true; });
-  root.querySelector("[data-feedback-form]")?.addEventListener("submit", (event) => {
+  root.querySelector("[data-feedback-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const button = event.currentTarget.querySelector(".feedback-submit");
+    const status = root.querySelector("[data-feedback-status]");
     const form = new FormData(event.currentTarget);
     const item = {
       title: String(form.get("title") || "").trim(),
@@ -50,14 +53,22 @@ export function renderFeedback() {
       contact: String(form.get("contact") || "").trim(),
       route: window.location.hash || "#/home",
       track_id: activeTrack(),
-      created_at: new Date().toISOString(),
     };
-    const rows = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    rows.push(item);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows.slice(-100)));
-    const status = root.querySelector("[data-feedback-status]");
-    status.textContent = "Thanks — your feedback was saved in this browser.";
-    status.hidden = false;
-    event.currentTarget.reset();
+    button.disabled = true;
+    button.textContent = "Sending…";
+    try {
+      await submitFeedback(item);
+      status.textContent = "Thanks — your feedback was submitted.";
+      event.currentTarget.reset();
+    } catch {
+      const rows = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      rows.push({ ...item, created_at: new Date().toISOString() });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows.slice(-100)));
+      status.textContent = "Saved locally. It can be submitted when the app is online again.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Submit feedback";
+      status.hidden = false;
+    }
   });
 }
