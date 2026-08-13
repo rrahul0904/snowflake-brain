@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..database import connect
@@ -29,3 +29,14 @@ def submit_feedback(payload: FeedbackSubmission) -> dict:
         )
         feedback_id = int(cursor.lastrowid)
     return {"ok": True, "feedback_id": feedback_id}
+
+
+@router.post("/mock/session-control/{session_id}/cancel")
+def cancel_mock_session(session_id: int) -> dict:
+    with connect() as conn:
+        row = conn.execute("SELECT status FROM exam_sessions WHERE id = ?", (session_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Exam session not found")
+        if row["status"] == "in_progress":
+            conn.execute("UPDATE exam_sessions SET status='cancelled', finished_at=datetime('now') WHERE id=?", (session_id,))
+    return {"ok": True, "session_id": session_id, "status": "cancelled"}
