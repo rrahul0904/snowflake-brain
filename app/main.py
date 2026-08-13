@@ -12,8 +12,8 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.4.0",
-    description="Certification-native SnowPro preparation: blueprint, written lessons, practice, mastery, and readiness.",
+    version="0.6.0",
+    description="Certification-native SnowPro preparation with written curriculum, deliberate practice, persisted mock exams, mastery, and readiness.",
 )
 
 
@@ -24,7 +24,7 @@ def startup() -> None:
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "product": "snowflake-certification-guide", "architecture": "certification-native-v24"}
+    return {"status": "ok", "product": "snowflake-certification-guide", "architecture": "certification-native-v26"}
 
 
 app.include_router(skills.router, prefix="/api")
@@ -41,4 +41,4 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str) -> FileResponse:
-    return FileResponse(FRONTEND_DIR / "index.html")
+    return FileResponse(FRONTEND_DIR / "index-v26.html")
