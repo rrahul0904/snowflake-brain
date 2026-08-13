@@ -1,0 +1,32 @@
+{
+  "version": "2026-08-12-v25",
+  "track_id": "snowpro-core",
+  "exam_code": "COF-C03",
+  "full_mock": {
+    "label": "Snowflake Brain full mock",
+    "question_count": 100,
+    "time_limit_minutes": 120
+  },
+  "quick_mock": {
+    "label": "Quick mock",
+    "question_count": 30,
+    "time_limit_minutes": 45
+  },
+  "pass_scaled_score": 750,
+  "score_scale": 1000,
+  "domain_weights": {
+    "features-architecture": 31,
+    "account-governance": 20,
+    "loading-connectivity": 18,
+    "performance-transformation": 21,
+    "data-collaboration": 10
+  },
+  "randomize_questions": true,
+  "randomize_options": true,
+  "allow_flagging": true,
+  "allow_free_navigation": true,
+  "auto_submit": true,
+  "show_explanations_after_submit": true,
+  "scoring_note": "Practice estimate: per-domain accuracy is weighted by the published COF-C03 blueprint percentages, then multiplied by 1000. This is not Snowflake's confidential production scoring formula.",
+  "format_note": "The full sitting is a configurable Snowflake Brain simulation. Current official Snowflake material reviewed for this release did not expose a verifiable exact live-exam question count and duration."
+}

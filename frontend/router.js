@@ -1,9 +1,11 @@
-import { showToast } from "./components/toast.js?v=20260812-v24-cert-native";
-import { updateActiveNav } from "./components/nav.js?v=20260812-v24-cert-native";
+import { showToast } from "./components/toast.js?v=20260813-v25-production-mock-r7";
+import { updateActiveNav } from "./components/nav.js?v=20260813-v25-production-mock-r7";
+import { refreshTopbar } from "./components/topbar.js?v=20260813-v25-production-mock-r7";
 import { errorPanel, skeleton } from "./ui.js?v=20260731-v21-editorial-replica";
 
-const ASSET_VERSION = "20260812-v24-cert-native";
+const ASSET_VERSION = "20260813-v25-production-mock-r7";
 const guide = () => import(`./views/guide.js?v=${ASSET_VERSION}`);
+const mock = () => import(`./views/mock.js?v=${ASSET_VERSION}`);
 
 const routes = {
   "#/home": guide,
@@ -13,7 +15,11 @@ const routes = {
   "#/skill": guide,
   "#/diagnostic": guide,
   "#/drill": guide,
-  "#/mock": guide,
+  "#/mock": mock,
+  "#/mock/start": mock,
+  "#/mock/session": mock,
+  "#/mock/result": mock,
+  "#/mock/history": mock,
   "#/exercises": guide,
   "#/quick-reference": guide,
   "#/glossary": guide,
@@ -38,7 +44,16 @@ export async function route() {
   const hash = window.location.hash || "#/home";
   const [rawPath, query = ""] = hash.split("?");
   const path = aliases[rawPath] || rawPath;
-  const loader = routes[path] || routes["#/home"];
+  if (!routes[path]) {
+    const params = new URLSearchParams(query);
+    const trackId = params.get("track_id");
+    const destination = trackId
+      ? `#/curriculum?track_id=${encodeURIComponent(trackId)}`
+      : "#/home";
+    window.history.replaceState(null, "", destination);
+    return route();
+  }
+  const loader = routes[path];
   window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "loading", route: path, error: null };
   document.body.classList.remove("player-mode", "quiz-active", "replica-exam-active");
   if (currentView?.unmount) currentView.unmount();
@@ -47,6 +62,7 @@ export async function route() {
   try {
     currentView = await loader();
     await currentView.default(root, Object.fromEntries(new URLSearchParams(query)));
+    await refreshTopbar();
     root.dataset.routeOk = "true";
     root.dataset.routePath = path;
     root.dataset.viewId = currentView.VIEW_ID || "unknown";

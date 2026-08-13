@@ -45,14 +45,18 @@ Primary routes:
 - `#/curriculum` — weighted domains and task statements
 - `#/domain` — one domain and its tasks
 - `#/skill` — full written task lesson
-- `#/practice` — diagnostic, drill, mocks, and source exams
+- `#/mock` — mock landing, sitting selection, source exams, and history
+- `#/mock/start` — quick/full sitting confirmation
+- `#/mock/session` — persistent timed exam player
+- `#/mock/result` — score, domain/task analytics, and answer review
+- `#/practice` — diagnostic and adaptive drill
 - `#/progress` — mastery and readiness
 - `#/quick-reference` — final-review reference
 - `#/glossary` — certification glossary
 - `#/exercises` / `#/labs` — hands-on build exercises
 - `#/journal` — certification-focused technical articles
 
-There are no video, archive, or media-player routes in V24.
+There are no course, video, transcript, archive, academy, or media-player routes or active UI assets.
 
 ## Architecture
 
@@ -72,12 +76,14 @@ The runtime is intentionally small:
 - `app/intelligence.py` — task mapping, mastery, mistakes, diagnostics, readiness
 - `app/evidence.py` — question-to-task mapping trust/review
 - `app/lab_challenges.py` — configured hands-on exercises
+- `app/mock_exam.py` — persisted sitting selection, timing, grading, analytics, and history
 - `app/routers/skills.py`
 - `app/routers/questions.py`
 - `app/routers/certification_practice.py`
 - `app/routers/intelligence.py`
 - `app/routers/experience.py`
 - `app/routers/labs.py`
+- `app/routers/mock_exam.py`
 
 ### Frontend
 
@@ -90,6 +96,7 @@ Core files:
 - `frontend/api.js`
 - `frontend/views/guide.js`
 - `frontend/views/quiz.js`
+- `frontend/views/mock.js`
 - `frontend/views/labs.js`
 - `frontend/views/journal.js`
 
@@ -112,6 +119,7 @@ Runtime tables:
 - `question_skill_map`
 - `question_attempts`
 - `exam_sessions`
+- `exam_session_questions`
 - `exam_session_answers`
 - `bookmarks`
 - `notes`
@@ -143,30 +151,47 @@ Mappings whose task IDs are no longer present in the current blueprint are treat
 
 ## Exam engine
 
-`POST /api/certification-quiz/start` supports:
+The V25 production mock contract is configured by `config/exam_simulation.json`:
 
-- `diagnostic` — domain-balanced baseline
-- `drill` — weak-task/adaptive practice
-- `quick-mock` — shorter weighted mock
-- `full-mock` / `exam` — blueprint-weighted mock
-- `test_id` — exact source practice exam in source order
+- Quick Mock — 30 questions, 45 minutes
+- Snowflake Brain Full Mock — 100 questions, 120 minutes
+- practice threshold — 750 / 1000
+- domain weights — 31 / 20 / 18 / 21 / 10
 
-The frontend exam player supports question navigation, single- and multi-select answers, review flags, timer behavior, deferred grading, answer explanations, and persisted attempts.
+The full sitting is explicitly a configurable Snowflake Brain simulation, not a claim about an exact live-exam format. Each sitting persists its question membership, question order, randomized option mapping, answers, flags, start time, duration, and status. The deadline is derived from `started_at + duration_seconds`; refresh cannot reset it.
+
+Primary API routes:
+
+- `GET /api/mock/config`
+- `POST /api/mock/sessions`
+- `GET /api/mock/sessions/{session_id}`
+- `PUT /api/mock/sessions/{session_id}/answers/{question_id}`
+- `PUT /api/mock/sessions/{session_id}/questions/{question_id}/flag`
+- `POST /api/mock/sessions/{session_id}/submit`
+- `GET /api/mock/sessions/{session_id}/result`
+- `GET /api/mock/history`
+
+Correct options and explanations are excluded from every pre-submit session payload. The backend grades exact set equality for multi-select questions. Submission is idempotent.
+
+### Readiness score
+
+The product reports raw accuracy separately from its transparent practice estimate:
+
+```text
+domain accuracy = correct in domain / questions in domain
+weighted readiness % = Σ(domain accuracy × COF-C03 domain weight)
+practice readiness score = round(weighted readiness % × 10)
+```
+
+This 0–1000 practice score is not presented as Snowflake's confidential production scoring formula.
 
 ## Run locally
 
-Create an environment and install dependencies:
+One-command setup and start:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Start the app:
-
-```bash
-uvicorn app.main:app --reload --port 8000
+./scripts/setup.sh
+./scripts/dev.sh
 ```
 
 Open:
@@ -201,7 +226,13 @@ The compose stack persists only the certification database under `./data`. No co
 
 ## Verification
 
-The V24 quality gate is expected to protect these invariants:
+Run the complete local gate:
+
+```bash
+./scripts/verify_all.sh
+```
+
+The V25 gate protects these invariants:
 
 - exactly 5 COF-C03 domains with weights `31/20/18/21/10`
 - exactly 19 Core task statements
@@ -211,15 +242,18 @@ The V24 quality gate is expected to protect these invariants:
 - current-task-only mapping trust
 - no runtime course/video/transcript schema
 - no legacy video/archive route surface
+- persisted mock membership, answers, flags, deadline, grading, history, and idempotency
+- no answer leakage from active timed sittings
+- current/legacy practice isolation
 
 GitHub Actions execution is separate from local verification. Do not treat a workflow that fails before runner assignment as a code/test failure.
 
 ## Branching
 
-Current certification-native cleanup work is developed on:
+Production mock work is developed from `main` on:
 
 ```text
-agent/v24-certification-native-cleanup
+agent/v25-production-mock-exam
 ```
 
-It is intentionally stacked on the V23 certification-guide branch until reviewed. Do not merge automatically.
+The pull request base is `main`; this is not a stacked branch.

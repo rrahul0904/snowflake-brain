@@ -1,7 +1,7 @@
 export const VIEW_ID = "labs";
-import { escapeHtml, getExperienceShell, getLab, getLabs, submitLab } from "../api.js?v=20260714-v20-ai-academy";
-import { activeTrack, emptyState, setActiveTrack, skeleton, trackOptions } from "../ui.js?v=20260714-v20-ai-academy";
-import { showToast } from "../components/toast.js?v=20260714-v20-ai-academy";
+import { escapeHtml, getExperienceShell, getLab, getLabs, submitLab } from "../api.js?v=20260812-v25-production-mock";
+import { activeTrack, emptyState, setActiveTrack, skeleton, trackOptions } from "../ui.js?v=20260812-v25-production-mock";
+import { showToast } from "../components/toast.js?v=20260812-v25-production-mock";
 
 const state = { certification: "snowpro-core", labs: [], activeLab: null, result: null };
 

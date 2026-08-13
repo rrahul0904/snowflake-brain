@@ -40,6 +40,15 @@ export const startQuiz = (payload) => api("/api/certification-quiz/start", { met
 export const gradeQuiz = (payload) => api("/api/quiz/grade", { method: "POST", body: JSON.stringify(payload) });
 export const recordAttempt = (id, payload) => api(`/api/questions/${encodeURIComponent(id)}/attempt`, { method: "POST", body: JSON.stringify(payload) });
 export const recordMockSession = (payload) => api("/api/certification-mock/record", { method: "POST", body: JSON.stringify(payload) });
+export const getMockConfig = (params = {}) => api(`/api/mock/config?${new URLSearchParams(params)}`);
+export const startMockSession = (payload) => api("/api/mock/sessions", { method: "POST", body: JSON.stringify(payload) });
+export const getActiveMockSession = (params = {}) => api(`/api/mock/sessions/active?${new URLSearchParams(params)}`);
+export const getMockSession = (id) => api(`/api/mock/sessions/${encodeURIComponent(id)}`);
+export const saveMockAnswer = (sessionId, questionId, selected) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/answers/${encodeURIComponent(questionId)}`, { method: "PUT", body: JSON.stringify({ selected }) });
+export const saveMockFlag = (sessionId, questionId, flagged) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/questions/${encodeURIComponent(questionId)}/flag`, { method: "PUT", body: JSON.stringify({ flagged }) });
+export const submitMockSession = (sessionId, reason = "learner") => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/submit`, { method: "POST", body: JSON.stringify({ reason }) });
+export const getMockResult = (sessionId) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/result`);
+export const getMockHistory = (params = {}) => api(`/api/mock/history?${new URLSearchParams(params)}`);
 export const toggleBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`, { method: "POST", body: "{}" });
 export const getBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`);
 export const addQuestionNote = (id, body) => api(`/api/questions/${encodeURIComponent(id)}/notes`, { method: "POST", body: JSON.stringify({ body }) });

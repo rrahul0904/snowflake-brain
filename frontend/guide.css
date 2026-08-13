@@ -539,3 +539,43 @@
     grid-column: 2;
   }
 }
+
+/* V25 visual contract: written guide and practice share one editorial system. */
+:root {
+  --guide-ink: var(--replica-text);
+  --guide-muted: var(--replica-muted);
+  --guide-line: var(--replica-line);
+  --guide-soft: var(--replica-surface);
+  --guide-blue: var(--replica-accent);
+  --guide-blue-soft: rgba(232, 149, 115, .10);
+  --guide-success: var(--replica-success);
+  --guide-warn: #eeb768;
+}
+
+.guide-page { color: var(--replica-text); }
+.guide-page h1, .guide-page h2, .guide-page h3 { font-family: var(--replica-serif); font-weight: 500; letter-spacing: 0; }
+.guide-button { border-radius: 0; background: var(--replica-accent); border-color: var(--replica-accent); color: #1a100c; }
+.guide-button.secondary { background: transparent; color: var(--replica-text); border-color: var(--replica-line-strong); }
+.guide-button.blue { background: var(--replica-accent); border-color: var(--replica-accent); }
+.guide-fact-card,
+.guide-cert-card,
+.guide-domain-card,
+.guide-tool-card,
+.guide-reference-card,
+.guide-metric,
+.guide-side-card { background: var(--replica-surface); border-color: var(--replica-line); border-radius: 0; }
+.guide-cert-card:hover,
+.guide-domain-card:hover,
+.guide-tool-card:hover,
+.guide-reference-card:hover { border-color: var(--replica-accent); box-shadow: none; }
+.guide-score-card { border-radius: 0; background: var(--replica-surface-2); border: 1px solid var(--replica-line); }
+.guide-progress-bar { background: var(--replica-line); }
+.guide-progress-bar i { background: var(--replica-accent); }
+.guide-trap-list li,
+.guide-blocker-list li { border-left: 2px solid #eeb768; border-radius: 0; background: rgba(238, 183, 104, .07); color: #e7c99e; }
+.guide-link-list a,
+.guide-toolbar a { color: var(--replica-text); }
+.guide-toolbar a { border-radius: 0; background: var(--replica-surface); }
+.guide-toolbar a.active { background: var(--replica-accent); color: #1a100c; }
+.guide-empty { border-color: var(--replica-line-strong); border-radius: 0; }
+.guide-table th, .guide-table td { border-color: var(--replica-line); }
