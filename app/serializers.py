@@ -27,9 +27,7 @@ def question_public(row: dict[str, Any], include_answer: bool = False) -> dict[s
     )
     data = {
         "id": row["id"],
-        "course_id": row.get("course_id"),
-        "section_id": row.get("section_id") or "",
-        "course_title": row.get("course_title") or "",
+        "track_id": row.get("track_id") or "snowpro-core",
         "test_id": row.get("test_id") or "",
         "test_title": row.get("test_title") or "Practice",
         "question_position": row.get("question_position") or 0,
@@ -38,27 +36,11 @@ def question_public(row: dict[str, Any], include_answer: bool = False) -> dict[s
         "multiple": multiple,
         "tags": json_list(row.get("tags")),
         "difficulty": row.get("difficulty") or "medium",
-        "source_path": row.get("source_path"),
+        "source_path": row.get("source_path") or "",
+        "source_kind": row.get("source_kind") or "curated",
+        "assessment_type": row.get("assessment_type") or "practice",
     }
     if include_answer:
         data["correct"] = [int(item) for item in correct if isinstance(item, int) or str(item).isdigit()]
         data["explanation"] = row.get("explanation") or ""
     return data
-
-
-def lesson_public(row: dict[str, Any]) -> dict[str, Any]:
-    duration = row.get("duration_s") if row.get("duration_s") is not None else row.get("duration")
-    return {
-        "id": row["id"],
-        "course_id": row.get("course_id"),
-        "course_title": row.get("course_title") or "",
-        "section": row.get("section") or "",
-        "title": row.get("title") or "",
-        "position": row.get("position") or row.get("sort_key") or 0,
-        "video_path": row.get("video_path"),
-        "vtt_path": row.get("vtt_path") or row.get("transcript_path"),
-        "transcript_path": row.get("transcript_path"),
-        "duration_s": duration,
-        "duration": duration,
-        "excerpt": row.get("excerpt") or "",
-    }
