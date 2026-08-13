@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-from app.database import connect, run_migrations
-from app.intelligence import build_question_skill_map
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.database import connect, run_migrations  # noqa: E402
+from app.intelligence import build_question_skill_map  # noqa: E402
 
 
 def _correct_indices(question: dict[str, Any]) -> list[int]:
@@ -23,6 +27,9 @@ def _source_kind(exam_code: str) -> tuple[str, int]:
 def import_bank(path: Path, track_id: str = "snowpro-core", replace: bool = False) -> dict[str, int]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     banks = payload.get("banks") or []
+    if not banks:
+        raise ValueError("Normalized practice-bank JSON contains no banks")
+
     run_migrations()
     counts = {"banks": 0, "tests": 0, "questions": 0, "current_questions": 0, "legacy_questions": 0}
 
@@ -42,13 +49,19 @@ def import_bank(path: Path, track_id: str = "snowpro-core", replace: bool = Fals
 
         for bank in banks:
             exam_code = str(bank.get("exam_code") or "").upper()
+            if not exam_code:
+                raise ValueError(f"Bank {bank.get('id')!r} is missing exam_code")
             source_kind, is_legacy = _source_kind(exam_code)
             counts["banks"] += 1
             for position, test in enumerate(bank.get("tests") or [], start=1):
                 raw_test_id = str(test.get("id") or f"exam-{position}")
                 test_id = f"imported::{track_id}::{exam_code.lower()}::{bank.get('id')}::{raw_test_id}"
-                test_title = str(test.get("title") or f"Practice Exam {position}")
+                source_title = str(test.get("title") or f"Practice Exam {position}")
+                test_title = f"{exam_code} · {source_title}"
                 questions = test.get("questions") or []
+                if not questions:
+                    raise ValueError(f"{test_title} contains no questions")
+
                 conn.execute(
                     """
                     INSERT INTO practice_tests(
@@ -81,8 +94,16 @@ def import_bank(path: Path, track_id: str = "snowpro-core", replace: bool = Fals
                 counts["tests"] += 1
 
                 for q_position, question in enumerate(questions, start=1):
-                    options = [str(item.get("text") or "") for item in question.get("options") or []]
+                    prompt = str(question.get("question") or "").strip()
+                    options = [str(item.get("text") or "").strip() for item in question.get("options") or []]
                     correct = _correct_indices(question)
+                    if not prompt:
+                        raise ValueError(f"{test_title} question {q_position} has no question text")
+                    if len(options) < 2 or any(not option for option in options):
+                        raise ValueError(f"{test_title} question {q_position} has invalid answer options")
+                    if not correct or any(index >= len(options) for index in correct):
+                        raise ValueError(f"{test_title} question {q_position} has an invalid answer key")
+
                     raw_question_id = str(question.get("id") or f"q-{q_position}")
                     question_id = f"{test_id}::{raw_question_id}"
                     assessment_type = "multi-select" if len(correct) > 1 else "single-select"
@@ -112,10 +133,10 @@ def import_bank(path: Path, track_id: str = "snowpro-core", replace: bool = Fals
                             track_id,
                             test_id,
                             test_title,
-                            str(question.get("question") or ""),
+                            prompt,
                             json.dumps(options, ensure_ascii=False),
                             json.dumps(correct),
-                            str(question.get("explanation") or ""),
+                            str(question.get("explanation") or "").strip(),
                             str(bank.get("source") or path),
                             source_kind,
                             assessment_type,
