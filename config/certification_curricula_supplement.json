@@ -1,0 +1,188 @@
+{
+  "version": "2026-08-12-all-official-v1",
+  "weight_note": "For certifications whose public overview page does not expose detailed exam-domain percentages in machine-readable page content, weights below are normalized curriculum planning weights across Snowflake's published certification capability areas. They are not represented as official exam-domain percentages.",
+  "certifications": [
+    {
+      "id": "associate-platform",
+      "title": "SnowPro Associate: Platform",
+      "exam_code": "SOL-C01",
+      "weight_source": "normalized_public_overview",
+      "readiness_rules": {"minimum_question_coverage_pct": 60, "minimum_domain_accuracy_pct": 65, "mock_exam_score_pct": 75, "mock_exam_count": 2, "recent_practice_days": 7, "unresolved_mistake_threshold": 20},
+      "domains": [
+        {"id": "associate-ui-notebooks", "title": "Snowflake UI and Notebooks", "weight": 17, "skills": [
+          {"id": "associate-snowsight-navigation", "title": "Navigate Snowsight and core Snowflake interfaces", "objective": "Use Snowflake interfaces to locate databases, worksheets, monitoring views, and administrative areas.", "aliases": ["snowsight", "ui", "worksheets", "navigation"], "question_tags": ["snowsight", "ui", "worksheet"], "exam_traps": ["Confusing interface navigation with account-level privileges."]},
+          {"id": "associate-notebooks-basics", "title": "Use Snowflake Notebooks for interactive analysis", "objective": "Recognize Snowflake Notebook concepts, cells, sessions, and common analytical workflows.", "aliases": ["notebooks", "snowflake notebooks", "cells"], "question_tags": ["notebooks"], "exam_traps": ["Treating a Notebook as a replacement for every production orchestration pattern."]}
+        ]},
+        {"id": "associate-objects-compute", "title": "Databases, Stages, and Compute", "weight": 17, "skills": [
+          {"id": "associate-database-schema-objects", "title": "Create and organize databases, schemas, and tables", "objective": "Understand the basic Snowflake object hierarchy and create common database objects.", "aliases": ["database", "schema", "table", "object hierarchy"], "question_tags": ["database", "schema", "table"], "exam_traps": ["Confusing a schema container with a database or table."]},
+          {"id": "associate-stage-warehouse-basics", "title": "Use stages and virtual warehouses", "objective": "Understand stage locations and the role of virtual warehouses as independent compute resources.", "aliases": ["stage", "warehouse", "virtual warehouse", "compute"], "question_tags": ["stage", "warehouse"], "exam_traps": ["Assuming storage and warehouse compute are the same resource."]}
+        ]},
+        {"id": "associate-data-loading", "title": "Structured, Semi-Structured, and Unstructured Data", "weight": 17, "skills": [
+          {"id": "associate-load-structured", "title": "Load and query structured data", "objective": "Use basic file formats, stages, COPY patterns, tables, and SQL to load and query structured data.", "aliases": ["copy into", "csv", "file format", "structured data"], "question_tags": ["copy", "csv", "structured"], "exam_traps": ["Confusing file storage with parsing configuration."]},
+          {"id": "associate-semi-unstructured", "title": "Work with semi-structured and unstructured data", "objective": "Recognize VARIANT/semi-structured patterns and Snowflake capabilities for unstructured data.", "aliases": ["variant", "json", "unstructured", "semi-structured"], "question_tags": ["variant", "json", "unstructured"], "exam_traps": ["Assuming all non-tabular content should be converted to relational columns before Snowflake can use it."]}
+        ]},
+        {"id": "associate-access", "title": "Roles and Data Access", "weight": 17, "skills": [
+          {"id": "associate-rbac-basics", "title": "Understand roles, grants, and least privilege", "objective": "Use role-based access concepts to understand how users receive privileges in Snowflake.", "aliases": ["role", "grant", "privilege", "rbac"], "question_tags": ["rbac", "role", "grant"], "exam_traps": ["Granting broad privileges directly to users when a role-based answer is available."]},
+          {"id": "associate-object-access", "title": "Understand access to databases, schemas, and tables", "objective": "Recognize container and object privileges needed to access Snowflake data.", "aliases": ["usage", "select", "ownership", "privilege"], "question_tags": ["usage", "select", "privilege"], "exam_traps": ["Forgetting parent-container access in a table access scenario."]}
+        ]},
+        {"id": "associate-account", "title": "Snowflake Account Structure", "weight": 16, "skills": [
+          {"id": "associate-account-structure", "title": "Understand organization, account, database, schema, and object scope", "objective": "Recognize Snowflake administrative scopes and where common settings and objects live.", "aliases": ["organization", "account", "database", "schema", "account structure"], "question_tags": ["account", "organization"], "exam_traps": ["Applying an account-level concept at database or schema scope."]},
+          {"id": "associate-account-monitoring", "title": "Recognize basic account and usage monitoring", "objective": "Identify common places to inspect account, warehouse, and query activity at an introductory level.", "aliases": ["query history", "usage", "monitoring", "account usage"], "question_tags": ["query history", "monitoring"], "exam_traps": ["Using an unrelated governance feature to answer an operational monitoring question."]}
+        ]},
+        {"id": "associate-cortex", "title": "Snowflake Cortex LLM Functions", "weight": 16, "skills": [
+          {"id": "associate-cortex-functions", "title": "Use Snowflake Cortex LLM functions", "objective": "Recognize common Cortex LLM function use cases and how they operate on Snowflake data.", "aliases": ["cortex", "llm functions", "complete", "summarize", "sentiment"], "question_tags": ["cortex", "llm"], "exam_traps": ["Confusing a managed Cortex function with deploying a custom model runtime."]},
+          {"id": "associate-ai-use-cases", "title": "Match Cortex capabilities to introductory AI use cases", "objective": "Choose an appropriate Snowflake AI capability for summarization, extraction, classification, and text-generation scenarios.", "aliases": ["gen ai", "classification", "summarization", "extraction"], "question_tags": ["gen ai", "cortex"], "exam_traps": ["Choosing a complex custom architecture when a managed Cortex capability directly fits the requirement."]}
+        ]}
+      ]
+    },
+    {
+      "id": "native-apps",
+      "title": "SnowPro Specialty: Native Apps",
+      "exam_code": "NAS-C01",
+      "weight_source": "normalized_public_overview",
+      "readiness_rules": {"minimum_question_coverage_pct": 65, "minimum_domain_accuracy_pct": 70, "mock_exam_score_pct": 80, "mock_exam_count": 2, "recent_practice_days": 7, "unresolved_mistake_threshold": 20},
+      "domains": [
+        {"id": "native-app-best-practices", "title": "Native App Architecture and Best Practices", "weight": 25, "skills": [
+          {"id": "native-app-package-architecture", "title": "Design application packages and consumer-safe architecture", "objective": "Understand application packages, installed applications, provider/consumer boundaries, and secure design practices.", "aliases": ["application package", "native app", "provider", "consumer"], "question_tags": ["native app", "application package"], "exam_traps": ["Confusing provider-owned package objects with consumer-installed application objects."]},
+          {"id": "native-app-security-permissions", "title": "Design permissions and secure object access", "objective": "Apply Native App permissions, references, privileges, and secure access patterns without over-privileging consumers or applications.", "aliases": ["references", "privileges", "permissions", "manifest"], "question_tags": ["permissions", "references"], "exam_traps": ["Assuming an application should automatically receive broad consumer-account privileges."]}
+        ]},
+        {"id": "native-app-build-release", "title": "Build, Version, and Release", "weight": 25, "skills": [
+          {"id": "native-app-setup-script", "title": "Build setup scripts, manifests, and application objects", "objective": "Understand setup scripts, manifest configuration, application roles, and object creation during installation or upgrade.", "aliases": ["setup script", "manifest.yml", "application role"], "question_tags": ["setup script", "manifest"], "exam_traps": ["Placing provider-development configuration in the wrong application lifecycle file."]},
+          {"id": "native-app-version-release", "title": "Manage versions, patches, release directives, and upgrades", "objective": "Use Native App versioning and release workflows to safely promote and upgrade applications.", "aliases": ["version", "patch", "release directive", "upgrade"], "question_tags": ["version", "release"], "exam_traps": ["Treating an application version and a release directive as identical concepts."]}
+        ]},
+        {"id": "native-app-workflows", "title": "Application Workflows and Procedures", "weight": 25, "skills": [
+          {"id": "native-app-procedures", "title": "Implement Native App procedures and runtime workflows", "objective": "Design procedures and application logic that respect provider/consumer execution and security boundaries.", "aliases": ["stored procedure", "native app procedure", "owner rights", "caller rights"], "question_tags": ["procedure", "workflow"], "exam_traps": ["Ignoring execution-rights context in a procedure that touches consumer data."]},
+          {"id": "native-app-references", "title": "Use references for consumer-owned objects", "objective": "Use references to let applications interact with consumer-selected objects without requiring unsafe direct ownership patterns.", "aliases": ["reference", "consumer object", "reference association"], "question_tags": ["reference", "consumer"], "exam_traps": ["Hard-coding consumer object access where a reference should be used."]}
+        ]},
+        {"id": "native-app-billing", "title": "Billing and Cost Monitoring", "weight": 25, "skills": [
+          {"id": "native-app-billing-events", "title": "Create and manage application billing events", "objective": "Understand monetization/billing event concepts and how applications report billable usage.", "aliases": ["billing event", "monetization", "marketplace billing"], "question_tags": ["billing", "monetization"], "exam_traps": ["Confusing application billing events with warehouse resource monitors."]},
+          {"id": "native-app-cost-observability", "title": "Monitor Native App cost and operational usage", "objective": "Design application cost monitoring and observability appropriate to provider and consumer responsibilities.", "aliases": ["cost", "usage", "monitoring", "native app telemetry"], "question_tags": ["cost", "monitoring"], "exam_traps": ["Assuming provider visibility should expose consumer-sensitive data."]}
+        ]}
+      ]
+    },
+    {
+      "id": "advanced-security-engineer",
+      "title": "SnowPro Advanced: Security Engineer",
+      "exam_code": "SEA-C01",
+      "weight_source": "normalized_public_overview",
+      "readiness_rules": {"minimum_question_coverage_pct": 70, "minimum_domain_accuracy_pct": 75, "mock_exam_score_pct": 80, "mock_exam_count": 2, "recent_practice_days": 7, "unresolved_mistake_threshold": 15},
+      "domains": [
+        {"id": "security-data-protection", "title": "Data Protection, Privacy, and Governance", "weight": 20, "skills": [
+          {"id": "security-policy-governance", "title": "Design masking, row access, tagging, and governance controls", "objective": "Select and combine Snowflake governance controls to meet data protection and privacy requirements.", "aliases": ["masking policy", "row access policy", "tag", "classification"], "question_tags": ["masking", "row access", "governance"], "exam_traps": ["Using masking to solve row filtering or row access to solve column-value protection."]},
+          {"id": "security-data-protection-design", "title": "Design secure data lifecycle and protection architecture", "objective": "Apply encryption, retention, replication, secure sharing, and data-boundary practices to protect sensitive information.", "aliases": ["encryption", "retention", "replication", "secure sharing"], "question_tags": ["data protection", "encryption"], "exam_traps": ["Treating one recovery or encryption feature as a complete governance program."]}
+        ]},
+        {"id": "security-identity-access", "title": "Identity and Access Management", "weight": 20, "skills": [
+          {"id": "security-advanced-rbac", "title": "Design advanced RBAC and least-privilege hierarchies", "objective": "Build scalable role hierarchies, access roles, ownership models, and managed access patterns.", "aliases": ["rbac", "access role", "functional role", "managed access"], "question_tags": ["rbac", "least privilege"], "exam_traps": ["Using powerful system roles for normal workload access."]},
+          {"id": "security-federation-auth", "title": "Implement federation, MFA, OAuth, SCIM, and network controls", "objective": "Choose identity, authentication, provisioning, authorization, and network-origin controls for enterprise scenarios.", "aliases": ["sso", "mfa", "oauth", "scim", "network policy"], "question_tags": ["authentication", "oauth", "scim"], "exam_traps": ["Confusing identity lifecycle, interactive authentication, and network restriction controls."]}
+        ]},
+        {"id": "security-audit-compliance", "title": "Audit, Monitoring, and Compliance", "weight": 20, "skills": [
+          {"id": "security-audit-history", "title": "Audit access, login, query, and policy activity", "objective": "Use Snowflake history and Account Usage views to investigate security events and demonstrate control effectiveness.", "aliases": ["access history", "login history", "query history", "account usage"], "question_tags": ["audit", "history"], "exam_traps": ["Choosing a data-protection policy when the requirement is retrospective audit evidence."]},
+          {"id": "security-compliance-controls", "title": "Map Snowflake controls to regulatory and compliance requirements", "objective": "Design control evidence, monitoring, retention, and governance to support compliance obligations.", "aliases": ["compliance", "regulatory", "audit", "policy"], "question_tags": ["compliance", "governance"], "exam_traps": ["Assuming a platform feature alone replaces organizational control processes and evidence."]}
+        ]},
+        {"id": "security-threat-response", "title": "Threat, Risk, and Incident Response", "weight": 20, "skills": [
+          {"id": "security-threat-assessment", "title": "Assess Snowflake threats, risks, and attack paths", "objective": "Identify risky identities, privilege escalation, exposed integrations, abnormal access, and data-exfiltration paths.", "aliases": ["risk", "threat", "privilege escalation", "exfiltration"], "question_tags": ["risk", "threat"], "exam_traps": ["Focusing only on SQL injection-style threats while ignoring cloud identity and privilege paths."]},
+          {"id": "security-incident-response", "title": "Execute security incident containment and investigation", "objective": "Prioritize containment, credential/token response, evidence preservation, investigation, and recovery in Snowflake incidents.", "aliases": ["incident response", "containment", "forensics", "credential rotation"], "question_tags": ["incident", "response"], "exam_traps": ["Destroying evidence or broadening privileges before containment and investigation are understood."]}
+        ]},
+        {"id": "security-ai", "title": "AI/ML for Security Posture", "weight": 20, "skills": [
+          {"id": "security-ai-detection", "title": "Use Snowflake AI/ML capabilities for security detection and analysis", "objective": "Apply Snowflake AI/ML and analytical capabilities to identify anomalies, classify data, and accelerate security analysis.", "aliases": ["ai security", "anomaly", "classification", "cortex"], "question_tags": ["ai", "security"], "exam_traps": ["Using Gen AI output as an unverified enforcement decision without governance or deterministic controls."]},
+          {"id": "security-ai-governance", "title": "Secure AI and model-enabled security workflows", "objective": "Apply access, data, prompt/output, and model governance to AI-assisted security workflows.", "aliases": ["ai governance", "model security", "prompt", "cortex"], "question_tags": ["ai governance", "security"], "exam_traps": ["Sending sensitive information to an AI workflow without checking data and access boundaries."]}
+        ]}
+      ]
+    },
+    {
+      "id": "advanced-data-scientist",
+      "title": "SnowPro Advanced: Data Scientist",
+      "exam_code": "DSA-C03",
+      "weight_source": "normalized_public_overview",
+      "readiness_rules": {"minimum_question_coverage_pct": 70, "minimum_domain_accuracy_pct": 75, "mock_exam_score_pct": 80, "mock_exam_count": 2, "recent_practice_days": 7, "unresolved_mistake_threshold": 15},
+      "domains": [
+        {"id": "ds-concepts", "title": "Data Science Concepts", "weight": 20, "skills": [
+          {"id": "ds-problem-framing", "title": "Frame data science problems and choose evaluation methods", "objective": "Translate business questions into supervised, unsupervised, forecasting, or Gen AI problem formulations and appropriate evaluation metrics.", "aliases": ["classification", "regression", "forecasting", "metrics"], "question_tags": ["data science", "metrics"], "exam_traps": ["Choosing a metric that does not reflect the business cost or class distribution."]},
+          {"id": "ds-experimentation", "title": "Design reproducible experiments and model comparisons", "objective": "Apply train/validation/test, cross-validation, leakage prevention, and reproducibility concepts in Snowflake workflows.", "aliases": ["cross validation", "data leakage", "experiment", "reproducibility"], "question_tags": ["experiment", "validation"], "exam_traps": ["Evaluating a model on data that leaked target or future information."]}
+        ]},
+        {"id": "ds-snowflake-practices", "title": "Snowflake Data Science Best Practices", "weight": 20, "skills": [
+          {"id": "ds-snowpark-ml-workflow", "title": "Build scalable Snowpark-based data science workflows", "objective": "Use Snowpark and Snowflake compute appropriately for feature preparation, training, and scoring workloads.", "aliases": ["snowpark", "dataframe", "ml", "warehouse"], "question_tags": ["snowpark", "ml"], "exam_traps": ["Pulling large datasets client-side when the transformation can execute in Snowflake."]},
+          {"id": "ds-ml-governance", "title": "Apply reproducibility, lineage, and governance to ML workflows", "objective": "Track data, feature, model, metric, and deployment context for governed production data science.", "aliases": ["lineage", "governance", "model registry", "experiment tracking"], "question_tags": ["governance", "model registry"], "exam_traps": ["Treating a successful notebook run as sufficient production model governance."]}
+        ]},
+        {"id": "ds-data-features", "title": "Data Preparation and Feature Engineering", "weight": 20, "skills": [
+          {"id": "ds-feature-engineering", "title": "Prepare data and engineer reliable features", "objective": "Transform, encode, scale, aggregate, and validate model features using Snowflake-native workflows.", "aliases": ["feature engineering", "encoding", "scaling", "aggregation"], "question_tags": ["feature", "preparation"], "exam_traps": ["Applying transformations inconsistently between training and inference."]},
+          {"id": "ds-feature-store-patterns", "title": "Design reusable governed feature pipelines", "objective": "Create reusable, point-in-time-safe feature datasets with suitable refresh and lineage behavior.", "aliases": ["feature store", "point in time", "feature pipeline"], "question_tags": ["feature", "pipeline"], "exam_traps": ["Creating training features using data that would not have been available at prediction time."]}
+        ]},
+        {"id": "ds-model-training", "title": "Model Training and Use", "weight": 20, "skills": [
+          {"id": "ds-train-evaluate", "title": "Train, tune, and evaluate machine learning models", "objective": "Use appropriate Snowflake/Snowpark ML training, tuning, metrics, and comparison techniques.", "aliases": ["training", "tuning", "evaluation", "snowflake ml"], "question_tags": ["training", "model"], "exam_traps": ["Selecting a model solely by training score without validation evidence."]},
+          {"id": "ds-registry-inference", "title": "Register, version, and use models for inference", "objective": "Use Snowflake Model Registry and governed inference patterns for batch or production model use.", "aliases": ["model registry", "inference", "version", "model"], "question_tags": ["registry", "inference"], "exam_traps": ["Deploying an unversioned model without reproducible feature and dependency context."]}
+        ]},
+        {"id": "ds-genai", "title": "Gen AI and LLM Capabilities", "weight": 20, "skills": [
+          {"id": "ds-cortex-llm", "title": "Use Cortex AI and LLM capabilities in data science solutions", "objective": "Choose managed Cortex AI/LLM capabilities for text, retrieval, extraction, and generation use cases.", "aliases": ["cortex", "llm", "rag", "embeddings"], "question_tags": ["cortex", "llm"], "exam_traps": ["Building custom infrastructure when a managed Snowflake AI service directly meets the requirement."]},
+          {"id": "ds-genai-evaluation", "title": "Evaluate and govern Gen AI outputs", "objective": "Design evaluation, grounding, guardrail, cost, and quality controls for production Gen AI workflows.", "aliases": ["llm evaluation", "grounding", "guardrails", "rag"], "question_tags": ["evaluation", "gen ai"], "exam_traps": ["Using subjective spot checks as the only production LLM quality control."]}
+        ]}
+      ]
+    },
+    {
+      "id": "advanced-administrator",
+      "title": "SnowPro Advanced: Administrator",
+      "exam_code": "ADA-C02",
+      "weight_source": "normalized_public_overview",
+      "readiness_rules": {"minimum_question_coverage_pct": 70, "minimum_domain_accuracy_pct": 75, "mock_exam_score_pct": 80, "mock_exam_count": 2, "recent_practice_days": 7, "unresolved_mistake_threshold": 15},
+      "domains": [
+        {"id": "admin-account-security", "title": "Account Administration, Security, and Governance", "weight": 20, "skills": [
+          {"id": "admin-account-lifecycle", "title": "Administer accounts, users, roles, integrations, and account parameters", "objective": "Manage Snowflake account objects, identity lifecycle, role delegation, integrations, and administrative settings.", "aliases": ["account", "user", "role", "integration", "parameter"], "question_tags": ["account", "admin"], "exam_traps": ["Performing routine administration with a broader system role than required."]},
+          {"id": "admin-governance-security", "title": "Operate governance and security controls", "objective": "Administer access, policies, tags, classification, authentication, and audit controls across Snowflake.", "aliases": ["masking", "row access", "tag", "network policy", "mfa"], "question_tags": ["security", "governance"], "exam_traps": ["Treating monitoring, authentication, and data protection as interchangeable control layers."]}
+        ]},
+        {"id": "admin-objects-warehouses", "title": "Database Objects and Virtual Warehouses", "weight": 20, "skills": [
+          {"id": "admin-object-management", "title": "Manage database and schema objects at scale", "objective": "Create, alter, clone, recover, transfer ownership, and manage lifecycle of core Snowflake objects.", "aliases": ["database", "schema", "clone", "ownership", "undrop"], "question_tags": ["object", "database"], "exam_traps": ["Applying object-level operations without considering ownership and dependent grants."]},
+          {"id": "admin-warehouse-operations", "title": "Operate warehouses, scaling, resource monitors, and workload isolation", "objective": "Configure warehouse sizing, auto-suspend/resume, multi-cluster behavior, workload isolation, and cost guardrails.", "aliases": ["warehouse", "multi-cluster", "resource monitor", "auto suspend"], "question_tags": ["warehouse", "cost"], "exam_traps": ["Using resize to solve concurrency or multi-cluster to solve a single slow query without evidence."]}
+        ]},
+        {"id": "admin-monitoring-tuning", "title": "Monitoring, Tuning, and Optimization", "weight": 20, "skills": [
+          {"id": "admin-monitoring-history", "title": "Monitor query, warehouse, storage, and account activity", "objective": "Use Snowsight, Information Schema, Account Usage, alerts, and histories to operate Snowflake proactively.", "aliases": ["query history", "warehouse load", "account usage", "alerts"], "question_tags": ["monitoring", "history"], "exam_traps": ["Using a delayed historical source for a requirement that needs near-current troubleshooting without considering latency."]},
+          {"id": "admin-performance-cost", "title": "Tune platform performance and cost", "objective": "Diagnose query/warehouse/storage cost and choose evidence-based tuning actions.", "aliases": ["query profile", "clustering", "warehouse", "cost", "cache"], "question_tags": ["performance", "cost"], "exam_traps": ["Scaling compute before identifying pruning, queueing, spill, or cache behavior."]}
+        ]},
+        {"id": "admin-sharing-marketplace", "title": "Sharing and Snowflake Marketplace", "weight": 20, "skills": [
+          {"id": "admin-secure-sharing", "title": "Administer shares, listings, and provider/consumer access", "objective": "Create and govern secure data sharing and listing relationships across accounts.", "aliases": ["share", "listing", "provider", "consumer"], "question_tags": ["sharing", "listing"], "exam_traps": ["Building data-copy pipelines when secure sharing directly fits the requirement."]},
+          {"id": "admin-reader-marketplace", "title": "Operate reader accounts and Marketplace consumption", "objective": "Understand reader-account responsibilities, Marketplace/listing access, and consumption governance.", "aliases": ["reader account", "marketplace", "listing"], "question_tags": ["reader", "marketplace"], "exam_traps": ["Assuming reader-account compute/cost responsibility is identical to a normal independent consumer account."]}
+        ]},
+        {"id": "admin-dr-replication", "title": "Disaster Recovery, Backup, and Replication", "weight": 20, "skills": [
+          {"id": "admin-time-travel-recovery", "title": "Operate Time Travel, Fail-safe, and object recovery", "objective": "Use retention, UNDROP, historical access, and recovery features appropriately while understanding their limits.", "aliases": ["time travel", "fail-safe", "undrop", "retention"], "question_tags": ["recovery", "time travel"], "exam_traps": ["Using Fail-safe as a routine user-accessible backup mechanism."]},
+          {"id": "admin-replication-failover", "title": "Design and operate replication and failover", "objective": "Configure and reason about account/database replication, failover groups, RPO/RTO, and recovery procedures.", "aliases": ["replication", "failover", "failover group", "rpo", "rto"], "question_tags": ["replication", "failover"], "exam_traps": ["Treating Time Travel alone as a cross-region disaster-recovery strategy."]}
+        ]}
+      ]
+    },
+    {
+      "id": "advanced-data-analyst",
+      "title": "SnowPro Advanced: Data Analyst",
+      "exam_code": "DAA-C01",
+      "weight_source": "normalized_public_overview",
+      "readiness_rules": {"minimum_question_coverage_pct": 70, "minimum_domain_accuracy_pct": 75, "mock_exam_score_pct": 80, "mock_exam_count": 2, "recent_practice_days": 7, "unresolved_mistake_threshold": 15},
+      "domains": [
+        {"id": "analyst-prepare-load", "title": "Prepare and Load Data", "weight": 14, "skills": [
+          {"id": "analyst-load-data", "title": "Load and validate analytical data", "objective": "Use stages, file formats, COPY, validation, and basic ingestion patterns to prepare analytical datasets.", "aliases": ["stage", "copy into", "file format", "validation"], "question_tags": ["load", "copy"], "exam_traps": ["Confusing where files are stored with how they are parsed."]},
+          {"id": "analyst-data-quality", "title": "Inspect and clean analytical inputs", "objective": "Profile nulls, duplicates, types, ranges, and data quality before downstream analysis.", "aliases": ["data quality", "null", "duplicate", "profiling"], "question_tags": ["quality", "cleaning"], "exam_traps": ["Jumping into advanced analysis before validating the analytical grain and quality."]}
+        ]},
+        {"id": "analyst-transform", "title": "Transform Data for Analysis", "weight": 14, "skills": [
+          {"id": "analyst-sql-transform", "title": "Build reliable SQL transformations", "objective": "Use joins, aggregations, window functions, CTEs, conditional logic, and set operations to create analytical data.", "aliases": ["join", "window function", "cte", "aggregate"], "question_tags": ["sql", "transform"], "exam_traps": ["Using the wrong grain or join cardinality and silently duplicating measures."]},
+          {"id": "analyst-semi-structured-transform", "title": "Transform semi-structured analytical data", "objective": "Navigate VARIANT data, cast values, and use FLATTEN to create relational analytical shapes.", "aliases": ["variant", "flatten", "json", "cast"], "question_tags": ["variant", "flatten"], "exam_traps": ["Flattening at the wrong nesting level and multiplying rows unexpectedly."]}
+        ]},
+        {"id": "analyst-advanced-sql", "title": "Advanced SQL and Troubleshooting", "weight": 14, "skills": [
+          {"id": "analyst-advanced-query", "title": "Build complex analytical queries", "objective": "Compose advanced Snowflake SQL with windows, pivots, recursive/complex CTEs, date logic, and analytical patterns.", "aliases": ["window", "pivot", "cte", "qualify", "date"], "question_tags": ["advanced sql", "window"], "exam_traps": ["Using WHERE when QUALIFY is required to filter results after window evaluation."]},
+          {"id": "analyst-query-troubleshooting", "title": "Troubleshoot analytical query correctness and performance", "objective": "Diagnose logical errors, join explosions, filters, query plans, pruning, and compute issues in analytical SQL.", "aliases": ["query profile", "join", "pruning", "troubleshooting"], "question_tags": ["query", "performance"], "exam_traps": ["Treating a correctness issue as a warehouse-size problem."]}
+        ]},
+        {"id": "analyst-functions-udf", "title": "Built-In Functions and UDFs", "weight": 14, "skills": [
+          {"id": "analyst-builtins", "title": "Choose Snowflake built-in functions for analytical problems", "objective": "Use date/time, string, conversion, conditional, statistical, and semi-structured functions effectively.", "aliases": ["function", "dateadd", "datediff", "iff", "try_cast"], "question_tags": ["function", "sql"], "exam_traps": ["Creating custom logic when a simpler built-in function already provides the required semantics."]},
+          {"id": "analyst-udf", "title": "Create and use UDFs appropriately", "objective": "Recognize when a UDF is appropriate and understand scalar/table function boundaries and maintainability tradeoffs.", "aliases": ["udf", "user defined function", "table function"], "question_tags": ["udf", "function"], "exam_traps": ["Using a UDF where standard SQL or a built-in function is clearer and easier to optimize."]}
+        ]},
+        {"id": "analyst-descriptive", "title": "Descriptive and Diagnostic Analysis", "weight": 14, "skills": [
+          {"id": "analyst-descriptive-stats", "title": "Perform descriptive analysis and segmentation", "objective": "Summarize distributions, cohorts, trends, outliers, and categorical/continuous measures using Snowflake SQL.", "aliases": ["descriptive", "percentile", "average", "cohort"], "question_tags": ["descriptive", "statistics"], "exam_traps": ["Using averages without considering skew, outliers, or analytical grain."]},
+          {"id": "analyst-diagnostic", "title": "Perform diagnostic analysis to explain observed changes", "objective": "Use drill-downs, comparisons, cohorts, contribution analysis, and dimensional slicing to investigate why metrics changed.", "aliases": ["diagnostic analysis", "root cause", "cohort", "variance"], "question_tags": ["diagnostic", "analysis"], "exam_traps": ["Confusing correlation from a diagnostic slice with causal proof."]}
+        ]},
+        {"id": "analyst-predictive", "title": "Predictive Analysis", "weight": 15, "skills": [
+          {"id": "analyst-forecasting", "title": "Use forecasting and predictive analytical capabilities", "objective": "Recognize suitable predictive/forecasting approaches and interpret outputs for business analysis.", "aliases": ["forecast", "predictive", "ml", "time series"], "question_tags": ["forecast", "predictive"], "exam_traps": ["Evaluating a time-series model with a split that leaks future information."]},
+          {"id": "analyst-cortex-analytics", "title": "Use Snowflake AI capabilities in analytical workflows", "objective": "Apply managed Snowflake AI/LLM functions where they add analytical value while controlling evaluation and cost.", "aliases": ["cortex", "llm", "ai", "sentiment"], "question_tags": ["cortex", "ai"], "exam_traps": ["Using free-form generation where a deterministic analytical function is required."]}
+        ]},
+        {"id": "analyst-present", "title": "Prepare and Present Data", "weight": 15, "skills": [
+          {"id": "analyst-business-dataset", "title": "Prepare governed datasets for business consumption", "objective": "Design analytical outputs with the correct grain, semantics, security, freshness, and performance for consumers.", "aliases": ["semantic", "business dataset", "view", "secure view"], "question_tags": ["presentation", "dataset"], "exam_traps": ["Exposing a convenient dataset without preserving governance or metric definitions."]},
+          {"id": "analyst-communicate-results", "title": "Communicate analytical results and limitations", "objective": "Present findings with appropriate context, uncertainty, definitions, filters, and reproducible business logic.", "aliases": ["presentation", "dashboard", "metric", "insight"], "question_tags": ["business", "analysis"], "exam_traps": ["Presenting a metric without documenting population, time window, or grain."]}
+        ]}
+      ]
+    }
+  ]
+}
