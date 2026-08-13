@@ -3,14 +3,17 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 TEMP = tempfile.TemporaryDirectory(prefix="snowflake-cert-v24-")
 os.environ["BRAIN_DB"] = str(Path(TEMP.name) / "certification.sqlite")
 
-from app.database import BRAIN_DB, run_migrations  # noqa: E402
+from app.config import BRAIN_DB  # noqa: E402
+from app.database import run_migrations  # noqa: E402
 from app.evidence import evidence_audit  # noqa: E402
 from app.routers.certification_practice import CertificationQuizStart, certification_quiz_start  # noqa: E402
 from app.routers.questions import QuizAnswer, QuizGradeRequest, quiz_grade  # noqa: E402
@@ -126,6 +129,7 @@ def main() -> None:
     stored = conn.execute("SELECT correct_json FROM questions WHERE id = ?", (first["id"],)).fetchone()
     assert stored is not None
     import json
+
     correct = [int(value) for value in json.loads(stored["correct_json"])]
     graded = quiz_grade(
         QuizGradeRequest(answers=[QuizAnswer(question_id=first["id"], selected=correct)])
