@@ -1,1 +1,1 @@
-"""Snowflake Brain Lab application package."""
+"""Data + AI Career Lab application package."""

@@ -1,0 +1,162 @@
+{
+  "version": "2026-08-12-all-official",
+  "source": "Snowflake Education Services certification catalog",
+  "official_certifications": [
+    {
+      "id": "associate-platform",
+      "configured_track_id": "associate-platform",
+      "title": "SnowPro Associate: Platform",
+      "exam_code": "SOL-C01",
+      "level": "Associate",
+      "category": "associate",
+      "status": "available",
+      "candidate_experience": "3+ months of Snowflake knowledge",
+      "overview": ["Navigate Snowflake and Snowflake Notebooks", "Create databases, stages, and compute resources", "Load structured, semi-structured, and unstructured data", "Understand roles, access management, and account structure", "Use Snowflake Cortex LLM functions"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-platform/"
+    },
+    {
+      "id": "snowpro-core",
+      "configured_track_id": "snowpro-core",
+      "title": "SnowPro Core",
+      "exam_code": "COF-C03",
+      "level": "Foundational",
+      "category": "core",
+      "status": "available",
+      "candidate_experience": "6+ months using Snowflake",
+      "overview": ["Use the Snowflake AI Data Cloud architecture", "Manage Snowflake accounts and virtual warehouses", "Load, unload, and transform data", "Work with structured, semi-structured, and unstructured data", "Monitor and optimize performance", "Enable data collaboration and protection", "Establish Snowflake connectivity"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-core-c03/"
+    },
+    {
+      "id": "snowpark",
+      "configured_track_id": "snowpark",
+      "title": "SnowPro Specialty: Snowpark",
+      "exam_code": "SPS-C01",
+      "level": "Specialty",
+      "category": "specialty",
+      "status": "available",
+      "candidate_experience": "1+ year of hands-on Snowpark experience",
+      "overview": ["Transform data with Snowpark DataFrame functions", "Query data through Snowpark DataFrames", "Connect with Snowpark sessions", "Use DataFrame actions correctly", "Build logic with Snowpark stored procedures"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-snowpark/"
+    },
+    {
+      "id": "native-apps",
+      "configured_track_id": "native-apps",
+      "title": "SnowPro Specialty: Native Apps",
+      "exam_code": "NAS-C01",
+      "level": "Specialty",
+      "category": "specialty",
+      "status": "available",
+      "candidate_experience": "1+ year building Snowflake Native Apps",
+      "overview": ["Apply Native App development best practices", "Build, version, and release native applications", "Design Native App workflows and procedures", "Manage billing events and application costs"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-nativeapps/"
+    },
+    {
+      "id": "cortex-genai",
+      "configured_track_id": "cortex-genai",
+      "title": "SnowPro Specialty: Gen AI",
+      "exam_code": "GES-C01",
+      "level": "Specialty",
+      "category": "specialty",
+      "status": "available",
+      "candidate_experience": "1+ year of Gen AI experience with Snowflake",
+      "overview": ["Apply Snowflake Gen AI principles and best practices", "Use Snowflake Cortex AI features and LLM offerings", "Build open-source model workloads with Snowpark Container Services and Model Registry"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-GenAI/"
+    },
+    {
+      "id": "advanced-architect",
+      "configured_track_id": "advanced-architect",
+      "title": "SnowPro Advanced: Architect",
+      "exam_code": "ARA-C01",
+      "level": "Advanced",
+      "category": "advanced",
+      "status": "available",
+      "candidate_experience": "2+ years hands-on as a Snowflake Architect",
+      "overview": ["Design end-to-end data flows", "Design secure and compliant Snowflake architectures", "Select Snowflake and third-party tools for performance", "Design shared datasets with Marketplace and Data Exchange"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-advanced-architect/"
+    },
+    {
+      "id": "advanced-security-engineer",
+      "configured_track_id": "advanced-security-engineer",
+      "title": "SnowPro Advanced: Security Engineer",
+      "exam_code": "SEA-C01",
+      "level": "Advanced",
+      "category": "advanced",
+      "status": "available",
+      "candidate_experience": "2+ years managing Snowflake data governance and security",
+      "overview": ["Design data protection, privacy, and governance", "Manage identity and access controls", "Audit security controls and compliance", "Assess threats and execute incident response", "Use Snowflake AI/ML capabilities to improve security posture"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-advanced-securityengineer"
+    },
+    {
+      "id": "advanced-data-engineer",
+      "configured_track_id": "advanced-data-engineer",
+      "title": "SnowPro Advanced: Data Engineer",
+      "exam_code": "DEA-C02",
+      "level": "Advanced",
+      "category": "advanced",
+      "status": "available",
+      "candidate_experience": "2+ years hands-on as a production Data Engineer",
+      "overview": ["Source data from lakes, APIs, and on-premises systems", "Transform, replicate, and share data across clouds", "Design near-real-time streams", "Design scalable compute for data-engineering workloads", "Evaluate performance metrics"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-advanced-dataengineer-C02/"
+    },
+    {
+      "id": "advanced-data-scientist",
+      "configured_track_id": "advanced-data-scientist",
+      "title": "SnowPro Advanced: Data Scientist",
+      "exam_code": "DSA-C03",
+      "level": "Advanced",
+      "category": "advanced",
+      "status": "available",
+      "candidate_experience": "2+ years hands-on as a Snowflake Data Scientist",
+      "overview": ["Apply data-science concepts and Snowflake best practices", "Prepare data and engineer features", "Train and use machine-learning models", "Use Gen AI and LLM capabilities in Snowflake"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-advanced-datascientistC03"
+    },
+    {
+      "id": "advanced-administrator",
+      "configured_track_id": "advanced-administrator",
+      "title": "SnowPro Advanced: Administrator",
+      "exam_code": "ADA-C02",
+      "level": "Advanced",
+      "category": "advanced",
+      "status": "available",
+      "candidate_experience": "2+ years hands-on as a production Snowflake Administrator",
+      "overview": ["Administer accounts, security, and governance", "Maintain database objects and warehouses", "Monitor, tune, and optimize Snowflake", "Operate sharing and Marketplace", "Implement disaster recovery, backup, and replication"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/snowpro-advanced-administrator-c02/"
+    },
+    {
+      "id": "advanced-data-analyst",
+      "configured_track_id": "advanced-data-analyst",
+      "title": "SnowPro Advanced: Data Analyst",
+      "exam_code": "DAA-C01",
+      "level": "Advanced",
+      "category": "advanced",
+      "status": "available",
+      "candidate_experience": "Advanced analytics experience using Snowflake",
+      "overview": ["Prepare and load data for analysis", "Transform data with Snowflake SQL", "Use advanced SQL and troubleshoot analytical queries", "Use built-in functions and UDFs", "Perform descriptive and diagnostic analysis", "Apply predictive analytical capabilities", "Prepare and present governed analytical datasets"],
+      "simulation": {"quick_questions": 30, "full_questions": 65, "seconds_per_question": 120},
+      "source_url": "https://learn.snowflake.com/en/certifications/"
+    }
+  ],
+  "custom_tracks": [
+    {
+      "id": "cost-optimization",
+      "configured_track_id": "cost-optimization",
+      "title": "Snowflake Cost Optimization",
+      "exam_code": "CUSTOM",
+      "level": "Learning Track",
+      "category": "custom",
+      "status": "available",
+      "candidate_experience": "Any practitioner responsible for Snowflake cost and performance",
+      "overview": ["Right-size compute and control idle spend", "Optimize query and storage cost", "Attribute usage with ACCOUNT_USAGE", "Build a practical Snowflake FinOps operating model"]
+    }
+  ]
+}

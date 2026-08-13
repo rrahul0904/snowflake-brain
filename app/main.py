@@ -4,33 +4,35 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import AUTO_INGEST
 from .database import run_migrations
-from .routers import ai, courses, flashcards, index, labs, progress, questions, search, study
-from .routers.index import maybe_auto_ingest
+from .routers import certification_practice, experience, intelligence, labs, questions, skills
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 
-app = FastAPI(title="Snowflake Brain", version="0.2.0")
+app = FastAPI(
+    title="Snowflake Certification Guide",
+    version="0.4.0",
+    description="Certification-native SnowPro preparation: blueprint, written lessons, practice, mastery, and readiness.",
+)
 
 
 @app.on_event("startup")
 def startup() -> None:
     run_migrations()
-    if AUTO_INGEST:
-        maybe_auto_ingest()
 
 
-app.include_router(index.router, prefix="/api")
-app.include_router(courses.router, prefix="/api")
+@app.get("/api/health")
+def health() -> dict[str, str]:
+    return {"status": "ok", "product": "snowflake-certification-guide", "architecture": "certification-native-v24"}
+
+
+app.include_router(skills.router, prefix="/api")
 app.include_router(questions.router, prefix="/api")
-app.include_router(search.router, prefix="/api")
-app.include_router(ai.router, prefix="/api")
-app.include_router(flashcards.router, prefix="/api")
+app.include_router(certification_practice.router, prefix="/api")
+app.include_router(intelligence.router, prefix="/api")
+app.include_router(experience.router, prefix="/api")
 app.include_router(labs.router, prefix="/api")
-app.include_router(progress.router, prefix="/api")
-app.include_router(study.router, prefix="/api")
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 

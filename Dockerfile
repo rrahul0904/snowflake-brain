@@ -2,10 +2,7 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV CONTENT_ROOT=/content
-ENV BRAIN_DB=/data/snowflake_brain.sqlite
-ENV AUTO_INGEST=true
-ENV ANTHROPIC_API_KEY=
+ENV BRAIN_DB=/data/snowflake_certification.sqlite
 
 WORKDIR /app
 
@@ -21,7 +18,10 @@ RUN pip install --no-cache-dir \
   -r requirements.txt
 
 COPY app ./app
+COPY config ./config
 COPY frontend ./frontend
+
+RUN mkdir -p /data
 
 EXPOSE 8000
 

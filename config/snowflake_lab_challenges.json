@@ -1,0 +1,1560 @@
+{
+  "version": "2026-06-29-v5-all-six-certifications",
+  "mode": "offline",
+  "labs": [
+    {
+      "id": "core-warehouse-cost-safe",
+      "title": "Create a Cost-Safe Virtual Warehouse",
+      "certification": "snowpro-core",
+      "domain_id": "virtual-warehouses",
+      "domain": "Virtual Warehouses and Cost Control",
+      "skill_id": "warehouse-cost-control",
+      "skill": "Warehouse sizing, suspend/resume, and cost control",
+      "difficulty": "beginner",
+      "estimated_minutes": 20,
+      "why_it_matters": "SnowPro Core commonly tests warehouse size, auto-suspend, auto-resume, and how warehouse choices affect cost.",
+      "scenario": "You are setting up a small development warehouse. It must be cheap, safe, and automatically stop when idle.",
+      "instructions": [
+        "Create a warehouse named SB_LAB_WH.",
+        "Use XSMALL size.",
+        "Set AUTO_SUSPEND to 60 seconds.",
+        "Set AUTO_RESUME to TRUE.",
+        "Start the warehouse suspended."
+      ],
+      "input_context": "No live Snowflake connection is required in offline mode. Write the SQL you would run in Snowsight.",
+      "expected_output": "A CREATE OR REPLACE WAREHOUSE statement with the required warehouse properties.",
+      "starter_sql": "-- Create a cost-safe Snowflake warehouse here\n",
+      "hints": [
+        "Use CREATE OR REPLACE WAREHOUSE.",
+        "AUTO_SUSPEND controls idle shutdown.",
+        "INITIALLY_SUSPENDED prevents the warehouse from starting immediately."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates the expected warehouse",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "WAREHOUSE",
+            "SB_LAB_WH"
+          ]
+        },
+        {
+          "name": "Uses XSMALL size",
+          "type": "contains_all",
+          "patterns": [
+            "WAREHOUSE_SIZE",
+            "XSMALL"
+          ]
+        },
+        {
+          "name": "Auto-suspend configured",
+          "type": "contains_all",
+          "patterns": [
+            "AUTO_SUSPEND",
+            "60"
+          ]
+        },
+        {
+          "name": "Auto-resume enabled",
+          "type": "contains_all",
+          "patterns": [
+            "AUTO_RESUME",
+            "TRUE"
+          ]
+        },
+        {
+          "name": "Starts suspended",
+          "type": "contains_any",
+          "patterns": [
+            "INITIALLY_SUSPENDED",
+            "SUSPEND"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE WAREHOUSE SB_LAB_WH\n  WAREHOUSE_SIZE = XSMALL\n  AUTO_SUSPEND = 60\n  AUTO_RESUME = TRUE\n  INITIALLY_SUSPENDED = TRUE;",
+      "teardown_sql": "DROP WAREHOUSE IF EXISTS SB_LAB_WH;",
+      "related_question_tags": [
+        "warehouse",
+        "auto_suspend",
+        "auto_resume",
+        "cost"
+      ],
+      "exam_traps": [
+        "A warehouse can burn credits while idle unless AUTO_SUSPEND is configured.",
+        "Scaling up and scaling out are different concepts."
+      ]
+    },
+    {
+      "id": "core-stage-copy-csv",
+      "title": "Load CSV Data with Stage, File Format, and COPY INTO",
+      "certification": "snowpro-core",
+      "domain_id": "data-loading",
+      "domain": "Data Loading and Unloading",
+      "skill_id": "stage-file-format-copy",
+      "skill": "Stages, file formats, and COPY INTO",
+      "difficulty": "beginner",
+      "estimated_minutes": 25,
+      "why_it_matters": "Data loading is a major SnowPro Core skill. The exam often tests stages, file formats, COPY INTO, and validation.",
+      "scenario": "You need to create a reusable file format and stage, then load CSV files into a target table.",
+      "instructions": [
+        "Create a database SB_LAB_DB and schema CORE.",
+        "Create a CSV file format named CSV_FF with SKIP_HEADER = 1.",
+        "Create an internal stage named ORDERS_STAGE that uses the file format.",
+        "Create an ORDERS table.",
+        "Write a COPY INTO statement loading from the stage into the table."
+      ],
+      "input_context": "Sample CSV columns: ORDER_ID, CUSTOMER_ID, AMOUNT.",
+      "expected_output": "SQL that defines the database/schema, file format, stage, table, and COPY INTO load.",
+      "starter_sql": "-- Build the CSV loading pipeline here\n",
+      "hints": [
+        "Use CREATE FILE FORMAT with TYPE = CSV.",
+        "A named stage can reference a named file format.",
+        "COPY INTO <table> FROM @<stage> loads files."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates database and schema",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "DATABASE",
+            "SB_LAB_DB",
+            "CREATE",
+            "SCHEMA"
+          ]
+        },
+        {
+          "name": "Defines CSV file format",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "FILE FORMAT",
+            "TYPE",
+            "CSV",
+            "SKIP_HEADER"
+          ]
+        },
+        {
+          "name": "Creates internal stage",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "STAGE",
+            "ORDERS_STAGE"
+          ]
+        },
+        {
+          "name": "Creates orders table",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "TABLE",
+            "ORDERS"
+          ]
+        },
+        {
+          "name": "Loads with COPY INTO",
+          "type": "contains_all",
+          "patterns": [
+            "COPY INTO",
+            "ORDERS",
+            "FROM @"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE DATABASE SB_LAB_DB;\nCREATE OR REPLACE SCHEMA SB_LAB_DB.CORE;\n\nCREATE OR REPLACE FILE FORMAT SB_LAB_DB.CORE.CSV_FF\n  TYPE = CSV\n  SKIP_HEADER = 1\n  FIELD_OPTIONALLY_ENCLOSED_BY = '\"';\n\nCREATE OR REPLACE STAGE SB_LAB_DB.CORE.ORDERS_STAGE\n  FILE_FORMAT = SB_LAB_DB.CORE.CSV_FF;\n\nCREATE OR REPLACE TABLE SB_LAB_DB.CORE.ORDERS (\n  ORDER_ID NUMBER,\n  CUSTOMER_ID NUMBER,\n  AMOUNT NUMBER(10,2)\n);\n\nCOPY INTO SB_LAB_DB.CORE.ORDERS\nFROM @SB_LAB_DB.CORE.ORDERS_STAGE;",
+      "teardown_sql": "DROP DATABASE IF EXISTS SB_LAB_DB;",
+      "related_question_tags": [
+        "stage",
+        "file format",
+        "copy into",
+        "data loading"
+      ],
+      "exam_traps": [
+        "Do not confuse a stage with a file format. They are separate objects that can be linked."
+      ]
+    },
+    {
+      "id": "core-variant-flatten-json",
+      "title": "Query Semi-Structured JSON with VARIANT and FLATTEN",
+      "certification": "snowpro-core",
+      "domain_id": "semi-structured-data",
+      "domain": "Semi-Structured Data",
+      "skill_id": "variant-flatten-json",
+      "skill": "VARIANT, JSON pathing, and FLATTEN",
+      "difficulty": "intermediate",
+      "estimated_minutes": 30,
+      "why_it_matters": "SnowPro Core frequently tests JSON storage, path extraction, casts, and FLATTEN for arrays.",
+      "scenario": "You receive purchase events as JSON. Store the payload and return one row per item in the items array.",
+      "instructions": [
+        "Create a table EVENTS_RAW with a VARIANT column.",
+        "Insert at least one JSON value using PARSE_JSON.",
+        "Select scalar values using path notation.",
+        "Use LATERAL FLATTEN to return one row per item."
+      ],
+      "input_context": "Example JSON: {\"type\":\"purchase\",\"customer\":{\"id\":42},\"items\":[{\"sku\":\"A1\",\"qty\":2}]}",
+      "expected_output": "A SELECT that extracts event type/customer id and flattens items into rows.",
+      "starter_sql": "-- Store and query JSON with VARIANT and FLATTEN\n",
+      "hints": [
+        "Use VARIANT for semi-structured values.",
+        "Use PARSE_JSON for inline JSON strings.",
+        "Use LATERAL FLATTEN(INPUT => payload:items)."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates VARIANT column",
+          "type": "contains_all",
+          "patterns": [
+            "VARIANT"
+          ]
+        },
+        {
+          "name": "Parses JSON",
+          "type": "contains_all",
+          "patterns": [
+            "PARSE_JSON"
+          ]
+        },
+        {
+          "name": "Uses JSON path notation",
+          "type": "contains_any",
+          "patterns": [
+            "PAYLOAD:",
+            ":type",
+            ":customer",
+            ":items"
+          ]
+        },
+        {
+          "name": "Uses FLATTEN",
+          "type": "contains_all",
+          "patterns": [
+            "FLATTEN",
+            "INPUT"
+          ]
+        },
+        {
+          "name": "Uses LATERAL or table function syntax",
+          "type": "contains_any",
+          "patterns": [
+            "LATERAL",
+            "TABLE(FLATTEN"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE TABLE EVENTS_RAW (EVENT_ID NUMBER, PAYLOAD VARIANT);\n\nINSERT INTO EVENTS_RAW\nSELECT 1, PARSE_JSON('{\"type\":\"purchase\",\"customer\":{\"id\":42},\"items\":[{\"sku\":\"A1\",\"qty\":2}]}');\n\nSELECT\n  EVENT_ID,\n  PAYLOAD:type::STRING AS EVENT_TYPE,\n  PAYLOAD:customer.id::NUMBER AS CUSTOMER_ID,\n  ITEM.VALUE:sku::STRING AS SKU,\n  ITEM.VALUE:qty::NUMBER AS QTY\nFROM EVENTS_RAW,\nLATERAL FLATTEN(INPUT => PAYLOAD:items) ITEM;",
+      "teardown_sql": "DROP TABLE IF EXISTS EVENTS_RAW;",
+      "related_question_tags": [
+        "variant",
+        "flatten",
+        "json",
+        "semi structured"
+      ],
+      "exam_traps": [
+        "FLATTEN produces rows; JSON path notation extracts fields. They solve different parts of the problem."
+      ]
+    },
+    {
+      "id": "core-rbac-least-privilege",
+      "title": "Design Least-Privilege RBAC",
+      "certification": "snowpro-core",
+      "domain_id": "account-security",
+      "domain": "Account Access and Security",
+      "skill_id": "rbac-role-hierarchy",
+      "skill": "RBAC role hierarchy and least privilege",
+      "difficulty": "intermediate",
+      "estimated_minutes": 25,
+      "why_it_matters": "Security and access control are core exam areas. You must know how roles, grants, and inheritance work.",
+      "scenario": "Create an access role that can read from a schema, then grant it to a functional analyst role.",
+      "instructions": [
+        "Create role AR_SNOWPRO_CORE_READ.",
+        "Create role FR_SNOWPRO_ANALYST.",
+        "Grant warehouse usage to the access role.",
+        "Grant database/schema usage and SELECT on all/future tables.",
+        "Grant the access role to the functional role.",
+        "Show grants to verify the design."
+      ],
+      "input_context": "Assume the warehouse is SB_LAB_WH and the schema is SB_LAB_DB.CORE.",
+      "expected_output": "Role creation and grant statements implementing least-privilege read access.",
+      "starter_sql": "-- Build least-privilege RBAC here\n",
+      "hints": [
+        "Prefer grants to roles, not directly to users.",
+        "Separate access roles from functional roles.",
+        "Remember future table grants if new tables are expected."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates both roles",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "ROLE",
+            "AR_SNOWPRO_CORE_READ",
+            "FR_SNOWPRO_ANALYST"
+          ]
+        },
+        {
+          "name": "Grants warehouse usage",
+          "type": "contains_all",
+          "patterns": [
+            "GRANT",
+            "USAGE",
+            "WAREHOUSE"
+          ]
+        },
+        {
+          "name": "Grants database/schema usage",
+          "type": "contains_all",
+          "patterns": [
+            "GRANT",
+            "USAGE",
+            "DATABASE",
+            "SCHEMA"
+          ]
+        },
+        {
+          "name": "Grants SELECT",
+          "type": "contains_all",
+          "patterns": [
+            "GRANT",
+            "SELECT"
+          ]
+        },
+        {
+          "name": "Uses role hierarchy",
+          "type": "contains_all",
+          "patterns": [
+            "GRANT ROLE",
+            "AR_SNOWPRO_CORE_READ",
+            "FR_SNOWPRO_ANALYST"
+          ]
+        },
+        {
+          "name": "Verifies grants",
+          "type": "contains_any",
+          "patterns": [
+            "SHOW GRANTS",
+            "GRANTS TO ROLE"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE ROLE IF NOT EXISTS AR_SNOWPRO_CORE_READ;\nCREATE ROLE IF NOT EXISTS FR_SNOWPRO_ANALYST;\n\nGRANT USAGE ON WAREHOUSE SB_LAB_WH TO ROLE AR_SNOWPRO_CORE_READ;\nGRANT USAGE ON DATABASE SB_LAB_DB TO ROLE AR_SNOWPRO_CORE_READ;\nGRANT USAGE ON SCHEMA SB_LAB_DB.CORE TO ROLE AR_SNOWPRO_CORE_READ;\nGRANT SELECT ON ALL TABLES IN SCHEMA SB_LAB_DB.CORE TO ROLE AR_SNOWPRO_CORE_READ;\nGRANT SELECT ON FUTURE TABLES IN SCHEMA SB_LAB_DB.CORE TO ROLE AR_SNOWPRO_CORE_READ;\n\nGRANT ROLE AR_SNOWPRO_CORE_READ TO ROLE FR_SNOWPRO_ANALYST;\nSHOW GRANTS TO ROLE AR_SNOWPRO_CORE_READ;",
+      "teardown_sql": "DROP ROLE IF EXISTS FR_SNOWPRO_ANALYST;\nDROP ROLE IF EXISTS AR_SNOWPRO_CORE_READ;",
+      "related_question_tags": [
+        "rbac",
+        "role",
+        "grant",
+        "privilege",
+        "security"
+      ],
+      "exam_traps": [
+        "Functional roles inherit access roles. This makes access easier to audit and reuse."
+      ]
+    },
+    {
+      "id": "core-time-travel-clone",
+      "title": "Recover and Clone Data with Time Travel",
+      "certification": "snowpro-core",
+      "domain_id": "continuity-governance-sharing",
+      "domain": "Continuity, Governance, and Sharing",
+      "skill_id": "time-travel-clone-failsafe",
+      "skill": "Time Travel, Fail-safe, and zero-copy clone",
+      "difficulty": "intermediate",
+      "estimated_minutes": 25,
+      "why_it_matters": "The exam tests Time Travel, retention, UNDROP, zero-copy clone, and the difference between Time Travel and Fail-safe.",
+      "scenario": "Create a clone for safe testing and show how you would recover a dropped table during the retention window.",
+      "instructions": [
+        "Create a zero-copy clone of SB_LAB_DB named SB_LAB_DB_CLONE.",
+        "Query data using AT or BEFORE syntax.",
+        "Drop and undrop a table.",
+        "Include a query that checks retention metadata."
+      ],
+      "input_context": "Assume SB_LAB_DB.CORE.ORDERS already exists from the loading lab.",
+      "expected_output": "SQL using CLONE, AT/BEFORE, DROP/UNDROP, and retention inspection.",
+      "starter_sql": "-- Practice Time Travel and zero-copy clone here\n",
+      "hints": [
+        "CLONE creates a metadata clone without copying all storage up front.",
+        "UNDROP works within Time Travel retention.",
+        "Fail-safe is not a user query feature."
+      ],
+      "validation_tests": [
+        {
+          "name": "Uses zero-copy clone",
+          "type": "contains_all",
+          "patterns": [
+            "CLONE",
+            "SB_LAB_DB_CLONE"
+          ]
+        },
+        {
+          "name": "Uses Time Travel syntax",
+          "type": "contains_any",
+          "patterns": [
+            "AT (",
+            "BEFORE (",
+            "OFFSET",
+            "TIMESTAMP"
+          ]
+        },
+        {
+          "name": "Drops and undrops",
+          "type": "contains_all",
+          "patterns": [
+            "DROP",
+            "UNDROP"
+          ]
+        },
+        {
+          "name": "Checks retention metadata",
+          "type": "contains_any",
+          "patterns": [
+            "RETENTION_TIME",
+            "ACCOUNT_USAGE",
+            "INFORMATION_SCHEMA"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE DATABASE SB_LAB_DB_CLONE CLONE SB_LAB_DB;\n\nSELECT COUNT(*)\nFROM SB_LAB_DB.CORE.ORDERS\nAT (OFFSET => -60 * 5);\n\nDROP TABLE SB_LAB_DB_CLONE.CORE.ORDERS;\nUNDROP TABLE SB_LAB_DB_CLONE.CORE.ORDERS;\n\nSELECT DATABASE_NAME, RETENTION_TIME\nFROM SNOWFLAKE.ACCOUNT_USAGE.DATABASES\nWHERE DATABASE_NAME IN ('SB_LAB_DB', 'SB_LAB_DB_CLONE');",
+      "teardown_sql": "DROP DATABASE IF EXISTS SB_LAB_DB_CLONE;",
+      "related_question_tags": [
+        "time travel",
+        "clone",
+        "undrop",
+        "retention"
+      ],
+      "exam_traps": [
+        "Time Travel is self-service within retention. Fail-safe is for Snowflake-managed disaster recovery and is not queried directly by users."
+      ]
+    },
+    {
+      "id": "core-streams-tasks-pipeline",
+      "title": "Build an Incremental Pipeline with Streams and Tasks",
+      "certification": "snowpro-core",
+      "domain_id": "data-pipelines",
+      "domain": "Streams, Tasks, and Pipelines",
+      "skill_id": "streams-tasks-incremental",
+      "skill": "Streams and tasks for incremental pipelines",
+      "difficulty": "advanced",
+      "estimated_minutes": 35,
+      "why_it_matters": "Streams and tasks are common Snowflake automation concepts. The exam tests stream consumption, task scheduling, and change tracking.",
+      "scenario": "Track new rows in a raw table and process them into a fact table using a task.",
+      "instructions": [
+        "Create source and target tables.",
+        "Create a stream on the source table.",
+        "Create a task using SB_LAB_WH.",
+        "Use SYSTEM$STREAM_HAS_DATA in the task condition.",
+        "Insert rows and execute the task manually."
+      ],
+      "input_context": "Assume warehouse SB_LAB_WH exists.",
+      "expected_output": "SQL that creates a stream and task, inserts data, executes the task, and validates target rows.",
+      "starter_sql": "-- Build a stream and task pipeline here\n",
+      "hints": [
+        "A stream tracks changes on a table.",
+        "A task can run SQL on a schedule or when a stream has data.",
+        "METADATA$ACTION tells you insert/delete action in stream rows."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates stream",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "STREAM",
+            "ON TABLE"
+          ]
+        },
+        {
+          "name": "Creates task",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "TASK",
+            "WAREHOUSE"
+          ]
+        },
+        {
+          "name": "Uses stream data condition",
+          "type": "contains_all",
+          "patterns": [
+            "SYSTEM$STREAM_HAS_DATA"
+          ]
+        },
+        {
+          "name": "Consumes stream metadata",
+          "type": "contains_any",
+          "patterns": [
+            "METADATA$ACTION",
+            "RAW_ORDERS_STREAM"
+          ]
+        },
+        {
+          "name": "Executes task or resumes task",
+          "type": "contains_any",
+          "patterns": [
+            "EXECUTE TASK",
+            "ALTER TASK"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE TABLE RAW_ORDERS (ORDER_ID NUMBER, AMOUNT NUMBER(10,2));\nCREATE OR REPLACE TABLE ORDER_FACTS (ORDER_ID NUMBER, AMOUNT NUMBER(10,2), PROCESSED_AT TIMESTAMP_NTZ);\n\nCREATE OR REPLACE STREAM RAW_ORDERS_STREAM ON TABLE RAW_ORDERS;\n\nCREATE OR REPLACE TASK LOAD_ORDER_FACTS\n  WAREHOUSE = SB_LAB_WH\n  SCHEDULE = '5 MINUTE'\n  WHEN SYSTEM$STREAM_HAS_DATA('RAW_ORDERS_STREAM')\nAS\nINSERT INTO ORDER_FACTS\nSELECT ORDER_ID, AMOUNT, CURRENT_TIMESTAMP()\nFROM RAW_ORDERS_STREAM\nWHERE METADATA$ACTION = 'INSERT';\n\nINSERT INTO RAW_ORDERS VALUES (1, 10.00), (2, 25.50);\nEXECUTE TASK LOAD_ORDER_FACTS;\nSELECT * FROM ORDER_FACTS;",
+      "teardown_sql": "DROP TASK IF EXISTS LOAD_ORDER_FACTS;\nDROP STREAM IF EXISTS RAW_ORDERS_STREAM;\nDROP TABLE IF EXISTS ORDER_FACTS;\nDROP TABLE IF EXISTS RAW_ORDERS;",
+      "related_question_tags": [
+        "stream",
+        "task",
+        "pipeline",
+        "cdc"
+      ],
+      "exam_traps": [
+        "A stream is consumed when its rows are used in a successful DML statement, which advances the offset."
+      ]
+    },
+    {
+      "id": "arch-managed-access-rbac",
+      "title": "Design Managed Access RBAC Schema",
+      "certification": "advanced-architect",
+      "domain_id": "security-governance",
+      "domain": "Security, Governance, and Compliance Architecture",
+      "skill_id": "architect-rbac-model",
+      "skill": "Enterprise RBAC model and ownership strategy",
+      "difficulty": "advanced",
+      "estimated_minutes": 30,
+      "why_it_matters": "This challenge validates Enterprise RBAC model and ownership strategy, which is a key practical skill for advanced-architect.",
+      "scenario": "Create a governed schema pattern using managed access, access roles, and future grants.",
+      "instructions": [
+        "Create database SB_ARCH_DB.",
+        "Create role SB_AR_READ.",
+        "Create a managed access schema SB_GOV.",
+        "Grant usage/select through roles, not users.",
+        "Add a future grant for tables."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Build managed access RBAC pattern here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates database",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "DATABASE",
+            "SB_ARCH_DB"
+          ]
+        },
+        {
+          "name": "Uses managed access schema",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "SCHEMA",
+            "WITH MANAGED ACCESS"
+          ]
+        },
+        {
+          "name": "Creates access role",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "ROLE",
+            "SB_AR_READ"
+          ]
+        },
+        {
+          "name": "Uses future grants",
+          "type": "contains_all",
+          "patterns": [
+            "GRANT",
+            "SELECT",
+            "ON FUTURE TABLES"
+          ]
+        },
+        {
+          "name": "Avoids direct user grants",
+          "type": "contains_all",
+          "patterns": [
+            "GRANT",
+            "TO ROLE"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE DATABASE SB_ARCH_DB;\nCREATE OR REPLACE ROLE SB_AR_READ;\nCREATE OR REPLACE SCHEMA SB_ARCH_DB.SB_GOV WITH MANAGED ACCESS;\nGRANT USAGE ON DATABASE SB_ARCH_DB TO ROLE SB_AR_READ;\nGRANT USAGE ON SCHEMA SB_ARCH_DB.SB_GOV TO ROLE SB_AR_READ;\nGRANT SELECT ON FUTURE TABLES IN SCHEMA SB_ARCH_DB.SB_GOV TO ROLE SB_AR_READ;",
+      "teardown_sql": "DROP DATABASE IF EXISTS SB_ARCH_DB; DROP ROLE IF EXISTS SB_AR_READ;",
+      "related_question_tags": [
+        "managed access",
+        "rbac",
+        "future grants"
+      ],
+      "exam_traps": [
+        "Managed access changes who can grant object privileges."
+      ]
+    },
+    {
+      "id": "arch-tag-masking-policy",
+      "title": "Apply Tags and Masking Policy",
+      "certification": "advanced-architect",
+      "domain_id": "security-governance",
+      "domain": "Security, Governance, and Compliance Architecture",
+      "skill_id": "architect-governance-classification",
+      "skill": "Data governance, tagging, masking, and classification",
+      "difficulty": "advanced",
+      "estimated_minutes": 35,
+      "why_it_matters": "This challenge validates Data governance, tagging, masking, and classification, which is a key practical skill for advanced-architect.",
+      "scenario": "Classify a sensitive column and attach a masking policy that hides data from non-privileged roles.",
+      "instructions": [
+        "Create a tag named SB_SENSITIVITY.",
+        "Create a masking policy for email values.",
+        "Apply the tag or policy to a customer email column.",
+        "Show how privileged role can see values."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Build tagging and masking governance pattern here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates tag",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "TAG",
+            "SB_SENSITIVITY"
+          ]
+        },
+        {
+          "name": "Creates masking policy",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "MASKING POLICY"
+          ]
+        },
+        {
+          "name": "Uses CASE or role check",
+          "type": "contains_any",
+          "patterns": [
+            "CURRENT_ROLE",
+            "IS_ROLE_IN_SESSION"
+          ]
+        },
+        {
+          "name": "Applies policy",
+          "type": "contains_all",
+          "patterns": [
+            "SET MASKING POLICY"
+          ]
+        },
+        {
+          "name": "Uses ALTER TABLE or column policy",
+          "type": "contains_any",
+          "patterns": [
+            "ALTER TABLE",
+            "MODIFY COLUMN"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE TAG SB_SENSITIVITY;\nCREATE OR REPLACE MASKING POLICY SB_EMAIL_MASK AS (val STRING) RETURNS STRING -> CASE WHEN IS_ROLE_IN_SESSION('SB_PRIVILEGED') THEN val ELSE '***MASKED***' END;\nALTER TABLE SB_CUSTOMERS MODIFY COLUMN EMAIL SET MASKING POLICY SB_EMAIL_MASK;",
+      "teardown_sql": "",
+      "related_question_tags": [
+        "masking",
+        "tagging",
+        "classification"
+      ],
+      "exam_traps": [
+        "Tags alone do not mask data; policies enforce behavior."
+      ]
+    },
+    {
+      "id": "arch-replication-failover-plan",
+      "title": "Sketch Replication and Failover Plan",
+      "certification": "advanced-architect",
+      "domain_id": "performance-resilience",
+      "domain": "Performance, Scalability, and Resilience",
+      "skill_id": "architect-bcdr",
+      "skill": "Business continuity and disaster recovery",
+      "difficulty": "advanced",
+      "estimated_minutes": 25,
+      "why_it_matters": "This challenge validates Business continuity and disaster recovery, which is a key practical skill for advanced-architect.",
+      "scenario": "Write the Snowflake SQL/control plan for enabling database replication and failover readiness.",
+      "instructions": [
+        "Create a database intended for replication.",
+        "Enable replication/failover to another account placeholder.",
+        "Include retention assumptions.",
+        "Include a validation query for replicas."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Draft replication/failover SQL plan here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "References replication or failover",
+          "type": "contains_any",
+          "patterns": [
+            "REPLICATION",
+            "FAILOVER"
+          ]
+        },
+        {
+          "name": "Creates/changes database",
+          "type": "contains_any",
+          "patterns": [
+            "CREATE DATABASE",
+            "ALTER DATABASE"
+          ]
+        },
+        {
+          "name": "Mentions primary/secondary",
+          "type": "contains_any",
+          "patterns": [
+            "PRIMARY",
+            "SECONDARY"
+          ]
+        },
+        {
+          "name": "Includes validation",
+          "type": "contains_any",
+          "patterns": [
+            "SHOW REPLICATION",
+            "SHOW DATABASES",
+            "INFORMATION_SCHEMA"
+          ]
+        }
+      ],
+      "solution_sql": "-- Example placeholder; exact syntax depends on accounts/regions.\nALTER DATABASE SB_CRITICAL_DB ENABLE REPLICATION TO ACCOUNTS <org>.<account>;\nSHOW REPLICATION DATABASES;",
+      "teardown_sql": "",
+      "related_question_tags": [
+        "replication",
+        "failover",
+        "bcdr"
+      ],
+      "exam_traps": [
+        "Replication and failover require account/region planning beyond one SQL statement."
+      ]
+    },
+    {
+      "id": "de-snowpipe-auto-ingest",
+      "title": "Configure Snowpipe Auto-Ingest Pattern",
+      "certification": "advanced-data-engineer",
+      "domain_id": "ingestion-loading",
+      "domain": "Data Ingestion and Loading",
+      "skill_id": "de-continuous-ingestion-snowpipe",
+      "skill": "Continuous ingestion with Snowpipe and notifications",
+      "difficulty": "intermediate",
+      "estimated_minutes": 30,
+      "why_it_matters": "This challenge validates Continuous ingestion with Snowpipe and notifications, which is a key practical skill for advanced-data-engineer.",
+      "scenario": "Define a pipe that continuously loads staged CSV files using a named file format.",
+      "instructions": [
+        "Create a file format.",
+        "Create an external stage placeholder.",
+        "Create a pipe with AUTO_INGEST = TRUE.",
+        "Use COPY INTO inside the pipe."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Create Snowpipe auto-ingest pattern here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates file format",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "FILE FORMAT"
+          ]
+        },
+        {
+          "name": "Creates stage",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "STAGE"
+          ]
+        },
+        {
+          "name": "Creates pipe",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "PIPE"
+          ]
+        },
+        {
+          "name": "Uses auto ingest",
+          "type": "contains_all",
+          "patterns": [
+            "AUTO_INGEST",
+            "TRUE"
+          ]
+        },
+        {
+          "name": "Pipe includes COPY INTO",
+          "type": "contains_all",
+          "patterns": [
+            "COPY INTO"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE FILE FORMAT SB_CSV_FF TYPE = CSV SKIP_HEADER = 1;\nCREATE OR REPLACE STAGE SB_EXT_STAGE URL = 's3://example-bucket/path/' FILE_FORMAT = SB_CSV_FF;\nCREATE OR REPLACE PIPE SB_LOAD_PIPE AUTO_INGEST = TRUE AS COPY INTO SB_RAW FROM @SB_EXT_STAGE FILE_FORMAT = SB_CSV_FF;",
+      "teardown_sql": "DROP PIPE IF EXISTS SB_LOAD_PIPE; DROP STAGE IF EXISTS SB_EXT_STAGE; DROP FILE FORMAT IF EXISTS SB_CSV_FF;",
+      "related_question_tags": [
+        "snowpipe",
+        "auto ingest",
+        "copy into"
+      ],
+      "exam_traps": [
+        "Snowpipe also requires cloud notification configuration."
+      ]
+    },
+    {
+      "id": "de-stream-task-merge",
+      "title": "Build Stream + Task MERGE Pipeline",
+      "certification": "advanced-data-engineer",
+      "domain_id": "transformation-pipelines",
+      "domain": "Transformation and Pipeline Engineering",
+      "skill_id": "de-streams-tasks-cdc",
+      "skill": "Streams and Tasks for incremental pipelines",
+      "difficulty": "advanced",
+      "estimated_minutes": 40,
+      "why_it_matters": "This challenge validates Streams and Tasks for incremental pipelines, which is a key practical skill for advanced-data-engineer.",
+      "scenario": "Create a stream on a raw table and a scheduled task that merges changes into a target table.",
+      "instructions": [
+        "Create raw and target tables.",
+        "Create a stream on the raw table.",
+        "Create a task that MERGEs stream rows into target.",
+        "Include WHEN MATCHED and WHEN NOT MATCHED behavior."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Build stream/task incremental pipeline here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates stream",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "STREAM"
+          ]
+        },
+        {
+          "name": "Creates task",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "TASK"
+          ]
+        },
+        {
+          "name": "Uses MERGE",
+          "type": "contains_all",
+          "patterns": [
+            "MERGE INTO"
+          ]
+        },
+        {
+          "name": "Uses stream source",
+          "type": "contains_any",
+          "patterns": [
+            "SB_RAW_STREAM",
+            "STREAM"
+          ]
+        },
+        {
+          "name": "Handles matched and not matched",
+          "type": "contains_all",
+          "patterns": [
+            "WHEN MATCHED",
+            "WHEN NOT MATCHED"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE STREAM SB_RAW_STREAM ON TABLE SB_RAW;\nCREATE OR REPLACE TASK SB_MERGE_TASK WAREHOUSE = SB_LAB_WH SCHEDULE = '5 MINUTE' AS MERGE INTO SB_TARGET t USING SB_RAW_STREAM s ON t.ID = s.ID WHEN MATCHED THEN UPDATE SET t.VALUE = s.VALUE WHEN NOT MATCHED THEN INSERT (ID, VALUE) VALUES (s.ID, s.VALUE);",
+      "teardown_sql": "DROP TASK IF EXISTS SB_MERGE_TASK; DROP STREAM IF EXISTS SB_RAW_STREAM;",
+      "related_question_tags": [
+        "streams",
+        "tasks",
+        "merge",
+        "cdc"
+      ],
+      "exam_traps": [
+        "A stream is consumed when DML reads its change records."
+      ]
+    },
+    {
+      "id": "de-dynamic-table-lag",
+      "title": "Create Dynamic Table with Target Lag",
+      "certification": "advanced-data-engineer",
+      "domain_id": "transformation-pipelines",
+      "domain": "Transformation and Pipeline Engineering",
+      "skill_id": "de-dynamic-tables",
+      "skill": "Dynamic tables and declarative pipelines",
+      "difficulty": "intermediate",
+      "estimated_minutes": 25,
+      "why_it_matters": "This challenge validates Dynamic tables and declarative pipelines, which is a key practical skill for advanced-data-engineer.",
+      "scenario": "Create a dynamic table that refreshes a curated aggregate with a target lag.",
+      "instructions": [
+        "Create a dynamic table named SB_DT_SALES.",
+        "Use TARGET_LAG.",
+        "Specify a warehouse.",
+        "Use SELECT aggregation from a raw table."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Create dynamic table here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates dynamic table",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "DYNAMIC TABLE",
+            "SB_DT_SALES"
+          ]
+        },
+        {
+          "name": "Sets target lag",
+          "type": "contains_all",
+          "patterns": [
+            "TARGET_LAG"
+          ]
+        },
+        {
+          "name": "Specifies warehouse",
+          "type": "contains_all",
+          "patterns": [
+            "WAREHOUSE"
+          ]
+        },
+        {
+          "name": "Uses aggregation",
+          "type": "contains_any",
+          "patterns": [
+            "GROUP BY",
+            "COUNT",
+            "SUM"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE DYNAMIC TABLE SB_DT_SALES TARGET_LAG = '5 minutes' WAREHOUSE = SB_LAB_WH AS SELECT CUSTOMER_ID, SUM(AMOUNT) AS TOTAL_AMOUNT FROM SB_RAW_SALES GROUP BY CUSTOMER_ID;",
+      "teardown_sql": "DROP DYNAMIC TABLE IF EXISTS SB_DT_SALES;",
+      "related_question_tags": [
+        "dynamic table",
+        "target lag"
+      ],
+      "exam_traps": [
+        "Target lag is a freshness target, not a cron schedule."
+      ]
+    },
+    {
+      "id": "snowpark-dataframe-transform",
+      "title": "Write Snowpark DataFrame Transform",
+      "certification": "snowpark",
+      "domain_id": "snowpark-fundamentals",
+      "domain": "Snowpark API Fundamentals",
+      "skill_id": "snowpark-session-dataframes",
+      "skill": "Sessions, DataFrames, and lazy execution",
+      "difficulty": "intermediate",
+      "estimated_minutes": 25,
+      "why_it_matters": "This challenge validates Sessions, DataFrames, and lazy execution, which is a key practical skill for snowpark.",
+      "scenario": "Write Snowpark Python that reads a table, filters rows, derives a column, and writes results.",
+      "instructions": [
+        "Use session.table.",
+        "Apply filter/select/with_column.",
+        "Write to a target table.",
+        "Avoid collecting the full dataset to the client."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "# Write Snowpark Python here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Uses session.table",
+          "type": "contains_all",
+          "patterns": [
+            "session.table"
+          ]
+        },
+        {
+          "name": "Uses DataFrame transform",
+          "type": "contains_any",
+          "patterns": [
+            ".filter(",
+            ".select(",
+            ".with_column("
+          ]
+        },
+        {
+          "name": "Writes result",
+          "type": "contains_any",
+          "patterns": [
+            "save_as_table",
+            "write.save_as_table"
+          ]
+        },
+        {
+          "name": "Avoids collect",
+          "type": "contains_all",
+          "patterns": [
+            "save_as_table"
+          ],
+          "forbidden_patterns": [
+            "collect()",
+            "to_pandas()"
+          ]
+        }
+      ],
+      "solution_sql": "from snowflake.snowpark.functions import col\n\ndef main(session):\n    df = session.table(\"SB_RAW_SALES\").filter(col(\"AMOUNT\") > 0).with_column(\"NET_AMOUNT\", col(\"AMOUNT\"))\n    df.write.mode(\"overwrite\").save_as_table(\"SB_CURATED_SALES\")\n    return \"ok\"",
+      "teardown_sql": "",
+      "related_question_tags": [
+        "snowpark",
+        "dataframe",
+        "lazy execution"
+      ],
+      "exam_traps": [
+        "collect() moves data to the client and can break scalability."
+      ]
+    },
+    {
+      "id": "snowpark-python-udf",
+      "title": "Create Snowpark Python UDF",
+      "certification": "snowpark",
+      "domain_id": "functions-procedures",
+      "domain": "UDFs, UDTFs, and Stored Procedures",
+      "skill_id": "snowpark-udf-udtf",
+      "skill": "UDF and UDTF development",
+      "difficulty": "intermediate",
+      "estimated_minutes": 30,
+      "why_it_matters": "This challenge validates UDF and UDTF development, which is a key practical skill for snowpark.",
+      "scenario": "Define a Python UDF with explicit input and return types.",
+      "instructions": [
+        "Create a Python UDF named SB_NORMALIZE_EMAIL.",
+        "Declare return type STRING.",
+        "Use a Python handler.",
+        "Call the UDF in a SELECT."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Create Python UDF here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates Python UDF",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "FUNCTION",
+            "LANGUAGE PYTHON"
+          ]
+        },
+        {
+          "name": "Has return type",
+          "type": "contains_all",
+          "patterns": [
+            "RETURNS",
+            "STRING"
+          ]
+        },
+        {
+          "name": "Defines handler",
+          "type": "contains_all",
+          "patterns": [
+            "HANDLER"
+          ]
+        },
+        {
+          "name": "Calls function",
+          "type": "contains_any",
+          "patterns": [
+            "SELECT SB_NORMALIZE_EMAIL",
+            "SB_NORMALIZE_EMAIL("
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE FUNCTION SB_NORMALIZE_EMAIL(email STRING) RETURNS STRING LANGUAGE PYTHON RUNTIME_VERSION = '3.11' HANDLER = 'normalize' AS $$\ndef normalize(email):\n    return email.strip().lower() if email else None\n$$;\nSELECT SB_NORMALIZE_EMAIL(' TEST@EXAMPLE.COM ');",
+      "teardown_sql": "DROP FUNCTION IF EXISTS SB_NORMALIZE_EMAIL(STRING);",
+      "related_question_tags": [
+        "udf",
+        "python",
+        "handler"
+      ],
+      "exam_traps": [
+        "Handler name must match the Python function."
+      ]
+    },
+    {
+      "id": "cortex-complete-structured-output",
+      "title": "Use Cortex COMPLETE with Structured Output",
+      "certification": "cortex-genai",
+      "domain_id": "cortex-foundations",
+      "domain": "Cortex AI Foundations",
+      "skill_id": "cortex-llm-functions",
+      "skill": "Cortex LLM functions and prompt design",
+      "difficulty": "intermediate",
+      "estimated_minutes": 20,
+      "why_it_matters": "This challenge validates Cortex LLM functions and prompt design, which is a key practical skill for cortex-genai.",
+      "scenario": "Write SQL that asks Cortex to classify a support ticket into structured JSON.",
+      "instructions": [
+        "Use SNOWFLAKE.CORTEX.COMPLETE.",
+        "Prompt for JSON output.",
+        "Include a support-ticket text value.",
+        "Parse or mention JSON output."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Write Cortex COMPLETE structured output SQL here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Uses Cortex COMPLETE",
+          "type": "contains_all",
+          "patterns": [
+            "SNOWFLAKE.CORTEX.COMPLETE"
+          ]
+        },
+        {
+          "name": "Prompts for JSON",
+          "type": "contains_any",
+          "patterns": [
+            "JSON",
+            "OBJECT",
+            "STRUCTURED"
+          ]
+        },
+        {
+          "name": "Includes SELECT",
+          "type": "contains_all",
+          "patterns": [
+            "SELECT"
+          ]
+        },
+        {
+          "name": "Includes ticket/category concept",
+          "type": "contains_any",
+          "patterns": [
+            "CATEGORY",
+            "TICKET",
+            "SUPPORT"
+          ]
+        }
+      ],
+      "solution_sql": "SELECT SNOWFLAKE.CORTEX.COMPLETE('mistral-large2', 'Return JSON with category and urgency for this support ticket: customer cannot load CSV files');",
+      "teardown_sql": "",
+      "related_question_tags": [
+        "cortex",
+        "complete",
+        "prompt",
+        "json"
+      ],
+      "exam_traps": [
+        "LLM output should be validated before automated use."
+      ]
+    },
+    {
+      "id": "cortex-search-rag-service",
+      "title": "Design Cortex Search RAG Service",
+      "certification": "cortex-genai",
+      "domain_id": "search-rag",
+      "domain": "Cortex Search and RAG",
+      "skill_id": "cortex-search-service",
+      "skill": "Cortex Search service design",
+      "difficulty": "advanced",
+      "estimated_minutes": 35,
+      "why_it_matters": "This challenge validates Cortex Search service design, which is a key practical skill for cortex-genai.",
+      "scenario": "Create a Cortex Search service over document chunks and query it for grounded retrieval.",
+      "instructions": [
+        "Create or reference a chunks table.",
+        "Create a Cortex Search service.",
+        "Choose a text/search column.",
+        "Add attribute columns or warehouse as applicable.",
+        "Show a query against the service."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Create Cortex Search/RAG service pattern here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "References Cortex Search",
+          "type": "contains_any",
+          "patterns": [
+            "CORTEX SEARCH",
+            "CREATE CORTEX SEARCH SERVICE"
+          ]
+        },
+        {
+          "name": "Uses search/text column",
+          "type": "contains_any",
+          "patterns": [
+            "ON CHUNK_TEXT",
+            "SEARCH_COLUMN",
+            "TEXT"
+          ]
+        },
+        {
+          "name": "References warehouse or target lag",
+          "type": "contains_any",
+          "patterns": [
+            "WAREHOUSE",
+            "TARGET_LAG"
+          ]
+        },
+        {
+          "name": "Queries service",
+          "type": "contains_any",
+          "patterns": [
+            "SEARCH_PREVIEW",
+            "SEARCH("
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE CORTEX SEARCH SERVICE SB_DOC_SEARCH ON CHUNK_TEXT ATTRIBUTES DOC_ID WAREHOUSE = SB_LAB_WH TARGET_LAG = '1 hour' AS SELECT DOC_ID, CHUNK_TEXT FROM SB_DOC_CHUNKS;\nSELECT PARSE_JSON(SNOWFLAKE.CORTEX.SEARCH_PREVIEW('SB_DOC_SEARCH', '{\"query\": \"warehouse cost\"}'));",
+      "teardown_sql": "",
+      "related_question_tags": [
+        "cortex search",
+        "rag",
+        "chunking"
+      ],
+      "exam_traps": [
+        "RAG quality depends on chunking and metadata, not just the model."
+      ]
+    },
+    {
+      "id": "cortex-ai-governance-mask",
+      "title": "Protect Sensitive Data Before AI Prompting",
+      "certification": "cortex-genai",
+      "domain_id": "governance-security",
+      "domain": "AI Governance, Security, and Evaluation",
+      "skill_id": "cortex-governance-security",
+      "skill": "AI governance and secure data use",
+      "difficulty": "advanced",
+      "estimated_minutes": 30,
+      "why_it_matters": "This challenge validates AI governance and secure data use, which is a key practical skill for cortex-genai.",
+      "scenario": "Write a governed AI prompt pattern that masks sensitive fields before sending text to an LLM function.",
+      "instructions": [
+        "Create or use a masking policy.",
+        "Avoid sending raw PII into the prompt.",
+        "Call a Cortex function only on sanitized text.",
+        "Include role-aware logic or masking reference."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Build AI governance pattern here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Includes masking or sanitization",
+          "type": "contains_any",
+          "patterns": [
+            "MASKING POLICY",
+            "REGEXP_REPLACE",
+            "REDACT",
+            "MASK"
+          ]
+        },
+        {
+          "name": "Uses Cortex function",
+          "type": "contains_any",
+          "patterns": [
+            "SNOWFLAKE.CORTEX.COMPLETE",
+            "SNOWFLAKE.CORTEX.SUMMARIZE"
+          ]
+        },
+        {
+          "name": "Avoids raw PII term in prompt",
+          "type": "contains_all",
+          "patterns": [
+            "SELECT"
+          ]
+        },
+        {
+          "name": "Mentions role/access control",
+          "type": "contains_any",
+          "patterns": [
+            "CURRENT_ROLE",
+            "IS_ROLE_IN_SESSION",
+            "ROLE"
+          ]
+        }
+      ],
+      "solution_sql": "SELECT SNOWFLAKE.CORTEX.SUMMARIZE(REGEXP_REPLACE(NOTE_TEXT, '[A-Z0-9._%+-]+@[A-Z0-9.-]+', '[EMAIL_REDACTED]')) FROM SB_CASE_NOTES;",
+      "teardown_sql": "",
+      "related_question_tags": [
+        "ai governance",
+        "masking",
+        "cortex"
+      ],
+      "exam_traps": [
+        "Do not assume an LLM prompt is exempt from data governance rules."
+      ]
+    },
+    {
+      "id": "cost-resource-monitor-budget",
+      "title": "Create Cost Guardrail Resource Monitor",
+      "certification": "cost-optimization",
+      "domain_id": "warehouse-cost",
+      "domain": "Warehouse Cost Controls",
+      "skill_id": "cost-resource-monitors-budgets",
+      "skill": "Resource monitors, budgets, and alerts",
+      "difficulty": "beginner",
+      "estimated_minutes": 20,
+      "why_it_matters": "This challenge validates Resource monitors, budgets, and alerts, which is a key practical skill for cost-optimization.",
+      "scenario": "Create a resource monitor that notifies and suspends when credit thresholds are reached.",
+      "instructions": [
+        "Create resource monitor SB_RM_DEV.",
+        "Set credit quota.",
+        "Add notify threshold.",
+        "Add suspend threshold.",
+        "Attach it to a warehouse or account."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Create resource monitor here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates resource monitor",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "RESOURCE MONITOR",
+            "SB_RM_DEV"
+          ]
+        },
+        {
+          "name": "Sets credit quota",
+          "type": "contains_all",
+          "patterns": [
+            "CREDIT_QUOTA"
+          ]
+        },
+        {
+          "name": "Defines thresholds",
+          "type": "contains_any",
+          "patterns": [
+            "TRIGGERS",
+            "ON 80 PERCENT",
+            "ON 100 PERCENT"
+          ]
+        },
+        {
+          "name": "Has suspend/notify action",
+          "type": "contains_any",
+          "patterns": [
+            "NOTIFY",
+            "SUSPEND"
+          ]
+        },
+        {
+          "name": "Attaches monitor",
+          "type": "contains_any",
+          "patterns": [
+            "SET RESOURCE_MONITOR",
+            "ALTER WAREHOUSE",
+            "ALTER ACCOUNT"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE RESOURCE MONITOR SB_RM_DEV WITH CREDIT_QUOTA = 25 TRIGGERS ON 80 PERCENT DO NOTIFY ON 100 PERCENT DO SUSPEND;\nALTER WAREHOUSE SB_LAB_WH SET RESOURCE_MONITOR = SB_RM_DEV;",
+      "teardown_sql": "DROP RESOURCE MONITOR IF EXISTS SB_RM_DEV;",
+      "related_question_tags": [
+        "resource monitor",
+        "budget",
+        "cost"
+      ],
+      "exam_traps": [
+        "Resource monitors stop future burn but do not refund consumed credits."
+      ]
+    },
+    {
+      "id": "cost-query-attribution",
+      "title": "Build Query Cost Attribution View",
+      "certification": "cost-optimization",
+      "domain_id": "monitoring-attribution",
+      "domain": "Monitoring and Attribution",
+      "skill_id": "cost-account-usage-attribution",
+      "skill": "ACCOUNT_USAGE cost attribution",
+      "difficulty": "intermediate",
+      "estimated_minutes": 30,
+      "why_it_matters": "This challenge validates ACCOUNT_USAGE cost attribution, which is a key practical skill for cost-optimization.",
+      "scenario": "Create a view that combines query history with warehouse metering context for cost review.",
+      "instructions": [
+        "Reference ACCOUNT_USAGE.QUERY_HISTORY.",
+        "Reference WAREHOUSE_METERING_HISTORY or metering view.",
+        "Include warehouse, user, role, query text/time.",
+        "Filter to recent usage."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Build cost attribution view here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates view",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "VIEW"
+          ]
+        },
+        {
+          "name": "Uses query history",
+          "type": "contains_all",
+          "patterns": [
+            "QUERY_HISTORY"
+          ]
+        },
+        {
+          "name": "Uses warehouse metering",
+          "type": "contains_any",
+          "patterns": [
+            "WAREHOUSE_METERING_HISTORY",
+            "METERING_HISTORY"
+          ]
+        },
+        {
+          "name": "Includes warehouse/user context",
+          "type": "contains_any",
+          "patterns": [
+            "WAREHOUSE_NAME",
+            "USER_NAME",
+            "ROLE_NAME"
+          ]
+        },
+        {
+          "name": "Filters recent usage",
+          "type": "contains_any",
+          "patterns": [
+            "DATEADD",
+            "CURRENT_DATE",
+            "START_TIME"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE VIEW SB_COST_QUERY_REVIEW AS SELECT q.START_TIME, q.USER_NAME, q.ROLE_NAME, q.WAREHOUSE_NAME, q.QUERY_TEXT FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY q WHERE q.START_TIME >= DATEADD(day, -7, CURRENT_TIMESTAMP());",
+      "teardown_sql": "DROP VIEW IF EXISTS SB_COST_QUERY_REVIEW;",
+      "related_question_tags": [
+        "account_usage",
+        "query_history",
+        "cost"
+      ],
+      "exam_traps": [
+        "ACCOUNT_USAGE views may have latency."
+      ]
+    },
+    {
+      "id": "cost-storage-retention-transient",
+      "title": "Optimize Storage Retention with Transient Tables",
+      "certification": "cost-optimization",
+      "domain_id": "storage-cost",
+      "domain": "Storage and Data Lifecycle Cost",
+      "skill_id": "cost-storage-retention",
+      "skill": "Storage, retention, Time Travel, and Fail-safe cost",
+      "difficulty": "beginner",
+      "estimated_minutes": 20,
+      "why_it_matters": "This challenge validates Storage, retention, Time Travel, and Fail-safe cost, which is a key practical skill for cost-optimization.",
+      "scenario": "Create a transient staging table with short retention and explain the recovery tradeoff.",
+      "instructions": [
+        "Create a transient table.",
+        "Set DATA_RETENTION_TIME_IN_DAYS to 1 or 0.",
+        "Include comment or note about fail-safe tradeoff.",
+        "Create a clone or mention clone behavior."
+      ],
+      "input_context": "Offline mode: write the Snowflake SQL you would run in Snowsight. The app validates SQL structure and key clauses locally.",
+      "expected_output": "SQL that satisfies all configured validation checks.",
+      "starter_sql": "-- Create transient staging table here\n",
+      "hints": [
+        "Focus on the required Snowflake objects and clauses.",
+        "Use clear names with the SB_ prefix so validation can identify your work."
+      ],
+      "validation_tests": [
+        {
+          "name": "Creates transient table",
+          "type": "contains_all",
+          "patterns": [
+            "CREATE",
+            "TRANSIENT",
+            "TABLE"
+          ]
+        },
+        {
+          "name": "Sets retention",
+          "type": "contains_all",
+          "patterns": [
+            "DATA_RETENTION_TIME_IN_DAYS"
+          ]
+        },
+        {
+          "name": "Uses low retention",
+          "type": "contains_any",
+          "patterns": [
+            "= 1",
+            "=0",
+            "= 0"
+          ]
+        },
+        {
+          "name": "Mentions clone or recovery",
+          "type": "contains_any",
+          "patterns": [
+            "CLONE",
+            "TIME TRAVEL",
+            "FAIL-SAFE",
+            "FAILSAFE"
+          ]
+        }
+      ],
+      "solution_sql": "CREATE OR REPLACE TRANSIENT TABLE SB_STAGE_EVENTS (ID NUMBER, PAYLOAD VARIANT) DATA_RETENTION_TIME_IN_DAYS = 1;\nCREATE OR REPLACE TRANSIENT TABLE SB_STAGE_EVENTS_CLONE CLONE SB_STAGE_EVENTS;",
+      "teardown_sql": "DROP TABLE IF EXISTS SB_STAGE_EVENTS_CLONE; DROP TABLE IF EXISTS SB_STAGE_EVENTS;",
+      "related_question_tags": [
+        "transient",
+        "retention",
+        "storage"
+      ],
+      "exam_traps": [
+        "Reducing retention reduces recovery window."
+      ]
+    }
+  ]
+}
