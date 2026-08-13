@@ -6,7 +6,7 @@ from typing import Any, Iterator
 from .config import BRAIN_DB
 
 
-SCHEMA_VERSION = "20260812_000_certification_native_v24"
+SCHEMA_VERSION = "20260812_001_certification_native_v24"
 
 
 def _db_path() -> Path:
@@ -83,7 +83,7 @@ def run_migrations() -> None:
             CREATE TABLE IF NOT EXISTS questions (
               id TEXT PRIMARY KEY,
               track_id TEXT NOT NULL,
-              test_id TEXT DEFAULT '',
+              test_id TEXT,
               test_title TEXT DEFAULT '',
               question TEXT NOT NULL,
               options_json TEXT NOT NULL DEFAULT '[]',
@@ -97,7 +97,7 @@ def run_migrations() -> None:
               multiple INTEGER NOT NULL DEFAULT 0,
               question_position INTEGER DEFAULT 0,
               created_at TEXT DEFAULT (datetime('now')),
-              FOREIGN KEY(test_id) REFERENCES practice_tests(id) ON DELETE SET DEFAULT
+              FOREIGN KEY(test_id) REFERENCES practice_tests(id) ON DELETE SET NULL
             );
 
             CREATE TABLE IF NOT EXISTS question_skill_map (
