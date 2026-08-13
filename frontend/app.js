@@ -1,6 +1,8 @@
 import { renderNav } from "./components/nav.js";
 import { renderFeedback } from "./components/feedback.js";
+import { renderHomeExtras } from "./components/home-extras.js";
 import { enhanceStudyLayout } from "./components/study-sidebar.js";
+import { activeTrack } from "./ui.js";
 import { route } from "./router.js";
 
 window.__SNOWFLAKE_BRAIN_CLIENT_ERRORS__ = [];
@@ -25,9 +27,9 @@ function ensureV26Styles() {
 async function handleRoute() {
   await route();
   const path = (window.location.hash || "#/home").split("?")[0];
-  if (["#/curriculum", "#/progress", "#/domain", "#/skill", "#/quick-reference", "#/glossary", "#/exercises"].includes(path)) {
-    await enhanceStudyLayout(document.querySelector("#view-root"));
-  }
+  const root = document.querySelector("#view-root");
+  if (path === "#/home" && !root.querySelector(".v26-home-extras")) renderHomeExtras(root, activeTrack());
+  if (["#/curriculum", "#/progress", "#/domain", "#/skill", "#/quick-reference", "#/glossary", "#/exercises"].includes(path)) await enhanceStudyLayout(root);
 }
 
 window.__setSnowflakeTheme = applyTheme;
