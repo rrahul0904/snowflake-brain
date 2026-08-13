@@ -7,6 +7,7 @@ const certifications = () => import("./views/certifications.js");
 const guide = () => import("./views/guide.js");
 const practice = () => import("./views/practice.js");
 const quiz = () => import("./views/quiz.js");
+const mockLanding = () => import("./views/mock-landing.js");
 const mock = () => import("./views/mock.js");
 const reference = () => import("./views/reference.js");
 const journal = () => import("./views/journal.js");
@@ -25,7 +26,7 @@ const routes = {
   "#/quiz": quiz,
   "#/diagnostic": quiz,
   "#/drill": quiz,
-  "#/mock": mock,
+  "#/mock": mockLanding,
   "#/mock/start": mock,
   "#/mock/session": mock,
   "#/mock/result": mock,
