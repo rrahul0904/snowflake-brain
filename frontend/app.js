@@ -13,6 +13,15 @@ function applyTheme(theme) {
   localStorage.setItem("snowflake-certification.theme", next);
 }
 
+function ensureV26Styles() {
+  if (document.querySelector('link[data-v26-study]')) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "/static/v26-study.css?v=20260813-v26-recording-r1";
+  link.dataset.v26Study = "true";
+  document.head.appendChild(link);
+}
+
 async function handleRoute() {
   await route();
   const path = (window.location.hash || "#/home").split("?")[0];
@@ -23,6 +32,7 @@ async function handleRoute() {
 
 window.__setSnowflakeTheme = applyTheme;
 applyTheme(localStorage.getItem("snowflake-certification.theme") || "dark");
+ensureV26Styles();
 
 async function boot() {
   await renderNav();
