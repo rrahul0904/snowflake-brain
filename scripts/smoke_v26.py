@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
+from app.database import run_migrations
 from app.main import app
 
+run_migrations()
 c=TestClient(app)
 
 def ok(value,message):
