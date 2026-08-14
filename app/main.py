@@ -20,6 +20,7 @@ from .routers import (
     intelligence,
     labs,
     mock_exam,
+    question_bank_candidate_state,
     question_bank_runtime,
     questions,
     skills,
@@ -56,6 +57,7 @@ app.include_router(skills.router, prefix="/api")
 # Candidate-facing question and mock routes are registered before the legacy
 # compatibility routers so the private-bank boundary is the authoritative path.
 app.include_router(question_bank_runtime.router, prefix="/api")
+app.include_router(question_bank_candidate_state.router, prefix="/api")
 app.include_router(affiliate.router, prefix="/api")
 app.include_router(questions.router, prefix="/api")
 app.include_router(certification_practice.router, prefix="/api")
