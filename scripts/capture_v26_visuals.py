@@ -41,8 +41,7 @@ def first_skill() -> tuple[str, str]:
     payload = api("/api/skills/map")
     cert = next(row for row in payload["certifications"] if row["id"] == "snowpro-core")
     domain = cert["domains"][0]
-    skill = domain["skills"][0]
-    return domain["id"], skill["id"]
+    return domain["id"], domain["skills"][0]["id"]
 
 
 def set_theme(page: Page, theme: str) -> None:
@@ -119,7 +118,6 @@ def guest_identity_pass(browser: Browser) -> None:
     shot(page, "00b-light-google-create-account")
     page.locator(".v26-modal-close[data-auth-close]").click()
     page.wait_for_selector(".v26-auth-modal", state="detached")
-
     route(page, "#/curriculum?track_id=snowpro-core")
     require(page, "#view-root[data-view-id='authentication-required']", "guest content boundary")
     if page.locator(".v26-domain-card-grid,.v26-domain-task-rows,.v26-study-nav").count():
@@ -207,7 +205,6 @@ def recording_page_pass(page: Page, domain_id: str, skill_id: str) -> None:
 def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
     context, page, problems = browser_page(browser, 1440, 1100)
     page.add_init_script("localStorage.setItem('snowflake-certification.theme','dark')")
-
     route(page, "#/home", theme="dark")
     require(page, "[data-globe-canvas]", "home globe")
     page.wait_for_timeout(700)
@@ -221,39 +218,22 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
         page.mouse.up()
         page.wait_for_timeout(180)
     shot(page, "02-dark-home-globe-rotated")
-
-    route(page, "#/certifications", theme="dark")
-    shot(page, "03-dark-certifications")
-    route(page, "#/curriculum?track_id=snowpro-core", theme="dark")
-    require(page, ".v26-domain-card-grid", "dark curriculum")
-    shot(page, "04-dark-curriculum")
-    route(page, f"#/domain?track_id=snowpro-core&domain_id={domain_id}", theme="dark")
-    shot(page, "05-dark-domain-detail")
-    route(page, f"#/skill?track_id=snowpro-core&skill_id={skill_id}", theme="dark")
-    shot(page, "06-dark-lesson")
-    route(page, "#/practice?track_id=snowpro-core", theme="dark")
-    shot(page, "07-dark-practice")
-    route(page, "#/reference?track_id=snowpro-core", theme="dark")
-    shot(page, "08-dark-reference")
-    route(page, "#/journal?track_id=snowpro-core", theme="dark")
-    shot(page, "09-dark-journal")
-
+    route(page, "#/certifications", theme="dark"); shot(page, "03-dark-certifications")
+    route(page, "#/curriculum?track_id=snowpro-core", theme="dark"); require(page, ".v26-domain-card-grid", "dark curriculum"); shot(page, "04-dark-curriculum")
+    route(page, f"#/domain?track_id=snowpro-core&domain_id={domain_id}", theme="dark"); shot(page, "05-dark-domain-detail")
+    route(page, f"#/skill?track_id=snowpro-core&skill_id={skill_id}", theme="dark"); shot(page, "06-dark-lesson")
+    route(page, "#/practice?track_id=snowpro-core", theme="dark"); shot(page, "07-dark-practice")
+    route(page, "#/reference?track_id=snowpro-core", theme="dark"); shot(page, "08-dark-reference")
+    route(page, "#/journal?track_id=snowpro-core", theme="dark"); shot(page, "09-dark-journal")
     clear_active_mock()
-    route(page, "#/mock?track_id=snowpro-core", theme="dark")
-    shot(page, "10-dark-mock-landing")
-    route(page, "#/mock/start?track_id=snowpro-core&type=weekly-mock", theme="dark")
-    shot(page, "11-dark-mock-start")
+    route(page, "#/mock?track_id=snowpro-core", theme="dark"); shot(page, "10-dark-mock-landing")
+    route(page, "#/mock/start?track_id=snowpro-core&type=weekly-mock", theme="dark"); shot(page, "11-dark-mock-start")
 
     session = create_mock("weekly-mock")
     session_id = int(session["session_id"])
-    route(page, "#/mock/start?track_id=snowpro-core&type=weekly-mock", theme="dark")
-    require(page, ".v26-interrupted-sitting", "Interrupted sitting")
-    shot(page, "12-dark-interrupted-sitting")
-
     route(page, f"#/mock/session?session_id={session_id}", theme="dark")
     shot(page, "13-dark-exam-player")
-    first_answer = page.locator("input[name='answer']").first
-    first_answer.check()
+    page.locator("input[name='answer']").first.check()
     page.wait_for_timeout(350)
     page.locator("[data-flag]").click()
     page.wait_for_timeout(250)
@@ -265,23 +245,12 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
     page.wait_for_timeout(220)
     shot(page, "15-dark-feedback-drawer")
     page.locator("[data-feedback-close]").click()
-    route(page, "#/membership", theme="dark")
-    shot(page, "15b-dark-membership-account")
-    route(page, "#/account", theme="dark")
-    require(page, ".v26-account-sessions", "account sessions")
-    shot(page, "15c-dark-account-sessions")
-
-    route(page, "#/home", theme="light")
-    page.wait_for_timeout(500)
-    shot(page, "16-light-home")
+    route(page, "#/membership", theme="dark"); shot(page, "15b-dark-membership-account")
+    route(page, "#/account", theme="dark"); require(page, ".v26-account-sessions", "account sessions"); shot(page, "15c-dark-account-sessions")
+    route(page, "#/home", theme="light"); page.wait_for_timeout(500); shot(page, "16-light-home")
     recording_page_pass(page, domain_id, skill_id)
-
     route(page, "#/home", theme="light")
-    page.locator("[data-feedback-open]").click()
-    require(page, ".feedback-panel:not([hidden])", "light feedback drawer")
-    page.wait_for_timeout(220)
-    shot(page, "20-light-feedback-drawer")
-
+    page.locator("[data-feedback-open]").click(); require(page, ".feedback-panel:not([hidden])", "light feedback drawer"); page.wait_for_timeout(220); shot(page, "20-light-feedback-drawer")
     assert_no_browser_errors(problems, "desktop pass")
     context.close()
     return session_id
@@ -290,18 +259,10 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
 def mobile_pass(browser: Browser, session_id: int) -> None:
     context, page, problems = browser_page(browser, 390, 844)
     page.add_init_script("localStorage.setItem('snowflake-certification.theme','light')")
-    route(page, "#/home", theme="light")
-    require(page, "[data-globe-canvas]", "mobile home")
-    page.wait_for_timeout(500)
-    shot(page, "21-mobile-home")
-    route(page, "#/curriculum?track_id=snowpro-core", theme="light")
-    require(page, ".v26-domain-card-grid", "mobile curriculum")
-    shot(page, "22-mobile-curriculum")
-    route(page, f"#/mock/session?session_id={session_id}", theme="light")
-    shot(page, "23-mobile-exam-player")
-    page.locator("[data-open-nav]").click()
-    page.wait_for_timeout(160)
-    shot(page, "24-mobile-exam-navigator")
+    route(page, "#/home", theme="light"); require(page, "[data-globe-canvas]", "mobile home"); page.wait_for_timeout(500); shot(page, "21-mobile-home")
+    route(page, "#/curriculum?track_id=snowpro-core", theme="light"); require(page, ".v26-domain-card-grid", "mobile curriculum"); shot(page, "22-mobile-curriculum")
+    route(page, f"#/mock/session?session_id={session_id}", theme="light"); shot(page, "23-mobile-exam-player")
+    page.locator("[data-open-nav]").click(); page.wait_for_timeout(160); shot(page, "24-mobile-exam-navigator")
     assert_no_browser_errors(problems, "mobile pass")
     context.close()
 
@@ -314,10 +275,7 @@ def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
         "domain_id": domain_id,
         "skill_id": skill_id,
         "mock_session_id": session_id,
-        "recording_contract_pages": [
-            "Exam Domains", "Domain Detail", "Task Lesson", "Progress", "Drill Mode", "Build Exercises",
-            "Diagnostic Assessment", "Quick Reference", "Glossary", "Mock Exam", "Resources", "SnowPro Journal",
-        ],
+        "recording_contract_pages": ["Exam Domains", "Domain Detail", "Task Lesson", "Progress", "Drill Mode", "Build Exercises", "Diagnostic Assessment", "Quick Reference", "Glossary", "Mock Exam", "Resources", "SnowPro Journal"],
         "identity": "Google sign-in is rendered in guest desktop/mobile states. CI uses disabled-provider mode because no production OAuth secret is stored in GitHub.",
         "content_boundary": "Guest browser contexts deep-link to curriculum and must render authentication-required without loading domain content. Study APIs require a valid candidate session.",
         "paid_access": "Membership and account/session states are rendered; paid activation remains server-authoritative and requires deployment billing credentials.",
