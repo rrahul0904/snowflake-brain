@@ -2,7 +2,7 @@ import { getGlobeActivity } from "../api.js";
 
 const DEG = Math.PI / 180;
 const WORLD_GEOMETRY_URL = "/static/assets/world-major-land.geojson";
-const ROTATION_PERIOD_MS = 54000;
+const ROTATION_PERIOD_MS = 56000;
 const AUTO_DEGREES_PER_MS = 360 / ROTATION_PERIOD_MS;
 
 function css(name, fallback) {
@@ -11,7 +11,6 @@ function css(name, fallback) {
 
 function project(latDeg, lonDeg, centerLatDeg, centerLonDeg, radius, center) {
   const lat = latDeg * DEG;
-  const lon = lonDeg * DEG;
   const lat0 = centerLatDeg * DEG;
   const delta = (lonDeg - centerLonDeg) * DEG;
   const sinLat = Math.sin(lat);
@@ -27,22 +26,68 @@ function project(latDeg, lonDeg, centerLatDeg, centerLonDeg, radius, center) {
   };
 }
 
-function ringsFromGeometry(geometry) {
+function polygonsFromGeometry(geometry) {
   if (!geometry) return [];
-  if (geometry.type === "Polygon") return geometry.coordinates || [];
-  if (geometry.type === "MultiPolygon") return (geometry.coordinates || []).flat();
-  return [];
+  const raw = geometry.type === "Polygon" ? [geometry.coordinates || []] : geometry.type === "MultiPolygon" ? geometry.coordinates || [] : [];
+  return raw.map((rings) => {
+    const outer = rings[0] || [];
+    const lons = outer.map((point) => point[0]);
+    const lats = outer.map((point) => point[1]);
+    return {
+      rings,
+      minLon: Math.min(...lons),
+      maxLon: Math.max(...lons),
+      minLat: Math.min(...lats),
+      maxLat: Math.max(...lats),
+    };
+  }).filter((polygon) => polygon.rings[0]?.length > 2);
 }
 
-function drawProjectedLine(ctx, points, projection, strokeStyle, lineWidth = 1, close = false, fillStyle = "") {
+function pointInRing(lon, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const crosses = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / ((yj - yi) || 1e-12) + xi);
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+function isLand(lon, lat, polygons) {
+  for (const polygon of polygons) {
+    if (lat < polygon.minLat || lat > polygon.maxLat || lon < polygon.minLon || lon > polygon.maxLon) continue;
+    if (!pointInRing(lon, lat, polygon.rings[0])) continue;
+    let inHole = false;
+    for (let h = 1; h < polygon.rings.length; h += 1) {
+      if (pointInRing(lon, lat, polygon.rings[h])) { inHole = true; break; }
+    }
+    if (!inHole) return true;
+  }
+  return false;
+}
+
+function buildLandDots(polygons) {
+  const dots = [];
+  const latStep = 2.75;
+  for (let lat = -79; lat <= 82; lat += latStep) {
+    const lonStep = 2.75 / Math.max(0.72, Math.cos(lat * DEG));
+    for (let lon = -180; lon < 180; lon += lonStep) {
+      if (isLand(lon, lat, polygons)) dots.push({ lat, lon });
+    }
+  }
+  return dots;
+}
+
+function drawProjectedLine(ctx, points, projection, strokeStyle, lineWidth = 1) {
   let segment = [];
   const flush = () => {
     if (segment.length < 2) { segment = []; return; }
     ctx.beginPath();
     ctx.moveTo(segment[0].x, segment[0].y);
     for (let i = 1; i < segment.length; i += 1) ctx.lineTo(segment[i].x, segment[i].y);
-    if (close && segment.length > 2) ctx.closePath();
-    if (fillStyle && segment.length > 2) { ctx.fillStyle = fillStyle; ctx.fill(); }
     ctx.strokeStyle = strokeStyle;
     ctx.lineWidth = lineWidth;
     ctx.stroke();
@@ -57,16 +102,16 @@ function drawProjectedLine(ctx, points, projection, strokeStyle, lineWidth = 1, 
 }
 
 function drawGraticule(ctx, projection) {
-  const line = css("--v-globe-grid", "rgba(240,229,216,.12)");
+  const line = css("--v-globe-grid", "rgba(240,229,216,.06)");
   for (let lat = -60; lat <= 60; lat += 30) {
     const points = [];
-    for (let lon = -180; lon <= 180; lon += 3) points.push([lon, lat]);
-    drawProjectedLine(ctx, points, projection, line, 0.8);
+    for (let lon = -180; lon <= 180; lon += 4) points.push([lon, lat]);
+    drawProjectedLine(ctx, points, projection, line, 0.65);
   }
   for (let lon = -180; lon < 180; lon += 30) {
     const points = [];
-    for (let lat = -88; lat <= 88; lat += 3) points.push([lon, lat]);
-    drawProjectedLine(ctx, points, projection, line, 0.8);
+    for (let lat = -88; lat <= 88; lat += 4) points.push([lon, lat]);
+    drawProjectedLine(ctx, points, projection, line, 0.65);
   }
 }
 
@@ -88,12 +133,13 @@ export function renderActivityGlobe(container) {
   const caption = container.querySelector("[data-globe-caption] span:last-child");
   const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 
-  let landRings = [];
+  let polygons = [];
+  let landDots = [];
   let activity = [];
   let activityNodes = [];
-  let centerLon = -18;
+  let centerLon = -24;
   let centerLat = 12;
-  let size = 520;
+  let size = 410;
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
   let dragging = false;
   let pointerId = null;
@@ -104,11 +150,11 @@ export function renderActivityGlobe(container) {
   let lastFrame = performance.now();
   let disposed = false;
 
-  const projection = (lat, lon) => project(lat, lon, centerLat, centerLon, size * 0.445, size / 2);
+  const projection = (lat, lon) => project(lat, lon, centerLat, centerLon, size * 0.455, size / 2);
 
   function resize() {
     const rect = globe.getBoundingClientRect();
-    size = Math.max(280, Math.round(rect.width || 520));
+    size = Math.max(250, Math.round(rect.width || 410));
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(size * dpr);
     canvas.height = Math.round(size * dpr);
@@ -120,38 +166,54 @@ export function renderActivityGlobe(container) {
 
   function drawSphere() {
     const center = size / 2;
-    const radius = size * 0.445;
+    const radius = size * 0.455;
     ctx.clearRect(0, 0, size, size);
-    const shade = ctx.createRadialGradient(center - radius * 0.34, center - radius * 0.34, radius * 0.04, center, center, radius);
-    shade.addColorStop(0, css("--v-globe-highlight", "rgba(240,229,216,.08)"));
-    shade.addColorStop(0.72, css("--v-globe-fill", "rgba(240,229,216,.035)"));
-    shade.addColorStop(1, css("--v-globe-edge", "rgba(0,0,0,.18)"));
+    const shade = ctx.createRadialGradient(center - radius * 0.34, center - radius * 0.34, radius * 0.05, center, center, radius);
+    shade.addColorStop(0, css("--v-globe-highlight", "rgba(240,229,216,.05)"));
+    shade.addColorStop(0.72, css("--v-globe-fill", "rgba(240,229,216,.02)"));
+    shade.addColorStop(1, css("--v-globe-edge", "rgba(0,0,0,.2)"));
     ctx.beginPath();
     ctx.arc(center, center, radius, 0, Math.PI * 2);
     ctx.fillStyle = shade;
     ctx.fill();
     ctx.save();
     ctx.beginPath();
-    ctx.arc(center, center, radius - 0.8, 0, Math.PI * 2);
+    ctx.arc(center, center, radius - 0.5, 0, Math.PI * 2);
     ctx.clip();
     drawGraticule(ctx, projection);
-    const landStroke = css("--v-globe-land-stroke", "rgba(226,168,124,.38)");
-    const landFill = css("--v-globe-land-fill", "rgba(226,168,124,.09)");
-    for (const ring of landRings) drawProjectedLine(ctx, ring, projection, landStroke, 1.05, true, landFill);
+
+    const dotColor = css("--v-globe-land-dot", "rgba(240,229,216,.5)");
+    ctx.fillStyle = dotColor;
+    const baseDot = Math.max(0.8, Math.min(1.45, size / 360));
+    for (const dot of landDots) {
+      const p = projection(dot.lat, dot.lon);
+      if (!p.visible || p.depth < 0.015) continue;
+      const alpha = Math.min(1, 0.22 + p.depth * 0.88);
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, baseDot * (0.76 + p.depth * 0.34), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    const coastline = css("--v-globe-land-stroke", "rgba(226,168,124,.16)");
+    for (const polygon of polygons) {
+      for (const ring of polygon.rings) drawProjectedLine(ctx, ring, projection, coastline, 0.45);
+    }
     ctx.restore();
     ctx.beginPath();
     ctx.arc(center, center, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = css("--v-globe-outline", "rgba(240,229,216,.28)");
-    ctx.lineWidth = 1.15;
+    ctx.strokeStyle = css("--v-globe-outline", "rgba(240,229,216,.16)");
+    ctx.lineWidth = 0.8;
     ctx.stroke();
   }
 
   function placeActivity() {
     const visible = activity
       .map((item, index) => ({ item, index, p: projection(item.lat, item.lon) }))
-      .filter((row) => row.p.visible)
+      .filter((row) => row.p.visible && row.p.depth > 0.03)
       .sort((a, b) => (b.item.count || 0) - (a.item.count || 0));
-    const labelled = new Set(visible.slice(0, 5).map((row) => row.index));
+    const labelled = new Set(visible.slice(0, 6).map((row) => row.index));
     activityNodes.forEach((row, index) => {
       const p = projection(row.item.lat, row.item.lon);
       if (!p.visible || p.depth < 0.04) {
@@ -161,9 +223,9 @@ export function renderActivityGlobe(container) {
       row.node.hidden = false;
       row.node.style.left = `${p.x}px`;
       row.node.style.top = `${p.y}px`;
-      row.node.style.opacity = String(Math.min(1, 0.34 + p.depth * 0.78));
-      row.node.style.transform = `translate(-50%,-50%) scale(${0.84 + p.depth * 0.22})`;
-      row.node.toggleAttribute("data-label", labelled.has(index) && p.depth > 0.35);
+      row.node.style.opacity = String(Math.min(1, 0.38 + p.depth * 0.72));
+      row.node.style.transform = `translate(-50%,-50%) scale(${0.82 + p.depth * 0.22})`;
+      row.node.toggleAttribute("data-label", labelled.has(index) && p.depth > 0.34);
     });
   }
 
@@ -203,7 +265,10 @@ export function renderActivityGlobe(container) {
       }),
       getGlobeActivity(),
     ]);
-    if (worldResult.status === "fulfilled") landRings = ringsFromGeometry(worldResult.value.geometry);
+    if (worldResult.status === "fulfilled") {
+      polygons = polygonsFromGeometry(worldResult.value.geometry);
+      landDots = buildLandDots(polygons);
+    }
     if (activityResult.status === "fulfilled") {
       activity = Array.isArray(activityResult.value.locations) ? activityResult.value.locations : [];
       const live = activityResult.value.mode === "live" && activity.length > 0;
@@ -236,8 +301,8 @@ export function renderActivityGlobe(container) {
     if (!dragging || event.pointerId !== pointerId) return;
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
-    centerLon -= dx * 0.32;
-    centerLat = Math.max(-58, Math.min(58, centerLat + dy * 0.22));
+    centerLon -= dx * 0.33;
+    centerLat = Math.max(-55, Math.min(55, centerLat + dy * 0.20));
     lastX = event.clientX;
     lastY = event.clientY;
     draw();
