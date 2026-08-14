@@ -5,7 +5,7 @@ import sqlite3
 from .database import connect
 
 
-SCHEMA_VERSION = "20260814_007_google_identity_billing_authority_v26"
+SCHEMA_VERSION = "20260814_008_google_identity_billing_authority_v26"
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, declaration: str) -> None:
@@ -94,6 +94,7 @@ def ensure_identity_billing_schema() -> None:
               current_period_start TEXT,
               current_period_end TEXT,
               cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+              last_provider_event_created INTEGER NOT NULL DEFAULT 0,
               created_at TEXT DEFAULT (datetime('now')),
               updated_at TEXT DEFAULT (datetime('now')),
               UNIQUE(provider, provider_subscription_id)
@@ -153,7 +154,9 @@ def ensure_identity_billing_schema() -> None:
               ON membership_audit_log(candidate_id, created_at);
             """
         )
+        # Upgrade databases created by the earlier V26 feature revisions too.
+        _ensure_column(conn, "billing_subscriptions", "last_provider_event_created", "INTEGER NOT NULL DEFAULT 0")
         conn.execute(
             "INSERT OR IGNORE INTO schema_migrations(version, name) VALUES (?, ?)",
-            (SCHEMA_VERSION, "Google OIDC identities, trusted checkout binding, billing authority, and entitlement versioning"),
+            (SCHEMA_VERSION, "Google OIDC identities, checkout binding, ordered billing authority, and entitlement versioning"),
         )
