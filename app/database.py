@@ -8,7 +8,7 @@ from typing import Any, Iterator
 from .config import BRAIN_DB
 
 
-SCHEMA_VERSION = "20260814_005_membership_plan_quotas_v26"
+SCHEMA_VERSION = "20260814_006_question_bank_v1"
 
 
 def _db_path() -> Path:
@@ -246,6 +246,86 @@ def run_migrations() -> None:
               UNIQUE(session_id, question_id)
             );
 
+            CREATE TABLE IF NOT EXISTS question_bank_metadata (
+              question_id TEXT PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+              certification_id TEXT NOT NULL,
+              exam_version TEXT NOT NULL,
+              domain_id TEXT NOT NULL,
+              task_id TEXT NOT NULL,
+              task_code TEXT NOT NULL DEFAULT '',
+              question_type TEXT NOT NULL DEFAULT 'standard_mcq',
+              cognitive_level TEXT NOT NULL DEFAULT 'apply',
+              difficulty_band TEXT NOT NULL DEFAULT 'applied'
+                CHECK(difficulty_band IN ('foundation','applied','exam','challenge')),
+              bank_pool TEXT NOT NULL DEFAULT 'practice'
+                CHECK(bank_pool IN ('free','practice','diagnostic','mock_reserved')),
+              authoring_status TEXT NOT NULL DEFAULT 'draft'
+                CHECK(authoring_status IN ('draft','review','active','retired')),
+              authoring_version TEXT NOT NULL DEFAULT '1',
+              concepts_json TEXT NOT NULL DEFAULT '[]',
+              trap_tags_json TEXT NOT NULL DEFAULT '[]',
+              distractor_rationales_json TEXT NOT NULL DEFAULT '[]',
+              source_refs_json TEXT NOT NULL DEFAULT '[]',
+              source_verified_at TEXT,
+              content_hash TEXT NOT NULL DEFAULT '',
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS question_exposure_stats (
+              question_id TEXT PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+              served_count INTEGER NOT NULL DEFAULT 0,
+              correct_count INTEGER NOT NULL DEFAULT 0,
+              incorrect_count INTEGER NOT NULL DEFAULT 0,
+              last_served_at TEXT,
+              lifecycle_status TEXT NOT NULL DEFAULT 'active'
+                CHECK(lifecycle_status IN ('active','cooldown','retired')),
+              updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_question_history (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+              session_id INTEGER REFERENCES exam_sessions(id) ON DELETE SET NULL,
+              mode TEXT NOT NULL DEFAULT 'practice',
+              pool TEXT NOT NULL DEFAULT 'fallback',
+              served_at TEXT NOT NULL DEFAULT (datetime('now')),
+              answered_at TEXT,
+              selected_json TEXT NOT NULL DEFAULT '[]',
+              correct INTEGER,
+              response_time_ms INTEGER,
+              confidence INTEGER,
+              question_version TEXT NOT NULL DEFAULT 'legacy'
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_exam_pack_sets (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              track_id TEXT NOT NULL,
+              set_kind TEXT NOT NULL CHECK(set_kind IN ('lifetime_practice','full_exam')),
+              created_at TEXT DEFAULT (datetime('now')),
+              UNIQUE(candidate_id, track_id, set_kind)
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_exam_pack_set_questions (
+              set_id INTEGER NOT NULL REFERENCES candidate_exam_pack_sets(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE RESTRICT,
+              position INTEGER NOT NULL,
+              PRIMARY KEY(set_id, question_id),
+              UNIQUE(set_id, position)
+            );
+
+            CREATE TABLE IF NOT EXISTS question_bank_imports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              source_name TEXT NOT NULL,
+              track_id TEXT NOT NULL,
+              bank_version TEXT NOT NULL,
+              payload_hash TEXT NOT NULL,
+              question_count INTEGER NOT NULL,
+              imported_at TEXT DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS bookmarks (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
@@ -295,6 +375,18 @@ def run_migrations() -> None:
               ON exam_sessions(track_id, mode, status, finished_at);
             CREATE INDEX IF NOT EXISTS idx_exam_session_questions_order
               ON exam_session_questions(session_id, position);
+            CREATE INDEX IF NOT EXISTS idx_question_bank_track_pool
+              ON question_bank_metadata(certification_id, authoring_status, bank_pool, domain_id, task_id);
+            CREATE INDEX IF NOT EXISTS idx_question_bank_difficulty
+              ON question_bank_metadata(certification_id, difficulty_band, authoring_status);
+            CREATE INDEX IF NOT EXISTS idx_candidate_question_history_candidate
+              ON candidate_question_history(candidate_id, question_id, served_at);
+            CREATE INDEX IF NOT EXISTS idx_candidate_question_history_session
+              ON candidate_question_history(session_id, question_id);
+            CREATE INDEX IF NOT EXISTS idx_question_exposure_served
+              ON question_exposure_stats(lifecycle_status, served_count, last_served_at);
+            CREATE INDEX IF NOT EXISTS idx_exam_pack_sets_candidate
+              ON candidate_exam_pack_sets(candidate_id, track_id, set_kind);
             CREATE INDEX IF NOT EXISTS idx_learning_events_track
               ON learning_events(track_id, event_type, created_at);
             CREATE INDEX IF NOT EXISTS idx_candidate_sessions_candidate
@@ -345,7 +437,7 @@ def run_migrations() -> None:
             INSERT OR IGNORE INTO schema_migrations(version, name)
             VALUES (?, ?)
             """,
-            (SCHEMA_VERSION, "Candidate identity, durable memberships, sessions, and candidate-owned learning state"),
+            (SCHEMA_VERSION, "Private question bank metadata, exposure history, and candidate-specific exam-pack sets"),
         )
 
 
