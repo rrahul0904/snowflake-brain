@@ -1,5 +1,5 @@
 import { candidate, linkGoogle, logIn, logOut, signUp } from "../auth.js";
-import { createBillingCheckout, getAuthProviders, getPendingGoogleLink } from "../api.js";
+import { createBillingCheckout, createBillingPortal, getAuthProviders, getPendingGoogleLink } from "../api.js";
 
 let bound = false;
 let pendingChecked = false;
@@ -30,7 +30,7 @@ function providers() {
 function openAuth(intent = "login") {
   const signup = intent === "signup";
   const root = document.querySelector("#candidate-access-root");
-  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal" role="dialog" aria-modal="true" aria-labelledby="candidate-auth-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Candidate account</p><h2 id="candidate-auth-title">${signup ? "Create account" : "Sign in"}</h2><p>${signup ? "Create a Free account to save progress and use diagnostic practice." : "Sign in to continue with your saved progress and membership."}</p><button class="v26-btn secondary v26-google-auth" type="button" data-google-auth disabled>Checking Google sign-in…</button><div class="v26-auth-divider"><span>or</span></div><form data-auth-form data-intent="${intent}" novalidate>${signup ? `<label>Name<input name="display_name" autocomplete="name" minlength="2" maxlength="120" required /></label>` : ""}<label>Email<input name="email" type="email" autocomplete="email" maxlength="320" required /></label><label>Password<input name="password" type="password" autocomplete="${signup ? "new-password" : "current-password"}" minlength="8" maxlength="256" required /></label><button class="v26-btn primary" type="submit">${signup ? "Create Free Account" : "Sign In"}</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch">${signup ? "Already have an account?" : "Don't have an account?"} <button type="button" data-auth-intent="${signup ? "login" : "signup"}">${signup ? "Sign in →" : "Create account →"}</button></p></section>`;
+  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal" role="dialog" aria-modal="true" aria-labelledby="candidate-auth-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Candidate account</p><h2 id="candidate-auth-title">${signup ? "Create account" : "Sign in"}</h2><p>${signup ? "Create a Free account to save progress and use diagnostic practice." : "Sign in to continue with your saved progress and membership."}</p><button class="v26-btn secondary v26-google-auth" type="button" data-google-auth disabled>G&nbsp;&nbsp;Continue with Google</button><p class="v26-google-status" data-google-status aria-live="polite"></p><div class="v26-auth-divider"><span>or</span></div><form data-auth-form data-intent="${intent}" novalidate>${signup ? `<label>Name<input name="display_name" autocomplete="name" minlength="2" maxlength="120" required /></label>` : ""}<label>Email<input name="email" type="email" autocomplete="email" maxlength="320" required /></label><label>Password<input name="password" type="password" autocomplete="${signup ? "new-password" : "current-password"}" minlength="8" maxlength="256" required /></label><button class="v26-btn primary" type="submit">${signup ? "Create Free Account" : "Sign In"}</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch">${signup ? "Already have an account?" : "Don't have an account?"} <button type="button" data-auth-intent="${signup ? "login" : "signup"}">${signup ? "Sign in →" : "Create account →"}</button></p></section>`;
   hydrateGoogleButton(root);
   root.querySelector("input")?.focus();
   root.querySelector("[data-auth-form]")?.addEventListener("submit", submitAuth);
@@ -38,16 +38,18 @@ function openAuth(intent = "login") {
 
 async function hydrateGoogleButton(root) {
   const button = root.querySelector("[data-google-auth]");
+  const status = root.querySelector("[data-google-status]");
   if (!button) return;
   const config = await providers();
   if (!root.contains(button)) return;
+  button.textContent = "G  Continue with Google";
   if (config.google?.enabled) {
     button.disabled = false;
-    button.textContent = "G  Continue with Google";
+    if (status) status.textContent = "";
   } else {
     button.disabled = true;
-    button.textContent = "Google sign-in unavailable";
     button.title = "Google OAuth credentials are not configured in this environment.";
+    if (status) status.textContent = "Google sign-in is available when OAuth is configured for this deployment.";
   }
 }
 
@@ -90,7 +92,7 @@ async function submitGoogleLink(event) {
 
 function openPremiumNotice(message = "Checkout is not enabled in this environment. No membership change, payment, or tax charge has been made.") {
   const root = document.querySelector("#candidate-access-root");
-  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal v26-plan-modal" role="dialog" aria-modal="true" aria-labelledby="membership-change-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Paid access</p><h2 id="membership-change-title">Secure checkout</h2><p>${escapeText(message)}</p><p>Premium access is activated only after a verified server-to-server billing event. A success URL, browser flag, or edited cookie can never grant paid access.</p><a class="v26-btn secondary" href="#/membership" data-auth-close>Back to Membership</a></section>`;
+  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal v26-plan-modal" role="dialog" aria-modal="true" aria-labelledby="membership-change-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Paid access</p><h2 id="membership-change-title">Secure billing</h2><p>${escapeText(message)}</p><p>Premium access is activated only after a verified server-to-server billing event. A success URL, browser flag, edited cookie, or reusable license key can never grant paid access.</p><a class="v26-btn secondary" href="#/membership" data-auth-close>Back to Membership</a></section>`;
 }
 
 function closeModal() {
@@ -145,6 +147,20 @@ async function startPaidCheckout(planCode) {
   }
 }
 
+async function openBillingPortal() {
+  if (!candidate()) {
+    openAuth("login");
+    return;
+  }
+  try {
+    const result = await createBillingPortal();
+    if (!result?.portal_url) throw new Error("Billing management did not return a secure destination.");
+    window.location.assign(result.portal_url);
+  } catch (error) {
+    openPremiumNotice(error.message || "Subscription management is not available.");
+  }
+}
+
 async function handleClick(event) {
   const authIntent = event.target.closest("[data-auth-intent]");
   if (authIntent) {
@@ -168,6 +184,12 @@ async function handleClick(event) {
     logout.disabled = true;
     await logOut().catch(() => {});
     window.location.hash = "#/home";
+    return;
+  }
+  const portal = event.target.closest("[data-billing-portal]");
+  if (portal) {
+    event.preventDefault();
+    await openBillingPortal();
     return;
   }
   const paid = event.target.closest("[data-plan-checkout]");
