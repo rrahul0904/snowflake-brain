@@ -16,7 +16,7 @@ permissions:
 jobs:
   certification-guide-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,6 +52,10 @@ jobs:
         run: python scripts/test_billing_tier_transitions.py
       - name: Verify Exam Pack expiry reconciliation
         run: python scripts/test_exam_pack_expiry_reconciliation.py
+      - name: Verify private question bank, tiers, and exam allocation
+        run: python scripts/test_question_bank_tiers.py
+      - name: Verify affiliate disclosure and no-ad-network policy
+        run: python scripts/test_affiliate_no_ads.py
       - name: Verify active frontend syntax
         shell: bash
         run: |
@@ -62,6 +66,7 @@ jobs:
             frontend/api.js
             frontend/auth.js
             frontend/ui.js
+            frontend/affiliate-resources.js
             frontend/components/nav.js
             frontend/components/candidate-access.js
             frontend/components/feedback.js
@@ -102,6 +107,20 @@ jobs:
           grep -q 'v26-diagnostic-card' frontend/views/practice-v26.js
           grep -q 'v26-lookup-card-grid' frontend/views/lookup-v26.js
           grep -q 'v26-exercise-domain-list' frontend/views/exercises-v26.js
+      - name: Verify private bank remains outside tracked/static content
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^private_content/' .gitignore
+          grep -q '^private_content$' .dockerignore
+          if git ls-files frontend config | grep -Ei '(question[_-]?bank|private[_-]?question).*\.json$'; then
+            echo 'Commercial question-bank data is tracked in a public/static path'
+            exit 1
+          fi
+          if grep -RniE 'googlesyndication|doubleclick\.net|googleadservices|adsbygoogle|prebid|taboola|outbrain|adroll|fbevents\.js' frontend; then
+            echo 'Advertising network/SDK identifier found in active frontend'
+            exit 1
+          fi
       - name: Verify legacy runtime remains inactive
         shell: bash
         run: |
