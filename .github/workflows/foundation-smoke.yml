@@ -44,6 +44,8 @@ jobs:
         run: python scripts/test_google_billing_security.py
       - name: Verify Google OAuth browser transaction binding
         run: python scripts/test_google_browser_state.py
+      - name: Verify Google identity continuity
+        run: python scripts/test_google_identity_continuity.py
       - name: Verify paid tier transition hardening
         run: python scripts/test_billing_tier_transitions.py
       - name: Verify Exam Pack expiry reconciliation
