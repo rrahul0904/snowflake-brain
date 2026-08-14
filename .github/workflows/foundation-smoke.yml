@@ -67,6 +67,7 @@ jobs:
             frontend/components/feedback.js
             frontend/components/globe.js
             frontend/components/home-extras.js
+            frontend/components/study-shell.js
             frontend/components/toast.js
             frontend/views/home-v26.js
             frontend/views/certifications.js
@@ -89,6 +90,18 @@ jobs:
             frontend/views/info-v26.js
           )
           for file in "${files[@]}"; do node --check "$file"; done
+      - name: Verify recording parity layer is active
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'styles/recording-parity.css' frontend/index-v26.html
+          grep -q 'styles/recording-parity-final.css' frontend/index-v26.html
+          grep -q 'v26-domain-card-grid' frontend/views/curriculum-v26.js
+          grep -q 'v26-readiness-panel' frontend/views/progress-v26.js
+          grep -q 'v26-drill-stats' frontend/views/practice-v26.js
+          grep -q 'v26-diagnostic-card' frontend/views/practice-v26.js
+          grep -q 'v26-lookup-card-grid' frontend/views/lookup-v26.js
+          grep -q 'v26-exercise-domain-list' frontend/views/exercises-v26.js
       - name: Verify legacy runtime remains inactive
         shell: bash
         run: |
