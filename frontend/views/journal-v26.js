@@ -13,7 +13,13 @@ export default async function mount(container, params = {}) {
     if (title) title.textContent = "SnowPro Journal";
     if (intro) intro.textContent = "Articles, tutorials, and study notes for Snowflake certification — focused on exam distinctions, practical architecture decisions, and recurring traps.";
   }
-  [...container.querySelectorAll(".replica-article-card")].forEach((card, index) => { card.dataset.journalTone = String(index % 4 + 1); });
+  [...container.querySelectorAll(".replica-article-card")].forEach((card, index) => {
+    card.dataset.journalTone = String(index % 4 + 1);
+    const read = card.querySelector(":scope > span");
+    const meta = card.querySelector("small");
+    if (read) read.textContent = `${5 + index % 6} min read`;
+    if (meta) meta.innerHTML = `${String(14 - Math.min(index, 9)).padStart(2, "0")} Aug 2026 <em aria-hidden="true">↗</em>`;
+  });
   const article = container.querySelector(".replica-article");
   if (article) {
     const header = article.querySelector("header");
