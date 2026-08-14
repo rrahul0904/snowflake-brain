@@ -75,6 +75,13 @@ class StripeProvider:
         payload = self._post("/v1/checkout/sessions", data)
         return {"id": payload.get("id"), "url": payload.get("url")}
 
+    def create_portal_session(self, *, customer_id: str, return_url: str) -> dict:
+        payload = self._post(
+            "/v1/billing_portal/sessions",
+            {"customer": customer_id, "return_url": return_url},
+        )
+        return {"id": payload.get("id"), "url": payload.get("url")}
+
     def verify_webhook(self, payload: bytes, signature_header: str) -> dict:
         if not STRIPE_WEBHOOK_SECRET:
             raise HTTPException(status_code=503, detail="Stripe webhook verification is not configured.")
