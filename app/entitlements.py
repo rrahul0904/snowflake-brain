@@ -68,6 +68,10 @@ def apply_membership_plan(
         current_expiry = str(current["expires_at"] or "") if current else ""
         requested_expiry = str(expires_at or "")
         if current and old_plan == plan_code and current_expiry == requested_expiry:
+            conn.execute(
+                "UPDATE candidate_accounts SET plan=?,updated_at=datetime('now') WHERE id=?",
+                (plan["tier"], candidate_id),
+            )
             return {"old_plan": old_plan, "new_plan": plan_code, "entitlement_version": previous_version, "changed": False}
         maximum = conn.execute(
             "SELECT COALESCE(MAX(entitlement_version), 0) AS v FROM candidate_memberships WHERE candidate_id=?",
@@ -83,6 +87,10 @@ def apply_membership_plan(
             "INSERT INTO candidate_memberships(candidate_id,tier,plan_code,status,starts_at,expires_at,source,entitlement_version) "
             "VALUES (?,?,?,'active',datetime('now'),?,?,?)",
             (candidate_id, plan["tier"], plan_code, expires_at, source, next_version),
+        )
+        conn.execute(
+            "UPDATE candidate_accounts SET plan=?,updated_at=datetime('now') WHERE id=?",
+            (plan["tier"], candidate_id),
         )
         conn.execute(
             "INSERT INTO membership_audit_log(candidate_id,old_plan,new_plan,reason,source,provider_event_id,entitlement_version) "
@@ -112,7 +120,17 @@ def entitlement_usage(candidate_id: int, membership: dict[str, Any]) -> dict[str
     exam_pack = plan["code"] == "exam_pack_35"
     deadline: datetime | None = None
     if exam_pack:
-        started = datetime.fromisoformat(str(membership.get("starts_at") or periods["day"].isoformat()).replace("Z", "+00:00"))
+        # A paid Exam Pack keeps the original purchase timestamp even if a
+        # subscription temporarily becomes the active membership and the pack
+        # later becomes the fallback entitlement. Development CLI packs, which
+        # have no billing purchase, continue to use the membership start time.
+        with connect() as conn:
+            purchase = conn.execute(
+                "SELECT purchased_at FROM billing_purchases WHERE candidate_id=? AND product_type='exam_pack_35' AND status='paid' ORDER BY id DESC LIMIT 1",
+                (candidate_id,),
+            ).fetchone()
+        anchor = purchase["purchased_at"] if purchase else membership.get("starts_at")
+        started = datetime.fromisoformat(str(anchor or periods["day"].isoformat()).replace("Z", "+00:00"))
         started = started.replace(tzinfo=timezone.utc) if started.tzinfo is None else started.astimezone(timezone.utc)
         deadline = started + timedelta(days=int(plan["full_exam_access_days"]))
         with connect() as conn:
