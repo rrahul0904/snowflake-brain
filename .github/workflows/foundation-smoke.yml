@@ -56,7 +56,6 @@ jobs:
             frontend/views/practice-v26.js
             frontend/views/mock-landing.js
             frontend/views/mock-start-v26.js
-            frontend/views/mock-start-bridge.js
             frontend/views/exam-session-v26.js
             frontend/views/exam-result-v26.js
             frontend/views/progress-v26.js
