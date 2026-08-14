@@ -118,7 +118,8 @@ def main() -> None:
     ]
 
     started = certification_quiz_start(
-        CertificationQuizStart(track_id="snowpro-core", count=15, mode="drill")
+        CertificationQuizStart(track_id="snowpro-core", count=15, mode="drill"),
+        {"id": 0},
     )
     assert started["total"] == 15
     assert started["questions"]
@@ -132,7 +133,8 @@ def main() -> None:
 
     correct = [int(value) for value in json.loads(stored["correct_json"])]
     graded = quiz_grade(
-        QuizGradeRequest(answers=[QuizAnswer(question_id=first["id"], selected=correct)])
+        QuizGradeRequest(answers=[QuizAnswer(question_id=first["id"], selected=correct)]),
+        {"id": 0},
     )
     assert graded["score"] == 1 and graded["total"] == 1
 

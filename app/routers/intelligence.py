@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..database import connect
@@ -16,6 +16,7 @@ from ..intelligence import (
     readiness_model,
     skill_mastery,
 )
+from ..auth import require_candidate, require_premium_candidate
 
 router = APIRouter()
 
@@ -30,39 +31,39 @@ class MappingReviewRequest(BaseModel):
 
 
 @router.get("/intelligence/portfolio")
-def certification_portfolio() -> dict[str, Any]:
+def certification_portfolio(candidate: dict = Depends(require_premium_candidate)) -> dict[str, Any]:
     with connect() as conn:
-        return portfolio(conn)
+        return portfolio(conn, candidate_id=candidate["id"])
 
 
 @router.get("/intelligence/command-brief")
-def certification_command_brief(track_id: str = "snowpro-core") -> dict[str, Any]:
+def certification_command_brief(track_id: str = "snowpro-core", candidate: dict = Depends(require_premium_candidate)) -> dict[str, Any]:
     with connect() as conn:
-        return command_brief(conn, track_id)
+        return command_brief(conn, track_id, candidate_id=candidate["id"])
 
 
 @router.get("/intelligence/skill-mastery")
-def certification_skill_mastery(track_id: str = "snowpro-core") -> dict[str, Any]:
+def certification_skill_mastery(track_id: str = "snowpro-core", candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     with connect() as conn:
-        return skill_mastery(conn, track_id)
+        return skill_mastery(conn, track_id, candidate_id=candidate["id"])
 
 
 @router.get("/intelligence/readiness")
-def certification_readiness(track_id: str = "snowpro-core") -> dict[str, Any]:
+def certification_readiness(track_id: str = "snowpro-core", candidate: dict = Depends(require_premium_candidate)) -> dict[str, Any]:
     with connect() as conn:
-        return readiness_model(conn, track_id)
+        return readiness_model(conn, track_id, candidate_id=candidate["id"])
 
 
 @router.get("/intelligence/mistake-queue")
-def certification_mistake_queue(track_id: str = "snowpro-core", limit: int = 25) -> dict[str, Any]:
+def certification_mistake_queue(track_id: str = "snowpro-core", limit: int = 25, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     with connect() as conn:
-        return mistake_queue(conn, track_id, limit=limit)
+        return mistake_queue(conn, track_id, limit=limit, candidate_id=candidate["id"])
 
 
 @router.get("/intelligence/diagnostic")
-def certification_diagnostic(track_id: str = "snowpro-core", count: int = 30) -> dict[str, Any]:
+def certification_diagnostic(track_id: str = "snowpro-core", count: int = 30, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     with connect() as conn:
-        return diagnostic_plan(conn, track_id, count=count)
+        return diagnostic_plan(conn, track_id, count=count, candidate_id=candidate["id"])
 
 
 @router.get("/intelligence/evidence-audit")

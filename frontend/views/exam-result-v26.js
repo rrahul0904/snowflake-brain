@@ -2,11 +2,19 @@ export const VIEW_ID = "v26-exam-result";
 
 import { escapeHtml, getMockHistory, getMockResult } from "../api.js";
 import { activeTrack } from "../ui.js";
+import { candidate, refreshCandidate } from "../auth.js";
+import { premiumGate } from "../components/entitlement-gates.js";
 
 const DOMAIN_COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 let reviewFilter = "all";
 
 export default async function mount(container, params = {}) {
+  await refreshCandidate().catch(() => {});
+  const account = candidate();
+  if (!account) {
+    container.innerHTML = premiumGate(account);
+    return;
+  }
   const path = (window.location.hash || "#/mock/result").split("?")[0];
   if (path === "#/mock/history") return historyPage(container, params.track_id || activeTrack());
   const sessionId = Number(params.session_id || 0);

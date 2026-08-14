@@ -82,6 +82,10 @@ def public_config(track_id: str = "snowpro-core") -> dict[str, Any]:
 
 def _setting(mode: str) -> tuple[str, dict[str, Any]]:
     normalized = mode.strip().lower().replace("_", "-")
+    if normalized == "weekly-mock":
+        return normalized, {"question_count": 20, "time_limit_minutes": 30}
+    if normalized == "lifetime-practice":
+        return normalized, exam_config()["full_mock"]
     if normalized in {"quick", "quick-mock"}:
         return "quick-mock", exam_config()["quick_mock"]
     if normalized in {"full", "full-mock", "exam"}:
@@ -120,6 +124,7 @@ def create_session(
     mode: str,
     practice_test_id: str | None = None,
     randomize_options: bool | None = None,
+    candidate_id: int | None = None,
 ) -> dict[str, Any]:
     normalized, setting = _setting(mode)
     config = exam_config()
@@ -148,7 +153,8 @@ def create_session(
             count=max(1, min(question_count, 500)),
             mode=normalized,
             test_id=practice_test_id,
-        )
+        ),
+        {"id": candidate_id},
     )
     questions = list(selected.get("questions") or [])
     if len(questions) != question_count:
@@ -165,8 +171,8 @@ def create_session(
             """
             INSERT INTO exam_sessions(
               track_id, practice_test_id, mode, started_at, score, total_questions,
-              status, duration_seconds, configuration_json
-            ) VALUES (?, ?, ?, datetime('now'), 0, ?, 'in_progress', ?, ?)
+              status, duration_seconds, configuration_json, candidate_id
+            ) VALUES (?, ?, ?, datetime('now'), 0, ?, 'in_progress', ?, ?, ?)
             """,
             (
                 track_id,
@@ -182,6 +188,7 @@ def create_session(
                         "exam_code": test.get("exam_code") if test else config.get("exam_code"),
                     }
                 ),
+                candidate_id,
             ),
         )
         session_id = int(cursor.lastrowid)
@@ -206,10 +213,10 @@ def create_session(
             )
         conn.execute(
             """
-            INSERT INTO learning_events(event_type, track_id, practice_test_id, metadata_json)
-            VALUES ('mock_session_started', ?, ?, ?)
+            INSERT INTO learning_events(event_type, track_id, practice_test_id, metadata_json, candidate_id)
+            VALUES ('mock_session_started', ?, ?, ?, ?)
             """,
-            (track_id, practice_test_id, json.dumps({"session_id": session_id, "mode": normalized, "question_count": question_count})),
+            (track_id, practice_test_id, json.dumps({"session_id": session_id, "mode": normalized, "question_count": question_count}), candidate_id),
         )
     return session_payload(session_id)
 
@@ -293,13 +300,22 @@ def session_payload(session_id: int) -> dict[str, Any]:
     }
 
 
-def active_session(track_id: str = "snowpro-core") -> dict[str, Any] | None:
+def active_session(track_id: str = "snowpro-core", candidate_id: int | None = None) -> dict[str, Any] | None:
     with connect() as conn:
-        row = conn.execute(
-            "SELECT id FROM exam_sessions WHERE track_id = ? AND status = 'in_progress' ORDER BY id DESC LIMIT 1",
-            (track_id,),
-        ).fetchone()
-    return session_payload(int(row["id"])) if row else None
+        if candidate_id is None:
+            row = conn.execute(
+                "SELECT id FROM exam_sessions WHERE track_id = ? AND status = 'in_progress' ORDER BY id DESC LIMIT 1",
+                (track_id,),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT id FROM exam_sessions WHERE track_id = ? AND candidate_id = ? AND status = 'in_progress' ORDER BY id DESC LIMIT 1",
+                (track_id, candidate_id),
+            ).fetchone()
+    if not row:
+        return None
+    payload = session_payload(int(row["id"]))
+    return payload if payload.get("status") == "in_progress" else None
 
 
 def save_answer(session_id: int, question_id: str, selected: list[int]) -> dict[str, Any]:
@@ -399,8 +415,8 @@ def submit_session(session_id: int, reason: str = "learner") -> dict[str, Any]:
             )
             if counts_for_readiness:
                 conn.execute(
-                    "INSERT INTO question_attempts(question_id, selected, correct, mode) VALUES (?, ?, ?, ?)",
-                    (row["question_id"], json.dumps(selected), int(is_correct), session["mode"]),
+                    "INSERT INTO question_attempts(question_id, selected, correct, mode, candidate_id) VALUES (?, ?, ?, ?, ?)",
+                    (row["question_id"], json.dumps(selected), int(is_correct), session["mode"], session.get("candidate_id")),
                 )
 
         total = len(rows)
@@ -440,8 +456,8 @@ def submit_session(session_id: int, reason: str = "learner") -> dict[str, Any]:
         )
         conn.execute(
             """
-            INSERT INTO learning_events(event_type, track_id, practice_test_id, metadata_json)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO learning_events(event_type, track_id, practice_test_id, metadata_json, candidate_id)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 "practice_test_finished" if counts_for_readiness else "legacy_practice_finished",
@@ -459,6 +475,7 @@ def submit_session(session_id: int, reason: str = "learner") -> dict[str, Any]:
                         "submitted_reason": reason,
                     }
                 ),
+                session.get("candidate_id"),
             ),
         )
     return result_payload(session_id)
@@ -586,19 +603,15 @@ def result_payload(session_id: int) -> dict[str, Any]:
     }
 
 
-def history(track_id: str = "snowpro-core") -> dict[str, Any]:
+def history(track_id: str = "snowpro-core", candidate_id: int | None = None) -> dict[str, Any]:
     with connect() as conn:
-        sessions = [
-            dict(row)
-            for row in conn.execute(
-                """
-                SELECT * FROM exam_sessions
-                WHERE track_id = ? AND status = 'finished' AND mode LIKE 'exam_%'
-                ORDER BY finished_at DESC, id DESC
-                """,
-                (track_id,),
-            )
-        ]
+        if candidate_id is None:
+            query = "SELECT * FROM exam_sessions WHERE track_id = ? AND status = 'finished' AND mode LIKE 'exam_%' ORDER BY finished_at DESC, id DESC"
+            params = (track_id,)
+        else:
+            query = "SELECT * FROM exam_sessions WHERE track_id = ? AND candidate_id = ? AND status = 'finished' AND mode LIKE 'exam_%' ORDER BY finished_at DESC, id DESC"
+            params = (track_id, candidate_id)
+        sessions = [dict(row) for row in conn.execute(query, params)]
     rows = []
     for session in sessions:
         result = result_payload(int(session["id"]))

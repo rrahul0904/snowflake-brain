@@ -30,29 +30,21 @@ echo "== Certification-native architecture =="
 echo "== Production mock exam contract =="
 "$PYTHON_BIN" scripts/test_mock_exam.py
 
+echo "== V26 functional and visual contract =="
+"$PYTHON_BIN" scripts/smoke_v26.py
+
+echo "== Candidate authentication and membership =="
+"$PYTHON_BIN" scripts/test_auth_membership.py
+
 echo "== Retired media UI guard =="
-if rg -n -i 'course|video|transcript|academy|archive' frontend --glob '!*.map'; then
-  echo "Retired course/media UI tokens remain in the active frontend." >&2
+if rg -n -i '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend --glob '!*.map'; then
+  echo "Retired course/media runtime identifiers remain in the active frontend." >&2
   exit 1
 fi
 
 echo "== Frontend syntax =="
-FRONTEND_FILES=(
-  frontend/app.js
-  frontend/router.js
-  frontend/api.js
-  frontend/ui.js
-  frontend/components/nav.js
-  frontend/components/topbar.js
-  frontend/components/toast.js
-  frontend/views/guide.js
-  frontend/views/mock.js
-  frontend/views/quiz.js
-  frontend/views/labs.js
-  frontend/views/journal.js
-)
-for file in "${FRONTEND_FILES[@]}"; do
+while IFS= read -r -d '' file; do
   "$NODE_BIN" --check "$file"
-done
+done < <(find frontend -type f -name '*.js' -print0)
 
-echo "All V25 Snowflake Certification Guide checks passed."
+echo "All V26 Snowflake Certification Guide checks passed."

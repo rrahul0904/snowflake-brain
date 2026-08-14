@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from ..database import connect
 from ..lab_challenges import lab_by_id, lab_catalog, load_lab_config, validate_sql
+from ..auth import require_candidate
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ def labs_config() -> dict[str, Any]:
 
 
 @router.get("/labs")
-def labs(certification: str | None = None, track_id: str | None = None) -> dict[str, Any]:
+def labs(certification: str | None = None, track_id: str | None = None, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     selected = certification or track_id
     rows = lab_catalog()
     if selected:
@@ -39,8 +40,9 @@ def labs(certification: str | None = None, track_id: str | None = None) -> dict[
             for row in conn.execute(
                 """
                 SELECT lab_id FROM learning_events
-                WHERE event_type = 'lab_passed' AND lab_id IS NOT NULL
-                """
+                WHERE candidate_id = ? AND event_type = 'lab_passed' AND lab_id IS NOT NULL
+                """,
+                (candidate["id"],),
             )
         }
     for lab in rows:
@@ -49,7 +51,7 @@ def labs(certification: str | None = None, track_id: str | None = None) -> dict[
 
 
 @router.get("/labs/{lab_id}")
-def lab_detail(lab_id: str) -> dict[str, Any]:
+def lab_detail(lab_id: str, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     configured = lab_by_id(lab_id)
     if not configured:
         raise HTTPException(status_code=404, detail="Lab not found")
@@ -59,7 +61,7 @@ def lab_detail(lab_id: str) -> dict[str, Any]:
 
 
 @router.post("/labs/{lab_id}/submit")
-def submit_lab(lab_id: str, payload: LabSubmit) -> dict[str, Any]:
+def submit_lab(lab_id: str, payload: LabSubmit, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     configured = lab_by_id(lab_id)
     if not configured:
         raise HTTPException(status_code=404, detail="Lab not found")
@@ -67,8 +69,8 @@ def submit_lab(lab_id: str, payload: LabSubmit) -> dict[str, Any]:
     with connect() as conn:
         conn.execute(
             """
-            INSERT INTO learning_events(event_type, track_id, lab_id, skill_id, metadata_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO learning_events(event_type, track_id, lab_id, skill_id, metadata_json, candidate_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 "lab_passed" if result["passed"] else "lab_attempted",
@@ -84,6 +86,7 @@ def submit_lab(lab_id: str, payload: LabSubmit) -> dict[str, Any]:
                         "total": result.get("total"),
                     }
                 ),
+                candidate["id"],
             ),
         )
     return {

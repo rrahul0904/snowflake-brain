@@ -2,11 +2,14 @@ export const VIEW_ID = "v26-lesson";
 
 import { escapeHtml, getSkillMap, getStudyLesson, getTaskProgress, setTaskProgress } from "../api.js";
 import { activeTrack, setActiveTrack } from "../ui.js";
+import { candidate, refreshCandidate } from "../auth.js";
 
 const COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 
 export default async function mount(container, params = {}) {
   const trackId = params.track_id || activeTrack();
+  await refreshCandidate().catch(() => {});
+  const account = candidate();
   const map = await getSkillMap();
   const certs = map.certifications || [];
   const cert = certs.find((item) => item.id === trackId) || certs[0];
@@ -20,14 +23,14 @@ export default async function mount(container, params = {}) {
   if (!item) throw new Error("Task not found");
   const [lesson, progress] = await Promise.all([
     getStudyLesson(item.id, { track_id: cert.id }),
-    getTaskProgress({ track_id: cert.id }).catch(() => ({ completed_skill_ids: [] })),
+    account ? getTaskProgress({ track_id: cert.id }).catch(() => ({ completed_skill_ids: [] })) : Promise.resolve({ completed_skill_ids: [] }),
   ]);
   const content = lesson.content || {};
   const completed = new Set(progress.completed_skill_ids || []);
   const taskCode = item.task_code || `${item.domainIndex + 1}.${item.skillIndex + 1}`;
   const prev = flat[index - 1];
   const next = flat[index + 1];
-  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · ${Number(item.domain.weight || 0)}%</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a></div></header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise)}${sources(content.sources)}<nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
+  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · ${Number(item.domain.weight || 0)}%</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions">${account ? `<button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button>` : `<button class="v26-btn primary" type="button" data-auth-intent="signup">Create a Free account to save progress</button>`}<a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a></div></header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise, account)}${sources(content.sources)}<nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
   container.innerHTML = `<div class="v26-study-layout">${sidebar(cert, item.domain.id)}<main class="v26-study-content">${body}</main></div>`;
   container.querySelector("[data-complete]")?.addEventListener("click", async (event) => {
     const nextState = !completed.has(item.id);
@@ -86,8 +89,9 @@ function bindScenario(container) {
   });
 }
 
-function buildExercise(exercise) {
+function buildExercise(exercise, account) {
   if (!exercise || (!exercise.prompt && !exercise.title && !exercise.description)) return "";
+  if (!account) return `<section class="v26-lesson-section"><h2>Build Exercise</h2><div class="v26-build v26-free-feature-lock"><span>Free candidate feature</span><p>Create a Free account to open this task's hands-on exercise and persist your activity.</p><button class="v26-btn secondary" type="button" data-auth-intent="signup">Create Free Account</button></div></section>`;
   const checks = exercise.checks || [];
   return `<section class="v26-lesson-section"><h2>Build Exercise</h2><div class="v26-build"><span>${escapeHtml(exercise.title || "Hands-on task")}</span><p>${escapeHtml(exercise.prompt || exercise.description || "")}</p>${checks.length ? `<ul>${checks.map((check) => `<li>${escapeHtml(check)}</li>`).join("")}</ul>` : ""}</div></section>`;
 }

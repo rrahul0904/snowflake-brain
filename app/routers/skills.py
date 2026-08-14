@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from ..certification_content import certification_catalog, configured_skill_map, content_coverage, study_lesson
 from ..database import connect
+from ..auth import require_candidate
 from ..skill_brain import certification, flatten_skills, skill_score
 
 router = APIRouter()
@@ -45,7 +46,7 @@ def skill_content_coverage() -> dict[str, Any]:
 
 
 @router.get("/skills/task-progress")
-def task_progress(track_id: str = "snowpro-core") -> dict[str, Any]:
+def task_progress(track_id: str = "snowpro-core", candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     configured = {skill["id"]: skill for skill in flatten_skills(track_id)}
     with connect() as conn:
         rows = [
@@ -53,11 +54,11 @@ def task_progress(track_id: str = "snowpro-core") -> dict[str, Any]:
             for row in conn.execute(
                 """
                 SELECT track_id, skill_id, completed, completed_at, updated_at
-                FROM certification_task_progress
-                WHERE track_id = ?
+                FROM candidate_task_progress
+                WHERE candidate_id = ? AND track_id = ?
                 ORDER BY skill_id
                 """,
-                (track_id,),
+                (candidate["id"], track_id),
             )
         ]
     completed_ids = {row["skill_id"] for row in rows if int(row.get("completed") or 0) == 1}
@@ -72,27 +73,27 @@ def task_progress(track_id: str = "snowpro-core") -> dict[str, Any]:
 
 
 @router.post("/skills/task-progress")
-def update_task_progress(payload: TaskProgressUpdate) -> dict[str, Any]:
+def update_task_progress(payload: TaskProgressUpdate, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     configured = {skill["id"]: skill for skill in flatten_skills(payload.track_id)}
     if payload.skill_id not in configured:
         raise HTTPException(status_code=404, detail="Task is not configured for this certification")
     with connect() as conn:
         conn.execute(
             """
-            INSERT INTO certification_task_progress(track_id, skill_id, completed, completed_at, updated_at)
-            VALUES (?, ?, ?, CASE WHEN ? = 1 THEN datetime('now') ELSE NULL END, datetime('now'))
-            ON CONFLICT(track_id, skill_id) DO UPDATE SET
+            INSERT INTO candidate_task_progress(candidate_id, track_id, skill_id, completed, completed_at, updated_at)
+            VALUES (?, ?, ?, ?, CASE WHEN ? = 1 THEN datetime('now') ELSE NULL END, datetime('now'))
+            ON CONFLICT(candidate_id, track_id, skill_id) DO UPDATE SET
               completed = excluded.completed,
               completed_at = CASE WHEN excluded.completed = 1 THEN datetime('now') ELSE NULL END,
               updated_at = datetime('now')
             """,
-            (payload.track_id, payload.skill_id, int(payload.completed), int(payload.completed)),
+            (candidate["id"], payload.track_id, payload.skill_id, int(payload.completed), int(payload.completed)),
         )
     return {"track_id": payload.track_id, "skill_id": payload.skill_id, "completed": payload.completed}
 
 
 @router.get("/skills/summary")
-def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
+def skill_summary(track_id: str = "snowpro-core", candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     cert = certification(track_id)
     cert = next(
         (item for item in configured_skill_map().get("certifications", []) if item.get("id") == track_id),
@@ -109,12 +110,12 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
                        COUNT(a.id) AS attempts,
                        COALESCE(SUM(CASE WHEN a.correct = 1 THEN 1 ELSE 0 END), 0) AS correct_attempts
                 FROM questions q
-                LEFT JOIN question_attempts a ON a.question_id = q.id
+                LEFT JOIN question_attempts a ON a.question_id = q.id AND a.candidate_id = ?
                 WHERE q.track_id = ? AND q.source_kind <> 'legacy'
                 GROUP BY q.id
                 LIMIT 8000
                 """,
-                (track_id,),
+                (candidate["id"], track_id),
             )
         ]
         reliable_edges = [
@@ -133,8 +134,8 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
         completed = {
             row["skill_id"]
             for row in conn.execute(
-                "SELECT skill_id FROM certification_task_progress WHERE track_id = ? AND completed = 1",
-                (track_id,),
+                "SELECT skill_id FROM candidate_task_progress WHERE candidate_id = ? AND track_id = ? AND completed = 1",
+                (candidate["id"], track_id),
             )
             if row["skill_id"] in valid_ids
         }
@@ -145,10 +146,10 @@ def skill_summary(track_id: str = "snowpro-core") -> dict[str, Any]:
                 SELECT skill_id, COUNT(*) AS attempts,
                        SUM(CASE WHEN event_type = 'lab_passed' THEN 1 ELSE 0 END) AS passed
                 FROM learning_events
-                WHERE track_id = ? AND skill_id IS NOT NULL
+                WHERE candidate_id = ? AND track_id = ? AND skill_id IS NOT NULL
                 GROUP BY skill_id
                 """,
-                (track_id,),
+                (candidate["id"], track_id),
             )
         ]
 

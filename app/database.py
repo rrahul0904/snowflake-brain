@@ -8,7 +8,7 @@ from typing import Any, Iterator
 from .config import BRAIN_DB
 
 
-SCHEMA_VERSION = "20260812_002_production_mock_v25"
+SCHEMA_VERSION = "20260814_005_membership_plan_quotas_v26"
 
 
 def _db_path() -> Path:
@@ -69,6 +69,91 @@ def run_migrations() -> None:
               completed_at TEXT,
               updated_at TEXT DEFAULT (datetime('now')),
               PRIMARY KEY(track_id, skill_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_accounts (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+              display_name TEXT NOT NULL,
+              password_hash TEXT NOT NULL,
+              password_salt TEXT NOT NULL,
+              password_algorithm TEXT NOT NULL DEFAULT 'scrypt',
+              plan TEXT NOT NULL DEFAULT 'free' CHECK(plan IN ('free', 'premium')),
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_sessions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              token_hash TEXT NOT NULL UNIQUE,
+              expires_at TEXT NOT NULL,
+              created_at TEXT DEFAULT (datetime('now')),
+              last_seen_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS membership_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              previous_plan TEXT NOT NULL,
+              next_plan TEXT NOT NULL,
+              source TEXT NOT NULL DEFAULT 'prototype',
+              created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_memberships (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              tier TEXT NOT NULL DEFAULT 'free' CHECK(tier IN ('free', 'premium')),
+              status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'expired', 'cancelled')),
+              starts_at TEXT NOT NULL DEFAULT (datetime('now')),
+              expires_at TEXT,
+              source TEXT NOT NULL DEFAULT 'registration',
+              created_at TEXT DEFAULT (datetime('now')),
+              updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_task_progress (
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              track_id TEXT NOT NULL,
+              skill_id TEXT NOT NULL,
+              completed INTEGER NOT NULL DEFAULT 0,
+              completed_at TEXT,
+              updated_at TEXT DEFAULT (datetime('now')),
+              PRIMARY KEY(candidate_id, track_id, skill_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_bookmarks (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+              created_at TEXT DEFAULT (datetime('now')),
+              UNIQUE(candidate_id, question_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_notes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+              body TEXT NOT NULL,
+              created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_daily_activity (
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              date TEXT NOT NULL,
+              questions_answered INTEGER DEFAULT 0,
+              correct_answers INTEGER DEFAULT 0,
+              minutes_studied INTEGER DEFAULT 0,
+              PRIMARY KEY(candidate_id, date)
+            );
+
+            CREATE TABLE IF NOT EXISTS candidate_daily_question_usage (
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              usage_date TEXT NOT NULL,
+              questions_consumed INTEGER NOT NULL DEFAULT 0,
+              updated_at TEXT DEFAULT (datetime('now')),
+              PRIMARY KEY(candidate_id, usage_date)
             );
 
             CREATE TABLE IF NOT EXISTS practice_tests (
@@ -212,8 +297,27 @@ def run_migrations() -> None:
               ON exam_session_questions(session_id, position);
             CREATE INDEX IF NOT EXISTS idx_learning_events_track
               ON learning_events(track_id, event_type, created_at);
+            CREATE INDEX IF NOT EXISTS idx_candidate_sessions_candidate
+              ON candidate_sessions(candidate_id, expires_at);
+            CREATE INDEX IF NOT EXISTS idx_membership_events_candidate
+              ON membership_events(candidate_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_candidate_memberships_candidate
+              ON candidate_memberships(candidate_id, status, tier, starts_at, expires_at);
+            CREATE INDEX IF NOT EXISTS idx_candidate_progress_track
+              ON candidate_task_progress(candidate_id, track_id, completed);
+            CREATE INDEX IF NOT EXISTS idx_candidate_bookmarks_question
+              ON candidate_bookmarks(candidate_id, question_id);
+            CREATE INDEX IF NOT EXISTS idx_candidate_notes_question
+              ON candidate_notes(candidate_id, question_id, created_at);
             """
         )
+        _ensure_column(conn, "candidate_accounts", "status", "TEXT NOT NULL DEFAULT 'active'")
+        _ensure_column(conn, "candidate_accounts", "last_login_at", "TEXT")
+        _ensure_column(conn, "candidate_accounts", "password_algorithm", "TEXT NOT NULL DEFAULT 'pbkdf2_sha256'")
+        _ensure_column(conn, "candidate_memberships", "plan_code", "TEXT NOT NULL DEFAULT 'free'")
+        _ensure_column(conn, "candidate_sessions", "revoked_at", "TEXT")
+        _ensure_column(conn, "question_attempts", "candidate_id", "INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL")
+        _ensure_column(conn, "learning_events", "candidate_id", "INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL")
         _ensure_column(conn, "exam_sessions", "duration_seconds", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "exam_sessions", "submitted_reason", "TEXT DEFAULT ''")
         _ensure_column(conn, "exam_sessions", "raw_correct", "INTEGER NOT NULL DEFAULT 0")
@@ -222,12 +326,26 @@ def run_migrations() -> None:
         _ensure_column(conn, "exam_sessions", "scaled_score", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "exam_sessions", "elapsed_seconds", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "exam_sessions", "configuration_json", "TEXT NOT NULL DEFAULT '{}'")
+        _ensure_column(conn, "exam_sessions", "candidate_id", "INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_exam_sessions_candidate ON exam_sessions(candidate_id, status, started_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_question_attempts_candidate ON question_attempts(candidate_id, attempted_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_question_usage_candidate ON candidate_daily_question_usage(candidate_id, usage_date)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_learning_events_candidate ON learning_events(candidate_id, created_at)")
+        conn.execute("UPDATE candidate_memberships SET plan_code = 'premium_20' WHERE tier = 'premium' AND plan_code = 'free'")
+        conn.execute(
+            """
+            INSERT INTO candidate_memberships(candidate_id, tier, status, source)
+            SELECT id, 'free', 'active', 'migration'
+            FROM candidate_accounts a
+            WHERE NOT EXISTS (SELECT 1 FROM candidate_memberships m WHERE m.candidate_id = a.id)
+            """
+        )
         conn.execute(
             """
             INSERT OR IGNORE INTO schema_migrations(version, name)
             VALUES (?, ?)
             """,
-            (SCHEMA_VERSION, "Production persisted mock-exam sessions and scoring"),
+            (SCHEMA_VERSION, "Candidate identity, durable memberships, sessions, and candidate-owned learning state"),
         )
 
 

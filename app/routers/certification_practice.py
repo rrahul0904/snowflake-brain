@@ -6,13 +6,15 @@ import random
 from collections import defaultdict
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..certification_content import configured_skill_map, study_lesson
 from ..database import connect
 from ..serializers import question_public
 from ..skill_brain import flatten_skills, skill_score
+from ..auth import require_candidate, require_premium_candidate
+from ..entitlements import reserve_daily_questions, validate_mock_start
 
 router = APIRouter()
 
@@ -367,6 +369,7 @@ def _question_pool(
     difficulty: str | None,
     unanswered_only: bool,
     test_id: str | None,
+    candidate_id: int,
 ) -> list[dict[str, Any]]:
     _ensure_canonical_question_bank(conn, track_id)
     filters = ["q.track_id = ?"]
@@ -381,7 +384,8 @@ def _question_pool(
         filters.append("q.difficulty = ?")
         params.append(difficulty)
     if unanswered_only:
-        filters.append("NOT EXISTS (SELECT 1 FROM question_attempts qa0 WHERE qa0.question_id = q.id)")
+        filters.append("NOT EXISTS (SELECT 1 FROM question_attempts qa0 WHERE qa0.question_id = q.id AND qa0.candidate_id = ?)")
+        params.append(candidate_id)
     where = " AND ".join(filters)
     return [
         dict(row)
@@ -393,12 +397,12 @@ def _question_pool(
                    COALESCE(SUM(CASE WHEN qa.correct = 0 THEN 1 ELSE 0 END), 0) AS missed_attempts,
                    MAX(qa.attempted_at) AS last_attempted
             FROM questions q
-            LEFT JOIN question_attempts qa ON qa.question_id = q.id
+            LEFT JOIN question_attempts qa ON qa.question_id = q.id AND qa.candidate_id = ?
             WHERE {where}
             GROUP BY q.id
             LIMIT 10000
             """,
-            params,
+            [candidate_id, *params],
         )
     ]
 
@@ -603,12 +607,12 @@ def _adaptive_drill(
 
 
 @router.post("/certification-quiz/start")
-def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
+def certification_quiz_start(payload: CertificationQuizStart, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     cert = _cert(payload.track_id)
     count = max(1, min(payload.count, 500))
     mode = (payload.mode or "drill").strip().lower()
     with connect() as conn:
-        rows = _question_pool(conn, payload.track_id, payload.difficulty, payload.unanswered_only, payload.test_id)
+        rows = _question_pool(conn, payload.track_id, payload.difficulty, payload.unanswered_only, payload.test_id, candidate["id"])
         persisted = _best_reliable_edges(conn, payload.track_id)
     rows, reliable_count, heuristic_count = _assign_edges(rows, payload.track_id, persisted)
     if not rows:
@@ -654,6 +658,7 @@ def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
         provenance_counts[row.get("mapping_provenance") or "unmapped"] += 1
         source_counts[row.get("source_kind") or "unknown"] += 1
     questions = [question_public(row, include_answer=False) for row in selected]
+    quota = reserve_daily_questions(candidate["id"], candidate["membership"], len(questions)) if candidate.get("membership") else None
     return {
         "questions": questions,
         "total": len(questions),
@@ -665,14 +670,18 @@ def certification_quiz_start(payload: CertificationQuizStart) -> dict[str, Any]:
         "reliable_pool_count": reliable_count,
         "heuristic_pool_count": heuristic_count,
         "practice_test_id": payload.test_id,
+        "quota": quota,
     }
 
 
 @router.post("/certification-mock/record")
-def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
+def record_certification_mock(payload: MockSummary, candidate: dict = Depends(require_premium_candidate)) -> dict[str, Any]:
     cert = _cert(payload.track_id)
     if payload.score > payload.total:
         raise HTTPException(status_code=400, detail="Mock score cannot exceed the total question count")
+    normalized_mode = validate_mock_start(candidate, payload.mode)
+    if normalized_mode == "quick-mock":
+        reserve_daily_questions(candidate["id"], candidate["membership"], payload.total)
     percent = round((payload.score / max(1, payload.total)) * 100)
     with connect() as conn:
         conn.execute(
@@ -692,8 +701,8 @@ def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
             """
             INSERT INTO exam_sessions(
               track_id, practice_test_id, mode, started_at, finished_at,
-              score, total_questions, status
-            ) VALUES (?, ?, ?, datetime('now', ?), datetime('now'), ?, ?, 'finished')
+              score, total_questions, status, candidate_id
+            ) VALUES (?, ?, ?, datetime('now', ?), datetime('now'), ?, ?, 'finished', ?)
             """,
             (
                 payload.track_id,
@@ -702,13 +711,14 @@ def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
                 f"-{max(0, int(payload.elapsed_seconds))} seconds",
                 payload.score,
                 payload.total,
+                candidate["id"],
             ),
         )
         session_id = int(cursor.lastrowid)
         conn.execute(
             """
-            INSERT INTO learning_events(event_type, track_id, practice_test_id, metadata_json)
-            VALUES ('practice_test_finished', ?, ?, ?)
+            INSERT INTO learning_events(event_type, track_id, practice_test_id, metadata_json, candidate_id)
+            VALUES ('practice_test_finished', ?, ?, ?, ?)
             """,
             (
                 payload.track_id,
@@ -724,6 +734,7 @@ def record_certification_mock(payload: MockSummary) -> dict[str, Any]:
                         "selection_strategy": payload.selection_strategy,
                     }
                 ),
+                candidate["id"],
             ),
         )
     return {"ok": True, "session_id": session_id, "score_pct": percent}

@@ -5,7 +5,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import run_migrations
-from .routers import activity, certification_practice, experience, feedback, intelligence, labs, mock_exam, questions, skills
+from .routers import activity, auth, certification_practice, experience, feedback, intelligence, labs, mock_exam, questions, skills
+from .security import SecurityBoundaryMiddleware
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
@@ -15,6 +16,7 @@ app = FastAPI(
     version="0.6.0",
     description="Certification-native SnowPro preparation with written curriculum, deliberate practice, persisted mock exams, mastery, and readiness.",
 )
+app.add_middleware(SecurityBoundaryMiddleware)
 
 
 @app.on_event("startup")
@@ -36,6 +38,7 @@ app.include_router(experience.router, prefix="/api")
 app.include_router(labs.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
