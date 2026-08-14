@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hmac
+from urllib.parse import parse_qs, urlparse
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
@@ -15,7 +18,7 @@ from ..auth import (
     public_candidate,
     set_session_cookie,
 )
-from ..config import APP_BASE_URL, AUTH_COOKIE_SECURE
+from ..config import APP_BASE_URL, AUTH_COOKIE_SECURE, GOOGLE_OIDC_FLOW_MINUTES
 from ..google_oidc import (
     consume_google_flow,
     create_google_authorization,
@@ -25,21 +28,52 @@ from ..google_oidc import (
 
 
 router = APIRouter()
+GOOGLE_OAUTH_STATE_COOKIE = "snowflake_google_oauth_state"
 
 
 class GoogleLinkRequest(BaseModel):
     password: str = Field(min_length=8, max_length=256)
 
 
+def _browser_state_matches(request: Request, state: str) -> bool:
+    browser_state = request.cookies.get(GOOGLE_OAUTH_STATE_COOKIE) or ""
+    return bool(state and browser_state and hmac.compare_digest(browser_state, state))
+
+
+def _clear_google_state(response: Response) -> None:
+    response.delete_cookie(GOOGLE_OAUTH_STATE_COOKIE, path="/")
+
+
 @router.get("/auth/google/start")
 def google_start() -> RedirectResponse:
-    return RedirectResponse(create_google_authorization(), status_code=302)
+    authorization_url = create_google_authorization()
+    state = (parse_qs(urlparse(authorization_url).query).get("state") or [""])[0]
+    if not state:
+        raise HTTPException(status_code=500, detail="Google sign-in could not initialize safely.")
+    response = RedirectResponse(authorization_url, status_code=302)
+    response.set_cookie(
+        GOOGLE_OAUTH_STATE_COOKIE,
+        state,
+        max_age=GOOGLE_OIDC_FLOW_MINUTES * 60,
+        httponly=True,
+        secure=AUTH_COOKIE_SECURE,
+        samesite="lax",
+        path="/",
+    )
+    return response
 
 
 @router.get("/auth/google/callback")
-def google_callback(code: str = "", state: str = "", error: str = "") -> RedirectResponse:
+def google_callback(request: Request, code: str = "", state: str = "", error: str = "") -> RedirectResponse:
+    # The server-side state record prevents forgery/replay; the short-lived
+    # HttpOnly browser cookie additionally binds the transaction to the browser
+    # that initiated it and blocks login-CSRF/session-confusion callbacks.
+    if not _browser_state_matches(request, state):
+        raise HTTPException(status_code=400, detail="Google sign-in request does not match this browser session.")
     if error:
-        return RedirectResponse(f"{APP_BASE_URL}/#/home?google_auth=cancelled", status_code=302)
+        response = RedirectResponse(f"{APP_BASE_URL}/#/home?google_auth=cancelled", status_code=302)
+        _clear_google_state(response)
+        return response
     if not code:
         raise HTTPException(status_code=400, detail="Google authorization code is missing.")
     flow = consume_google_flow(state)
@@ -49,6 +83,7 @@ def google_callback(code: str = "", state: str = "", error: str = "") -> Redirec
     existing_identity = candidate_by_google_subject(str(identity["sub"]))
     if existing_identity:
         response = RedirectResponse(f"{APP_BASE_URL}/#/home?google_auth=success", status_code=302)
+        _clear_google_state(response)
         set_session_cookie(response, existing_identity["id"])
         return response
 
@@ -58,6 +93,7 @@ def google_callback(code: str = "", state: str = "", error: str = "") -> Redirec
             int(existing_account["id"]), str(identity["sub"]), str(identity["email"])
         )
         response = RedirectResponse(f"{APP_BASE_URL}/#/home?google_link=required", status_code=302)
+        _clear_google_state(response)
         response.set_cookie(
             GOOGLE_LINK_COOKIE,
             pending_token,
@@ -73,6 +109,7 @@ def google_callback(code: str = "", state: str = "", error: str = "") -> Redirec
         str(identity.get("name") or "Candidate"), str(identity["email"]), str(identity["sub"])
     )
     response = RedirectResponse(f"{APP_BASE_URL}/#/home?google_auth=success", status_code=302)
+    _clear_google_state(response)
     set_session_cookie(response, candidate["id"])
     return response
 
