@@ -39,6 +39,15 @@ def main() -> None:
         response = client.get(path)
         check(response.status_code == 200, f"public endpoint must remain available: {path} -> {response.status_code}")
 
+    # Public SPA modules contain marketing/informational UI only.
+    for path in (
+        "/static/views/home-v26.js",
+        "/static/views/membership-v26.js",
+        "/static/views/info-v26.js",
+    ):
+        response = client.get(path)
+        check(response.status_code == 200, f"public view module must remain available: {path}")
+
     # Certification-prep APIs fail closed before a candidate account exists.
     protected = (
         "/api/skills/map",
@@ -56,10 +65,30 @@ def main() -> None:
         check(body.get("detail", {}).get("code") == "authentication_required", f"wrong denial contract for {path}")
         check(response.headers.get("cache-control") == "private, no-store", f"denied content must not be cached: {path}")
 
-    # A forged/reused-looking cookie cannot bypass the boundary.
+    # Direct requests for protected view modules fail too, preventing a router
+    # bypass from exposing embedded study-page UI/copy.
+    for path in (
+        "/static/views/certifications.js",
+        "/static/views/curriculum-v26.js",
+        "/static/views/lesson-v26.js",
+        "/static/views/practice-v26.js",
+        "/static/views/reference.js",
+        "/static/views/journal-v26.js",
+        "/static/views/labs.js",
+        "/static/views/mock-start-v26.js",
+        "/static/views/exam-session-v26.js",
+        "/static/views/exam-result-v26.js",
+        "/static/views/progress-v26.js",
+        "/static/views/account-v26.js",
+    ):
+        response = client.get(path)
+        check(response.status_code == 401, f"anonymous protected view module leaked: {path}")
+        check(response.headers.get("cache-control") == "private, no-store", f"protected module denial must not be cached: {path}")
+
+    # A forged/reused-looking cookie cannot bypass either layer.
     client.cookies.set("snowflake_candidate_session", "forged-session-token")
-    forged = client.get("/api/skills/map")
-    check(forged.status_code == 401, "forged candidate cookie must not unlock content")
+    check(client.get("/api/skills/map").status_code == 401, "forged candidate cookie must not unlock API content")
+    check(client.get("/static/views/lesson-v26.js").status_code == 401, "forged candidate cookie must not unlock study module")
     client.cookies.clear()
 
     # Creating a real candidate account unlocks the Free-account content layer.
@@ -78,6 +107,8 @@ def main() -> None:
         "/api/skills/map",
         "/api/skills/catalog",
         "/api/mock/config?track_id=snowpro-core",
+        "/static/views/lesson-v26.js",
+        "/static/views/practice-v26.js",
     ):
         response = client.get(path)
         check(response.status_code == 200, f"authenticated Free candidate should reach included content: {path} -> {response.status_code}")
@@ -91,6 +122,9 @@ def main() -> None:
 
     home = (ROOT / "frontend" / "views" / "home-v26.js").read_text(encoding="utf-8")
     check("if (account)" in home and "getSkillMap()" in home, "public home does not fetch protected skill content for guests")
+
+    nav = (ROOT / "frontend" / "components" / "nav.js").read_text(encoding="utf-8")
+    check("if (account)" in nav and "getCertificationCatalog()" in nav, "guest navigation does not fetch protected certification metadata")
 
     extras = (ROOT / "frontend" / "components" / "home-extras.js").read_text(encoding="utf-8")
     check("No certification content is exposed before login" in extras, "public membership copy states the account boundary")
