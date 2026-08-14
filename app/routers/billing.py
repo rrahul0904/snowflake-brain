@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from ..auth import require_candidate
-from ..billing.service import billing_public_config, create_checkout, process_stripe_webhook
+from ..billing.service import billing_public_config, create_billing_portal, create_checkout, process_stripe_webhook
 
 
 router = APIRouter()
@@ -22,6 +22,11 @@ def billing_config() -> dict:
 @router.post("/billing/checkout")
 def billing_checkout(payload: CheckoutRequest, candidate: dict = Depends(require_candidate)) -> dict:
     return create_checkout(candidate, payload.plan_code)
+
+
+@router.post("/billing/portal")
+def billing_portal(candidate: dict = Depends(require_candidate)) -> dict:
+    return create_billing_portal(candidate)
 
 
 @router.post("/billing/webhook")
