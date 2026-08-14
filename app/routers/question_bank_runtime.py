@@ -35,8 +35,7 @@ router = APIRouter()
 
 class TierMockSessionStart(BaseModel):
     track_id: str = "snowpro-core"
-    mode: Literal["weekly-mock", "lifetime-practice", "quick-mock", "full-mock", "source-exam"] = "quick-mock"
-    practice_test_id: str | None = None
+    mode: Literal["weekly-mock", "lifetime-practice", "quick-mock", "full-mock"] = "quick-mock"
     randomize_options: bool | None = None
 
 
@@ -113,6 +112,11 @@ def candidate_mock_config(track_id: str = "snowpro-core", candidate: dict[str, A
 
 @router.post("/certification-quiz/start")
 def start_candidate_practice(payload: CertificationQuizStart, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
+    if payload.test_id:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "session_required", "message": "Private source sets are not part of the candidate product. Start practice from the Free or Premium experience."},
+        )
     selected = select_certification_questions(payload, candidate, trusted_exam_session=False)
     return {
         "questions": [_candidate_question(dict(item)) for item in selected.get("questions") or []],
@@ -134,7 +138,7 @@ def start_candidate_mock(payload: TierMockSessionStart, candidate: dict[str, Any
             candidate,
             payload.track_id,
             normalized_mode,
-            practice_test_id=payload.practice_test_id,
+            practice_test_id=None,
             randomize_options=payload.randomize_options,
         )
     ) or {}
@@ -237,8 +241,6 @@ def grade_candidate_practice(payload: QuizGradeRequest, candidate: dict[str, Any
         is_correct = selected == correct
         score += int(is_correct)
         result = _candidate_question(question_public(row, include_answer=True))
-        # Post-submit review is allowed to reveal the answer/rationale, but no
-        # source URL, pool, authoring, exposure or private-bank metadata.
         result["correct"] = correct
         result["explanation"] = row.get("explanation") or ""
         result["selected"] = selected
