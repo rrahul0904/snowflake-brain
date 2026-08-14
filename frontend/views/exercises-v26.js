@@ -3,7 +3,7 @@ export const VIEW_ID = "v26-exercises";
 import { escapeHtml, getLabs, getSkillMap } from "../api.js";
 import { activeTrack } from "../ui.js";
 
-const COLORS = ["#e39a60", "#77a4d5", "#9b82cf", "#70af81", "#d16d68"];
+const COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 
 export default async function mount(container, params = {}) {
   const trackId = params.track_id || activeTrack();
@@ -16,5 +16,5 @@ export default async function mount(container, params = {}) {
 
 function sidebar(cert) {
   const domains = (cert.domains || []).map((domain, index) => `<a class="v26-side-domain" href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(domain.id)}"><i style="--domain:${COLORS[index % 5]}"></i><b>${index + 1}</b><span>${escapeHtml(domain.title)}</span><em>${Number(domain.weight || 0)}%</em></a>`).join("");
-  return `<aside class="v26-study-nav"><div class="v26-side-brand"><span>${escapeHtml(cert.exam_code || "COF-C03")}</span><strong>${escapeHtml(cert.title)}</strong></div><div class="v26-side-group"><small>Study Tools</small><a href="#/progress?track_id=${encodeURIComponent(cert.id)}">Progress Dashboard</a><a href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill">Drill Mode</a></div><div class="v26-side-group"><small>Curriculum</small><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Exam Domains</a>${domains}</div><div class="v26-side-group"><small>Practice</small><a class="active" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Build Exercises</a><a href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=diagnostic">Diagnostic Test</a></div><div class="v26-side-group"><small>Look Up</small><a href="#/quick-reference?track_id=${encodeURIComponent(cert.id)}">Quick Reference</a><a href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Glossary</a></div></aside>`;
+  return `<aside class="v26-study-nav" aria-label="Study navigation"><div class="v26-side-group"><small>Study Tools</small><a href="#/progress?track_id=${encodeURIComponent(cert.id)}">Progress Dashboard</a><a href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill">Drill Mode</a></div><div class="v26-side-group"><small>Curriculum</small><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Exam Domains</a>${domains}</div><div class="v26-side-group"><small>Practice</small><a class="active" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Build Exercises</a><a href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=diagnostic">Diagnostic Test</a></div><div class="v26-side-group"><small>Look Up</small><a href="#/quick-reference?track_id=${encodeURIComponent(cert.id)}">Quick Reference</a><a href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Glossary</a></div></aside>`;
 }
