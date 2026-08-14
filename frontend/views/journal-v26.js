@@ -11,13 +11,9 @@ export default async function mount(container, params = {}) {
     const intro = pageHeading.querySelector("p:last-child");
     if (kicker) kicker.textContent = "System Repository";
     if (title) title.textContent = "SnowPro Journal";
-    if (intro) intro.textContent = "Exam distinctions, recurring traps, and practical Snowflake decisions — written to support the certification curriculum rather than replace it.";
+    if (intro) intro.textContent = "Articles, tutorials, and study notes for Snowflake certification — focused on exam distinctions, practical architecture decisions, and recurring traps.";
   }
-  [...container.querySelectorAll(".replica-article-card")].forEach((card, index) => {
-    card.dataset.journalTone = String(index % 4 + 1);
-    const meta = card.querySelector("small");
-    if (meta) meta.textContent = `${5 + index % 4} min read · Aug ${13 - index}, 2026 · Read →`;
-  });
+  [...container.querySelectorAll(".replica-article-card")].forEach((card, index) => { card.dataset.journalTone = String(index % 4 + 1); });
   const article = container.querySelector(".replica-article");
   if (article) {
     const header = article.querySelector("header");
