@@ -1,0 +1,38 @@
+.v26-mock-center{width:min(690px,100%)}
+.v26-mock-center h1{font-size:clamp(52px,5.5vw,70px)}
+.v26-mock-center>p{max-width:540px;font-size:14px}
+.v26-mock-facts{max-width:560px;margin-top:34px}
+.v26-mock-facts strong{font-size:27px}
+.v26-start-mock{min-width:150px}
+.v26-sitting-page{max-width:760px;padding-top:54px}
+.v26-sitting-page>.v26-back{display:inline-block;margin-bottom:28px}
+.v26-mock-start-head{padding:0 0 30px;border-bottom:1px solid var(--border)}
+.v26-mock-start-head .v26-kicker{margin-bottom:10px}
+.v26-mock-start-head h1{font:500 clamp(38px,4.2vw,52px)/1 var(--serif);letter-spacing:-.035em;margin:0}
+.v26-mock-start-head>p:last-child{max-width:580px;margin:15px 0 0;color:var(--muted);font-size:13px;line-height:1.7}
+.v26-interrupted-sitting{max-width:none;margin:24px 0 30px;padding:18px 0}
+.v26-sitting-section{padding:26px 0 30px;border-bottom:1px solid var(--border)}
+.v26-sitting-section>h2{font:500 20px var(--serif);margin:0 0 16px}
+.v26-sitting-choice{margin:0;grid-template-columns:1fr 1fr}
+.v26-sitting-choice label{min-height:142px;padding:16px 15px}
+.v26-sitting-choice label>span{font-size:9px}
+.v26-sitting-choice label>strong{font-size:20px;margin:16px 0 3px}
+.v26-sitting-choice label>em{font-size:9px}
+.v26-sitting-choice label>p{font-size:10px;line-height:1.5;margin-top:15px}
+.v26-sitting-choice label.selected{background:color-mix(in srgb,var(--accent-soft) 58%,transparent);box-shadow:inset 0 0 0 1px var(--accent)}
+.v26-exam-info{display:block;padding:28px 0 30px;border-top:0;border-bottom:1px solid var(--border)}
+.v26-exam-info>div+div{margin-top:28px}
+.v26-exam-info .v26-kicker{margin-bottom:10px}
+.v26-exam-info dl>div{display:grid;grid-template-columns:116px 1fr;justify-content:initial;gap:14px;padding:7px 0;border-bottom:0;font-size:10px}
+.v26-exam-info dt{font-size:8px;letter-spacing:.09em;text-transform:uppercase}
+.v26-exam-info dd{text-align:left;color:var(--muted)}
+.v26-weight-list>div{padding:7px 0;border-bottom:0;grid-template-columns:8px 1fr auto}
+.v26-weight-list span{font-size:10px}
+.v26-before-start{padding:28px 0;border-top:0}
+.v26-before-start ul{columns:1;padding-left:18px}
+.v26-before-start li{font-size:10px;margin:6px 0}
+.v26-start-wide{min-height:48px;margin-top:20px}
+.v26-scoring-note{max-width:620px;font-size:8px;margin-top:12px}
+@media(max-width:700px){
+  .v26-sitting-page{max-width:none;padding-top:44px}.v26-sitting-choice{grid-template-columns:1fr}.v26-sitting-choice label{min-height:132px}.v26-exam-info dl>div{grid-template-columns:100px 1fr}
+}

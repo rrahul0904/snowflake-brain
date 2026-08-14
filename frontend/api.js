@@ -44,6 +44,7 @@ export const getMockConfig = (params = {}) => api(`/api/mock/config?${new URLSea
 export const startMockSession = (payload) => api("/api/mock/sessions", { method: "POST", body: JSON.stringify(payload) });
 export const getActiveMockSession = (params = {}) => api(`/api/mock/sessions/active?${new URLSearchParams(params)}`);
 export const getMockSession = (id) => api(`/api/mock/sessions/${encodeURIComponent(id)}`);
+export const cancelMockSession = (id) => api(`/api/mock/session-control/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" });
 export const saveMockAnswer = (sessionId, questionId, selected) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/answers/${encodeURIComponent(questionId)}`, { method: "PUT", body: JSON.stringify({ selected }) });
 export const saveMockFlag = (sessionId, questionId, flagged) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/questions/${encodeURIComponent(questionId)}/flag`, { method: "PUT", body: JSON.stringify({ flagged }) });
 export const submitMockSession = (sessionId, reason = "learner") => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/submit`, { method: "POST", body: JSON.stringify({ reason }) });
@@ -57,6 +58,8 @@ export const getLabs = (params = {}) => api(`/api/labs?${new URLSearchParams(par
 export const getLab = (id) => api(`/api/labs/${encodeURIComponent(id)}`);
 export const getLabsConfig = () => api("/api/labs/config");
 export const submitLab = (id, sql) => api(`/api/labs/${encodeURIComponent(id)}/submit`, { method: "POST", body: JSON.stringify({ sql }) });
+export const submitFeedback = (payload) => api("/api/feedback", { method: "POST", body: JSON.stringify(payload) });
+export const getGlobeActivity = () => api("/api/activity/globe");
 
 export function escapeHtml(value) {
   return String(value ?? "")

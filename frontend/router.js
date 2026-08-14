@@ -1,42 +1,47 @@
-import { showToast } from "./components/toast.js?v=20260813-v25-production-mock-r7";
-import { updateActiveNav } from "./components/nav.js?v=20260813-v25-production-mock-r7";
-import { refreshTopbar } from "./components/topbar.js?v=20260813-v25-production-mock-r7";
-import { errorPanel, skeleton } from "./ui.js?v=20260731-v21-editorial-replica";
+import { showToast } from "./components/toast.js";
+import { updateActiveNav } from "./components/nav.js";
+import { errorPanel, skeleton } from "./ui.js";
 
-const ASSET_VERSION = "20260813-v25-production-mock-r7";
-const guide = () => import(`./views/guide.js?v=${ASSET_VERSION}`);
-const mock = () => import(`./views/mock.js?v=${ASSET_VERSION}`);
+const home = () => import("./views/home-v26.js");
+const certifications = () => import("./views/certifications.js");
+const curriculum = () => import("./views/curriculum-v26.js");
+const lesson = () => import("./views/lesson-v26.js");
+const guide = () => import("./views/guide.js");
+const practice = () => import("./views/practice-v26.js");
+const legacyPractice = () => import("./views/quiz.js");
+const mockLanding = () => import("./views/mock-landing.js");
+const mockStart = () => import("./views/mock-start-v26.js");
+const examSession = () => import("./views/exam-session-v26.js");
+const examResult = () => import("./views/exam-result-v26.js");
+const reference = () => import("./views/reference.js");
+const journal = () => import("./views/journal.js");
 
 const routes = {
-  "#/home": guide,
-  "#/curriculum": guide,
+  "#/home": home,
+  "#/certifications": certifications,
+  "#/curriculum": curriculum,
+  "#/domain": curriculum,
+  "#/skill": lesson,
   "#/progress": guide,
-  "#/domain": guide,
-  "#/skill": guide,
-  "#/diagnostic": guide,
-  "#/drill": guide,
-  "#/mock": mock,
-  "#/mock/start": mock,
-  "#/mock/session": mock,
-  "#/mock/result": mock,
-  "#/mock/history": mock,
-  "#/exercises": guide,
   "#/quick-reference": guide,
   "#/glossary": guide,
-  "#/practice": () => import(`./views/quiz.js?v=${ASSET_VERSION}`),
-  "#/labs": () => import(`./views/labs.js?v=${ASSET_VERSION}`),
-  "#/journal": () => import(`./views/journal.js?v=${ASSET_VERSION}`),
-  "#/article": () => import(`./views/journal.js?v=${ASSET_VERSION}`),
+  "#/exercises": guide,
+  "#/practice": practice,
+  "#/quiz": legacyPractice,
+  "#/diagnostic": legacyPractice,
+  "#/drill": legacyPractice,
+  "#/mock": mockLanding,
+  "#/mock/start": mockStart,
+  "#/mock/session": examSession,
+  "#/mock/result": examResult,
+  "#/mock/history": examResult,
+  "#/reference": reference,
+  "#/journal": journal,
+  "#/article": journal,
+  "#/labs": () => import("./views/labs.js"),
 };
 
-const aliases = {
-  "#/": "#/home",
-  "#/learn": "#/curriculum",
-  "#/readiness": "#/progress",
-  "#/quiz": "#/practice",
-  "#/review": "#/drill",
-};
-
+const aliases = { "#/": "#/home", "#/learn": "#/curriculum", "#/readiness": "#/progress", "#/review": "#/drill" };
 let currentView = null;
 
 export async function route() {
@@ -44,42 +49,28 @@ export async function route() {
   const hash = window.location.hash || "#/home";
   const [rawPath, query = ""] = hash.split("?");
   const path = aliases[rawPath] || rawPath;
-  if (!routes[path]) {
-    const params = new URLSearchParams(query);
-    const trackId = params.get("track_id");
-    const destination = trackId
-      ? `#/curriculum?track_id=${encodeURIComponent(trackId)}`
-      : "#/home";
-    window.history.replaceState(null, "", destination);
+  const loader = routes[path];
+  if (!loader) {
+    window.history.replaceState(null, "", "#/home");
     return route();
   }
-  const loader = routes[path];
   window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "loading", route: path, error: null };
-  document.body.classList.remove("player-mode", "quiz-active", "replica-exam-active");
-  if (currentView?.unmount) currentView.unmount();
+  document.body.classList.remove("player-mode", "quiz-active", "replica-exam-active", "mock-player-active", "v26-exam-active", "v26-exam-nav-open");
+  currentView?.unmount?.();
   root.innerHTML = skeleton("Loading certification guide...");
   updateActiveNav();
   try {
     currentView = await loader();
     await currentView.default(root, Object.fromEntries(new URLSearchParams(query)));
-    await refreshTopbar();
     root.dataset.routeOk = "true";
     root.dataset.routePath = path;
     root.dataset.viewId = currentView.VIEW_ID || "unknown";
-    window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = {
-      status: "ok",
-      route: path,
-      view_id: currentView.VIEW_ID || "unknown",
-      error: null,
-    };
+    window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "ok", route: path, view_id: currentView.VIEW_ID || "unknown", error: null };
     root.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "instant" });
   } catch (error) {
     root.dataset.routeOk = "false";
-    window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = {
-      status: "error",
-      route: path,
-      error: error.message || String(error),
-    };
+    window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__ = { status: "error", route: path, error: error.message || String(error) };
     root.innerHTML = errorPanel(error);
     showToast(error.message || "View failed to load", "error");
   }
