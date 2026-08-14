@@ -112,7 +112,8 @@ def guest_identity_pass(browser: Browser) -> None:
     check_google = page.locator("[data-google-auth]")
     if not check_google.count() or "Continue with Google" not in check_google.inner_text():
         raise AssertionError("Continue with Google is missing from sign-in")
-    page.locator("[data-auth-close]").first.click()
+    page.locator(".v26-modal-close[data-auth-close]").click()
+    page.wait_for_selector(".v26-auth-modal", state="detached")
     page.locator(".v26-signup-link[data-auth-intent='signup']").click()
     page.wait_for_selector(".v26-auth-modal")
     page.wait_for_timeout(200)
