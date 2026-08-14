@@ -3,6 +3,14 @@ __MACOSX/
 .venv/
 __pycache__/
 *.pyc
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+private_content/
+backups/
 data/*.sqlite
 data/*.sqlite-*
 data/*.db
