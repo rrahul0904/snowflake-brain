@@ -40,6 +40,8 @@ jobs:
         run: python scripts/smoke_v26.py
       - name: Verify candidate auth and memberships
         run: python scripts/test_auth_membership.py
+      - name: Verify login-required certification content boundary
+        run: python scripts/test_authenticated_content_boundary.py
       - name: Verify Google identity and trusted billing authority
         run: python scripts/test_google_billing_security.py
       - name: Verify Google OAuth browser transaction binding
