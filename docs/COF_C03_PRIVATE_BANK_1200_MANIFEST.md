@@ -4,14 +4,16 @@ This file intentionally contains **no commercial question wording, answer keys, 
 
 ## Artifact
 
-- Bank version: `2026-08-14-beta-1200-v1`
+- Bank version: `2026-08-14-beta-1200-v2`
 - Certification: SnowPro Core `COF-C03`
 - Total questions: **1,200**
-- SHA-256: `0e651e75f3e0c681a8ce6f3f9f1c35bc7319ad085ac4fb2d0005c87cffd21960`
-- Private artifact filename: `snowpro_core_cof_c03_private_bank_1200_beta.json`
+- SHA-256: `da57f636a57180631448fda79cfdcad2acf8e38ae2f381ea891a8cea91e704c5`
+- Private artifact filename: `snowpro_core_cof_c03_private_bank_1200_beta_v2.json`
 - Source-content verification inherited from the independently written Core guide: `2026-08-12`
 - Build date: `2026-08-14`
 - Storage boundary: private deployment content store / read-only `PRIVATE_QUESTION_BANK_DIR`; never frontend/static and never committed to this public repository.
+
+Beta v2 supersedes the first generated beta artifact. It sharpens generic definition stems to reduce adjacent-true-statement ambiguity and corrects article/role grammar while preserving IDs, answers, coverage, pools, difficulty distribution, and source provenance.
 
 ## Domain coverage
 
@@ -78,6 +80,9 @@ Pool labels are backend-only implementation metadata and must never be surfaced 
 - option-level rationale array present for every question
 - official `docs.snowflake.com` source reference attached to every question
 - all 5 domains and 19 task statements covered
+- answer-position distribution is balanced across A/B/C/D
+- generic definition stems were tightened in beta v2 to reduce ambiguity where adjacent choices describe other valid Snowflake concepts
+- role/article grammar was normalized in beta v2
 - no commercial question content written to GitHub or frontend assets
 
 ## Editorial/source policy
@@ -88,7 +93,7 @@ The bank is independently authored from the configured COF-C03 blueprint, the in
 
 This artifact is suitable for backend beta integration after private deployment import and automated schema validation.
 
-Automated structural/editorial QA is complete. An independent human/SME review is still recommended before unrestricted public launch, especially for ambiguous-best-answer checks and future Snowflake feature changes.
+Automated structural/editorial QA and targeted manual sampling are complete. An independent human/SME review is still recommended before unrestricted public launch, especially for ambiguous-best-answer checks and future Snowflake feature changes. A 95-question review sample (five questions per task statement) is maintained with the private artifact for this purpose.
 
 ## Candidate boundary
 
