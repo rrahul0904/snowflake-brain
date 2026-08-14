@@ -78,15 +78,20 @@ def _candidate_for_customer(provider: str, customer_id: str) -> int | None:
     return int(row["candidate_id"]) if row else None
 
 
-def _get_or_create_customer(candidate: dict[str, Any], provider: StripeProvider) -> str:
-    ensure_identity_billing_schema()
+def _customer_for_candidate(candidate_id: int) -> str | None:
     with connect() as conn:
         row = conn.execute(
             "SELECT provider_customer_id FROM billing_customers WHERE provider='stripe' AND candidate_id=?",
-            (candidate["id"],),
+            (candidate_id,),
         ).fetchone()
-    if row:
-        return str(row["provider_customer_id"])
+    return str(row["provider_customer_id"]) if row else None
+
+
+def _get_or_create_customer(candidate: dict[str, Any], provider: StripeProvider) -> str:
+    ensure_identity_billing_schema()
+    existing = _customer_for_candidate(int(candidate["id"]))
+    if existing:
+        return existing
     provider_customer_id = provider.create_customer(email=candidate["email"], candidate_id=int(candidate["id"]))
     try:
         with connect() as conn:
@@ -95,45 +100,11 @@ def _get_or_create_customer(candidate: dict[str, Any], provider: StripeProvider)
                 (candidate["id"], provider_customer_id),
             )
     except sqlite3.IntegrityError:
-        with connect() as conn:
-            row = conn.execute(
-                "SELECT provider_customer_id FROM billing_customers WHERE provider='stripe' AND candidate_id=?",
-                (candidate["id"],),
-            ).fetchone()
-        if row:
-            return str(row["provider_customer_id"])
+        existing = _customer_for_candidate(int(candidate["id"]))
+        if existing:
+            return existing
         raise
     return provider_customer_id
-
-
-def create_checkout(candidate: dict[str, Any], plan_code: str) -> dict[str, Any]:
-    if plan_code not in PAID_PLANS or plan_code not in PLAN_CATALOG:
-        raise HTTPException(status_code=400, detail={"code": "invalid_plan", "message": "This plan cannot be purchased."})
-    provider = _provider()
-    price_id = price_map().get(plan_code) or ""
-    if not price_id:
-        raise HTTPException(status_code=503, detail={"code": "billing_plan_unavailable", "message": "This plan is not configured for checkout."})
-    customer_id = _get_or_create_customer(candidate, provider)
-    mode = "subscription" if plan_code in SUBSCRIPTION_PLANS else "payment"
-    checkout = provider.create_checkout_session(
-        customer_id=customer_id,
-        candidate_id=int(candidate["id"]),
-        plan_code=plan_code,
-        price_id=price_id,
-        mode=mode,
-        success_url=f"{APP_BASE_URL}/#/membership?checkout=success",
-        cancel_url=f"{APP_BASE_URL}/#/membership?checkout=cancelled",
-    )
-    checkout_id = str(checkout.get("id") or "")
-    if not checkout.get("url") or not checkout_id:
-        raise HTTPException(status_code=502, detail="Billing provider did not return a complete checkout session.")
-    with connect() as conn:
-        conn.execute(
-            "INSERT INTO billing_checkout_sessions(candidate_id,provider,provider_checkout_session_id,provider_customer_id,provider_price_id,internal_plan,checkout_mode,status) "
-            "VALUES (?,'stripe',?,?,?,?,?,'pending')",
-            (candidate["id"], checkout_id, customer_id, price_id, plan_code, mode),
-        )
-    return {"checkout_url": checkout["url"], "checkout_session_id": checkout_id, "plan_code": plan_code}
 
 
 def _stripe_time(value: Any) -> str | None:
@@ -168,6 +139,32 @@ def subscription_allows_access(status: str, current_period_end: str | None) -> b
     return False
 
 
+def _subscription_entitlement_expiry(status: str, period_end: str | None) -> str | None:
+    normalized = (status or "").lower()
+    parsed = _parse_iso(period_end)
+    if normalized in {"canceled", "cancelled"}:
+        return parsed.isoformat() if parsed else None
+    if normalized == "past_due" and parsed:
+        return (parsed + timedelta(days=BILLING_PAST_DUE_GRACE_DAYS)).isoformat()
+    return None
+
+
+def _active_subscription(candidate_id: int) -> dict[str, Any] | None:
+    ensure_identity_billing_schema()
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM billing_subscriptions WHERE candidate_id=? AND provider='stripe' ORDER BY datetime(updated_at) DESC,id DESC",
+            (candidate_id,),
+        ).fetchall()
+    for row in rows:
+        value = dict(row)
+        if value.get("internal_plan") in SUBSCRIPTION_PLANS and subscription_allows_access(
+            str(value.get("status") or ""), value.get("current_period_end")
+        ):
+            return value
+    return None
+
+
 def _fallback_paid_plan(candidate_id: int) -> str:
     with connect() as conn:
         row = conn.execute(
@@ -175,6 +172,93 @@ def _fallback_paid_plan(candidate_id: int) -> str:
             (candidate_id,),
         ).fetchone()
     return "exam_pack_35" if row else "free"
+
+
+def _sync_candidate_entitlement(candidate_id: int, event_id: str, reason: str) -> dict[str, Any]:
+    subscription = _active_subscription(candidate_id)
+    if subscription:
+        plan_code = str(subscription["internal_plan"])
+        expiry = _subscription_entitlement_expiry(
+            str(subscription.get("status") or ""), subscription.get("current_period_end")
+        )
+        change = apply_membership_plan(
+            candidate_id,
+            plan_code,
+            source="stripe_webhook",
+            reason=reason,
+            provider_event_id=event_id,
+            expires_at=expiry,
+        )
+        return {"candidate_id": candidate_id, "plan_code": plan_code, "source": "subscription", **change}
+    fallback = _fallback_paid_plan(candidate_id)
+    change = apply_membership_plan(
+        candidate_id,
+        fallback,
+        source="stripe_webhook",
+        reason=reason,
+        provider_event_id=event_id,
+    )
+    return {"candidate_id": candidate_id, "plan_code": fallback, "source": "purchase" if fallback != "free" else "free", **change}
+
+
+def create_checkout(candidate: dict[str, Any], plan_code: str) -> dict[str, Any]:
+    if plan_code not in PAID_PLANS or plan_code not in PLAN_CATALOG:
+        raise HTTPException(status_code=400, detail={"code": "invalid_plan", "message": "This plan cannot be purchased."})
+    candidate_id = int(candidate["id"])
+    existing_subscription = _active_subscription(candidate_id)
+    if existing_subscription:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "manage_subscription_required",
+                "message": "Use Manage plan to upgrade, downgrade, or cancel your existing subscription securely.",
+            },
+        )
+    provider = _provider()
+    price_id = price_map().get(plan_code) or ""
+    if not price_id:
+        raise HTTPException(status_code=503, detail={"code": "billing_plan_unavailable", "message": "This plan is not configured for checkout."})
+    customer_id = _get_or_create_customer(candidate, provider)
+    mode = "subscription" if plan_code in SUBSCRIPTION_PLANS else "payment"
+    checkout = provider.create_checkout_session(
+        customer_id=customer_id,
+        candidate_id=candidate_id,
+        plan_code=plan_code,
+        price_id=price_id,
+        mode=mode,
+        success_url=f"{APP_BASE_URL}/#/membership?checkout=success",
+        cancel_url=f"{APP_BASE_URL}/#/membership?checkout=cancelled",
+    )
+    checkout_id = str(checkout.get("id") or "")
+    if not checkout.get("url") or not checkout_id:
+        raise HTTPException(status_code=502, detail="Billing provider did not return a complete checkout session.")
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO billing_checkout_sessions(candidate_id,provider,provider_checkout_session_id,provider_customer_id,provider_price_id,internal_plan,checkout_mode,status) "
+            "VALUES (?,'stripe',?,?,?,?,?,'pending')",
+            (candidate_id, checkout_id, customer_id, price_id, plan_code, mode),
+        )
+    return {"checkout_url": checkout["url"], "checkout_session_id": checkout_id, "plan_code": plan_code}
+
+
+def create_billing_portal(candidate: dict[str, Any]) -> dict[str, Any]:
+    provider = _provider()
+    candidate_id = int(candidate["id"])
+    customer_id = _customer_for_candidate(candidate_id)
+    if not customer_id:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "billing_customer_missing", "message": "No paid billing account exists for this candidate yet."},
+        )
+    if not _active_subscription(candidate_id):
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "subscription_missing", "message": "There is no active subscription to manage."},
+        )
+    portal = provider.create_portal_session(customer_id=customer_id, return_url=f"{APP_BASE_URL}/#/membership")
+    if not portal.get("url"):
+        raise HTTPException(status_code=502, detail="Billing provider did not return an account-management URL.")
+    return {"portal_url": portal["url"]}
 
 
 def _subscription_plan_from_object(subscription: dict[str, Any]) -> str | None:
@@ -220,24 +304,8 @@ def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str
             "cancel_at_period_end=excluded.cancel_at_period_end,updated_at=datetime('now')",
             (candidate_id, customer_id, subscription_id, price_id, plan_code, status, period_start, period_end, cancel_at_period_end),
         )
-    if subscription_allows_access(status, period_end):
-        apply_membership_plan(
-            candidate_id,
-            plan_code,
-            source="stripe_webhook",
-            reason=f"subscription_{status}",
-            provider_event_id=event_id,
-            expires_at=period_end if status in {"canceled", "cancelled"} else None,
-        )
-    else:
-        apply_membership_plan(
-            candidate_id,
-            _fallback_paid_plan(candidate_id),
-            source="stripe_webhook",
-            reason=f"subscription_{status}",
-            provider_event_id=event_id,
-        )
-    return {"candidate_id": candidate_id, "plan_code": plan_code, "status": status}
+    effective = _sync_candidate_entitlement(candidate_id, event_id, f"subscription_{status}")
+    return {"candidate_id": candidate_id, "event_plan": plan_code, "status": status, "effective": effective}
 
 
 def _record_exam_pack(candidate_id: int, event_id: str, session: dict[str, Any]) -> dict[str, Any]:
@@ -277,14 +345,8 @@ def _record_exam_pack(candidate_id: int, event_id: str, session: dict[str, Any])
             )
     except sqlite3.IntegrityError:
         return {"duplicate_purchase": True}
-    apply_membership_plan(
-        candidate_id,
-        "exam_pack_35",
-        source="stripe_webhook",
-        reason="exam_pack_purchased",
-        provider_event_id=event_id,
-    )
-    return {"candidate_id": candidate_id, "plan_code": "exam_pack_35", "status": "paid"}
+    effective = _sync_candidate_entitlement(candidate_id, event_id, "exam_pack_purchased")
+    return {"candidate_id": candidate_id, "purchased_plan": "exam_pack_35", "status": "paid", "effective": effective}
 
 
 def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
@@ -327,15 +389,10 @@ def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
                 "UPDATE billing_subscriptions SET status=?,updated_at=datetime('now') WHERE id=?",
                 (status, row["id"]),
             )
-        synthetic = {
-            "id": subscription_id,
-            "customer": row["provider_customer_id"],
-            "status": status,
-            "current_period_start": row["current_period_start"],
-            "current_period_end": row["current_period_end"],
-            "cancel_at_period_end": bool(row["cancel_at_period_end"]),
-        }
-        return _store_subscription(int(row["candidate_id"]), event_id, synthetic)
+        effective = _sync_candidate_entitlement(
+            int(row["candidate_id"]), event_id, "payment_recovered" if status == "active" else "payment_failed"
+        )
+        return {"candidate_id": int(row["candidate_id"]), "subscription_id": subscription_id, "status": status, "effective": effective}
 
     return {"ignored": True, "reason": "unsupported_event"}
 
