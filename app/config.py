@@ -55,6 +55,7 @@ PRIVATE_QUESTION_BANK_DIR = Path(
         str(ROOT_DIR / "private_content" / "question_bank"),
     )
 ).expanduser()
+QUESTION_BANK_AUTO_IMPORT = os.getenv("QUESTION_BANK_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}
 
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
@@ -80,6 +81,11 @@ STRIPE_PRICE_PREMIUM_500 = os.getenv("STRIPE_PRICE_PREMIUM_500", "").strip()
 STRIPE_PRICE_EXAM_PACK = os.getenv("STRIPE_PRICE_EXAM_PACK", "").strip()
 BILLING_PAST_DUE_GRACE_DAYS = max(0, int(os.getenv("BILLING_PAST_DUE_GRACE_DAYS", "3")))
 ALLOW_MEMBERSHIP_DEV_OVERRIDE = os.getenv("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "false").lower() in {"1", "true", "yes", "on"}
+
+# No display/programmatic advertising is supported. These settings only enable
+# editorial Amazon Associates links inside the authenticated Resources page.
+AFFILIATE_RESOURCES_ENABLED = os.getenv("AFFILIATE_RESOURCES_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+AMAZON_ASSOCIATE_TAG = os.getenv("AMAZON_ASSOCIATE_TAG", "").strip()
 
 EXAM_SIMULATION_CONFIG = Path(
     os.getenv(
