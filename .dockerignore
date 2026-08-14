@@ -3,6 +3,14 @@
 __pycache__
 **/__pycache__
 *.pyc
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets
+private_content
+backups
 *.sqlite
 *.sqlite-*
 *.db
