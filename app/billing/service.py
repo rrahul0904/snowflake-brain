@@ -124,9 +124,16 @@ def create_checkout(candidate: dict[str, Any], plan_code: str) -> dict[str, Any]
         success_url=f"{APP_BASE_URL}/#/membership?checkout=success",
         cancel_url=f"{APP_BASE_URL}/#/membership?checkout=cancelled",
     )
-    if not checkout.get("url"):
-        raise HTTPException(status_code=502, detail="Billing provider did not return a checkout URL.")
-    return {"checkout_url": checkout["url"], "checkout_session_id": checkout.get("id"), "plan_code": plan_code}
+    checkout_id = str(checkout.get("id") or "")
+    if not checkout.get("url") or not checkout_id:
+        raise HTTPException(status_code=502, detail="Billing provider did not return a complete checkout session.")
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO billing_checkout_sessions(candidate_id,provider,provider_checkout_session_id,provider_customer_id,provider_price_id,internal_plan,checkout_mode,status) "
+            "VALUES (?,'stripe',?,?,?,?,?,'pending')",
+            (candidate["id"], checkout_id, customer_id, price_id, plan_code, mode),
+        )
+    return {"checkout_url": checkout["url"], "checkout_session_id": checkout_id, "plan_code": plan_code}
 
 
 def _stripe_time(value: Any) -> str | None:
@@ -171,14 +178,13 @@ def _fallback_paid_plan(candidate_id: int) -> str:
 
 
 def _subscription_plan_from_object(subscription: dict[str, Any]) -> str | None:
+    """Resolve subscription plan only from a configured provider price ID."""
+    mapping = reverse_price_map()
     for item in ((subscription.get("items") or {}).get("data") or []):
         price = item.get("price") or {}
         price_id = price.get("id") if isinstance(price, dict) else None
-        if price_id and price_id in reverse_price_map():
-            return reverse_price_map()[price_id]
-    metadata_plan = str((subscription.get("metadata") or {}).get("plan_code") or "")
-    if metadata_plan in SUBSCRIPTION_PLANS:
-        return metadata_plan
+        if price_id and price_id in mapping and mapping[price_id] in SUBSCRIPTION_PLANS:
+            return mapping[price_id]
     return None
 
 
@@ -235,21 +241,39 @@ def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str
 
 
 def _record_exam_pack(candidate_id: int, event_id: str, session: dict[str, Any]) -> dict[str, Any]:
-    metadata = session.get("metadata") or {}
-    plan_code = str(metadata.get("plan_code") or "")
-    if plan_code != "exam_pack_35":
+    checkout_id = str(session.get("id") or "")
+    customer_id = str(session.get("customer") or "")
+    if not checkout_id or not customer_id:
+        raise ValueError("Checkout event is missing its session or customer ID")
+    with connect() as conn:
+        checkout = conn.execute(
+            "SELECT * FROM billing_checkout_sessions WHERE provider='stripe' AND provider_checkout_session_id=? AND candidate_id=?",
+            (checkout_id, candidate_id),
+        ).fetchone()
+    if not checkout:
+        raise ValueError("Checkout session was not created by Snowflake Brain for this candidate")
+    if str(checkout["provider_customer_id"]) != customer_id:
+        raise ValueError("Checkout customer does not match the recorded candidate checkout")
+    if checkout["internal_plan"] != "exam_pack_35" or checkout["provider_price_id"] != price_map()["exam_pack_35"]:
         return {"ignored": True, "reason": "not_exam_pack"}
+    if checkout["status"] == "completed":
+        return {"duplicate_purchase": True}
     payment_status = str(session.get("payment_status") or "")
     if payment_status not in {"paid", "no_payment_required"}:
         return {"ignored": True, "reason": "payment_not_complete"}
-    payment_id = str(session.get("payment_intent") or session.get("id") or "")
+    payment_id = str(session.get("payment_intent") or "")
     if not payment_id:
         raise ValueError("Paid Exam Pack event is missing a payment identifier")
     try:
         with connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             conn.execute(
                 "INSERT INTO billing_purchases(candidate_id,provider,provider_payment_id,product_type,status,metadata_json) VALUES (?,'stripe',?,'exam_pack_35','paid',?)",
-                (candidate_id, payment_id, json.dumps({"checkout_session_id": session.get("id")})),
+                (candidate_id, payment_id, json.dumps({"checkout_session_id": checkout_id})),
+            )
+            conn.execute(
+                "UPDATE billing_checkout_sessions SET status='completed',completed_at=datetime('now') WHERE id=? AND status='pending'",
+                (checkout["id"],),
             )
     except sqlite3.IntegrityError:
         return {"duplicate_purchase": True}
@@ -310,7 +334,6 @@ def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
             "current_period_start": row["current_period_start"],
             "current_period_end": row["current_period_end"],
             "cancel_at_period_end": bool(row["cancel_at_period_end"]),
-            "metadata": {"plan_code": row["internal_plan"]},
         }
         return _store_subscription(int(row["candidate_id"]), event_id, synthetic)
 
