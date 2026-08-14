@@ -16,7 +16,7 @@ const aliases = new Map([
   ["#/quick-reference", "#/reference"], ["#/glossary", "#/reference"],
   ["#/mock", "#/practice"], ["#/mock/start", "#/practice"], ["#/mock/session", "#/practice"], ["#/mock/result", "#/practice"], ["#/mock/history", "#/practice"],
   ["#/diagnostic", "#/practice"], ["#/drill", "#/practice"], ["#/quiz", "#/practice"],
-  ["#/article", "#/journal"],
+  ["#/article", "#/journal"], ["#/account", "#/membership"],
 ]);
 
 export async function renderNav() {
@@ -37,6 +37,7 @@ export async function renderNav() {
   const primaryItems = rawPath === "#/home" || rawPath === "#/" ? homeItems : certificationItems;
   const account = candidate();
   const initials = account?.display_name?.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "";
+  const methods = (account?.sign_in_methods || []).map((item) => item === "google" ? "Google" : "Email").join(" + ");
 
   nav.className = "v26-header";
   nav.innerHTML = `<div class="v26-nav-inner">
@@ -52,7 +53,7 @@ export async function renderNav() {
         </div>
       </div>
       <button class="v26-theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme">${theme === "dark" ? "☼" : "☾"}</button>
-      ${account ? `<div class="v26-account-menu"><button class="v26-account-link" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu, ${escapeHtml(account.plan)}" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span><b>${escapeHtml(account.display_name)} ▾</b><em>${escapeHtml(account.plan)}</em></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em></div><a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">My Progress</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
+      ${account ? `<div class="v26-account-menu"><button class="v26-account-link" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu, ${escapeHtml(account.plan)}" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span><b>${escapeHtml(account.display_name)} ▾</b><em>${escapeHtml(account.plan)}</em></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em>${methods ? `<small>Signed in with ${escapeHtml(methods)}</small>` : ""}</div><a href="#/account" role="menuitem">Account & Sessions</a><a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">My Progress</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
       <a class="v26-mock-cta" href="#/mock?track_id=${encodeURIComponent(selected)}">${account?.plan_code === "free" ? "Weekly Mock" : "Take Mock Exam"}</a>
     </div>
   </div>`;
