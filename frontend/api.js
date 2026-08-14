@@ -29,6 +29,7 @@ export const revokeCandidateSession = (id) => api(`/api/auth/sessions/${encodeUR
 export const revokeAllCandidateSessions = () => api("/api/auth/sessions/revoke-all", { method: "POST", body: "{}" });
 export const getBillingConfig = () => api("/api/billing/config");
 export const createBillingCheckout = (planCode) => api("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan_code: planCode }) });
+export const createBillingPortal = () => api("/api/billing/portal", { method: "POST", body: "{}" });
 
 export const getSkillMap = () => api("/api/skills/map");
 export const getCertificationCatalog = () => api("/api/skills/catalog");
