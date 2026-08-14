@@ -59,6 +59,7 @@ export const getLab = (id) => api(`/api/labs/${encodeURIComponent(id)}`);
 export const getLabsConfig = () => api("/api/labs/config");
 export const submitLab = (id, sql) => api(`/api/labs/${encodeURIComponent(id)}/submit`, { method: "POST", body: JSON.stringify({ sql }) });
 export const submitFeedback = (payload) => api("/api/feedback", { method: "POST", body: JSON.stringify(payload) });
+export const getGlobeActivity = () => api("/api/activity/globe");
 
 export function escapeHtml(value) {
   return String(value ?? "")
