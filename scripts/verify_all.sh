@@ -45,6 +45,9 @@ echo "== Google identity and trusted billing authority =="
 echo "== Google OAuth browser transaction binding =="
 "$PYTHON_BIN" scripts/test_google_browser_state.py
 
+echo "== Google identity continuity =="
+"$PYTHON_BIN" scripts/test_google_identity_continuity.py
+
 echo "== Paid tier transition hardening =="
 "$PYTHON_BIN" scripts/test_billing_tier_transitions.py
 
