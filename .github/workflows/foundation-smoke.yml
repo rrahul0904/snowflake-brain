@@ -5,7 +5,10 @@ on:
   push:
     branches:
       - main
-      - agent/v26-screen-recording-rebuild
+
+concurrency:
+  group: certification-guide-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
