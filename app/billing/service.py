@@ -272,18 +272,21 @@ def _subscription_plan_from_object(subscription: dict[str, Any]) -> str | None:
     return None
 
 
-def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str, Any]) -> dict[str, Any]:
+def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str, Any], event_created: int) -> dict[str, Any]:
     customer_id = str(subscription.get("customer") or "")
     subscription_id = str(subscription.get("id") or "")
     plan_code = _subscription_plan_from_object(subscription)
     if not customer_id or not subscription_id:
         raise ValueError("Subscription event is missing customer or subscription ID")
+    with connect() as conn:
+        existing = conn.execute(
+            "SELECT * FROM billing_subscriptions WHERE provider='stripe' AND provider_subscription_id=?",
+            (subscription_id,),
+        ).fetchone()
+    if existing and int(existing["last_provider_event_created"] or 0) > event_created:
+        effective = _sync_candidate_entitlement(candidate_id, event_id, "stale_subscription_event_ignored")
+        return {"candidate_id": candidate_id, "status": "stale_ignored", "effective": effective}
     if not plan_code:
-        with connect() as conn:
-            existing = conn.execute(
-                "SELECT internal_plan,provider_price_id FROM billing_subscriptions WHERE provider='stripe' AND provider_subscription_id=?",
-                (subscription_id,),
-            ).fetchone()
         if not existing:
             raise ValueError("Subscription price is not mapped to an internal plan")
         plan_code = str(existing["internal_plan"])
@@ -296,13 +299,14 @@ def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str
     cancel_at_period_end = 1 if subscription.get("cancel_at_period_end") else 0
     with connect() as conn:
         conn.execute(
-            "INSERT INTO billing_subscriptions(candidate_id,provider,provider_customer_id,provider_subscription_id,provider_price_id,internal_plan,status,current_period_start,current_period_end,cancel_at_period_end) "
-            "VALUES (?,'stripe',?,?,?,?,?,?,?,?) "
+            "INSERT INTO billing_subscriptions(candidate_id,provider,provider_customer_id,provider_subscription_id,provider_price_id,internal_plan,status,current_period_start,current_period_end,cancel_at_period_end,last_provider_event_created) "
+            "VALUES (?,'stripe',?,?,?,?,?,?,?,?,?) "
             "ON CONFLICT(provider,provider_subscription_id) DO UPDATE SET provider_customer_id=excluded.provider_customer_id, "
             "provider_price_id=excluded.provider_price_id,internal_plan=excluded.internal_plan,status=excluded.status, "
             "current_period_start=excluded.current_period_start,current_period_end=excluded.current_period_end, "
-            "cancel_at_period_end=excluded.cancel_at_period_end,updated_at=datetime('now')",
-            (candidate_id, customer_id, subscription_id, price_id, plan_code, status, period_start, period_end, cancel_at_period_end),
+            "cancel_at_period_end=excluded.cancel_at_period_end,last_provider_event_created=excluded.last_provider_event_created,updated_at=datetime('now') "
+            "WHERE excluded.last_provider_event_created >= billing_subscriptions.last_provider_event_created",
+            (candidate_id, customer_id, subscription_id, price_id, plan_code, status, period_start, period_end, cancel_at_period_end, event_created),
         )
     effective = _sync_candidate_entitlement(candidate_id, event_id, f"subscription_{status}")
     return {"candidate_id": candidate_id, "event_plan": plan_code, "status": status, "effective": effective}
@@ -352,6 +356,7 @@ def _record_exam_pack(candidate_id: int, event_id: str, session: dict[str, Any])
 def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
     event_id = str(event["id"])
     event_type = str(event["type"])
+    event_created = int(event.get("created") or 0)
     obj = ((event.get("data") or {}).get("object") or {})
     if not isinstance(obj, dict):
         return {"ignored": True, "reason": "missing_object"}
@@ -371,7 +376,7 @@ def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
         candidate_id = _candidate_for_customer("stripe", customer_id)
         if candidate_id is None:
             raise ValueError("Subscription customer is not bound to a candidate")
-        return _store_subscription(candidate_id, event_id, obj)
+        return _store_subscription(candidate_id, event_id, obj, event_created)
 
     if event_type in {"invoice.paid", "invoice.payment_failed"}:
         subscription_id = str(obj.get("subscription") or "")
@@ -384,10 +389,13 @@ def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
             ).fetchone()
             if not row:
                 return {"ignored": True, "reason": "unknown_subscription"}
+            if int(row["last_provider_event_created"] or 0) > event_created:
+                effective = _sync_candidate_entitlement(int(row["candidate_id"]), event_id, "stale_invoice_event_ignored")
+                return {"candidate_id": int(row["candidate_id"]), "status": "stale_ignored", "effective": effective}
             status = "active" if event_type == "invoice.paid" else "past_due"
             conn.execute(
-                "UPDATE billing_subscriptions SET status=?,updated_at=datetime('now') WHERE id=?",
-                (status, row["id"]),
+                "UPDATE billing_subscriptions SET status=?,last_provider_event_created=?,updated_at=datetime('now') WHERE id=?",
+                (status, event_created, row["id"]),
             )
         effective = _sync_candidate_entitlement(
             int(row["candidate_id"]), event_id, "payment_recovered" if status == "active" else "payment_failed"
