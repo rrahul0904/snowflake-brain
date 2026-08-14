@@ -61,6 +61,11 @@ def main() -> None:
     )
     check(mock.status_code == 200, mock.text)
     session_id = int(mock.json()["session_id"])
+    submitted = client.post(
+        f"/api/mock/sessions/{session_id}/submit",
+        json={"reason": "learner"},
+    )
+    check(submitted.status_code == 200, submitted.text)
 
     before = client.get("/api/auth/me").json()
     check(before["membership"]["plan_code"] == "premium_40", "Premium 250 active before linking")
@@ -81,9 +86,6 @@ def main() -> None:
     progress = client.get("/api/skills/task-progress", params={"track_id": "snowpro-core"})
     check(progress.status_code == 200, progress.text)
     progress_rows = progress.json().get("tasks") or progress.json().get("progress") or progress.json()
-    # The exact response shape can evolve; database ownership below is the hard
-    # continuity assertion and this HTTP call confirms the linked session can still
-    # access the progress endpoint.
     check(progress_rows is not None, "progress remains readable after linking")
     with connect() as conn:
         stored_progress = conn.execute(
@@ -95,8 +97,8 @@ def main() -> None:
     history = client.get("/api/mock/history", params={"track_id": "snowpro-core"})
     check(history.status_code == 200, history.text)
     history_payload = history.json()
-    history_rows = history_payload.get("sessions") or history_payload.get("history") or []
-    check(any(int(row.get("session_id") or row.get("id") or 0) == session_id for row in history_rows), "mock history survives Google linking")
+    history_rows = history_payload.get("history") or history_payload.get("sessions") or []
+    check(any(int(row.get("session_id") or row.get("id") or 0) == session_id for row in history_rows), "completed mock history survives Google linking")
 
     # The same Google provider subject cannot be attached to another candidate.
     other = TestClient(app)
