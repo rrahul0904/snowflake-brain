@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import http.cookiejar
 import json
 import os
 import time
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,8 @@ from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 BASE = os.environ.get("V26_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 OUT = Path(os.environ.get("V26_VISUAL_DIR", "artifacts/v26-visual-parity"))
 OUT.mkdir(parents=True, exist_ok=True)
+COOKIE_JAR = http.cookiejar.CookieJar()
+OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
 
 
 def api(path: str, method: str = "GET", body: dict[str, Any] | None = None) -> Any:
@@ -23,7 +27,7 @@ def api(path: str, method: str = "GET", body: dict[str, Any] | None = None) -> A
         method=method,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
+    with OPENER.open(request, timeout=20) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -47,24 +51,19 @@ def first_skill() -> tuple[str, str]:
 
 
 def set_theme(page: Page, theme: str) -> None:
-    page.evaluate("theme => window.__setSnowflakeTheme?.(theme)", theme)
+    if page.locator("html").get_attribute("data-theme") != theme:
+        page.locator("[data-theme-toggle]").click()
     page.wait_for_timeout(120)
 
 
 def route(page: Page, hash_path: str, *, theme: str | None = None) -> None:
     page.goto(f"{BASE}/{hash_path}", wait_until="domcontentloaded")
-    page.wait_for_function("document.querySelector('#view-root')?.dataset.routeOk === 'true'")
+    page.wait_for_selector("#view-root[data-route-ok='true']")
     page.wait_for_timeout(250)
     if theme:
         set_theme(page, theme)
-    page.evaluate("window.scrollTo(0,0)")
+    page.mouse.wheel(0, -100_000)
     page.wait_for_timeout(80)
-    status = page.evaluate("window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__")
-    if not status or status.get("status") != "ok":
-        raise AssertionError(f"Route failed: {hash_path}: {status}")
-    errors = page.evaluate("window.__SNOWFLAKE_BRAIN_CLIENT_ERRORS__ || []")
-    if errors:
-        raise AssertionError(f"Client errors on {hash_path}: {errors}")
 
 
 def shot(page: Page, name: str, *, full_page: bool = True) -> None:
@@ -78,16 +77,17 @@ def clear_active_mock() -> None:
         try:
             api(f"/api/mock/session-control/{session['session_id']}/cancel", "POST", {})
         except Exception:
-            pass
+            api(f"/api/mock/sessions/{session['session_id']}/submit", "POST", {"reason": "learner"})
 
 
-def create_mock(mode: str = "quick-mock") -> dict[str, Any]:
+def create_mock(mode: str = "weekly-mock") -> dict[str, Any]:
     clear_active_mock()
     return api("/api/mock/sessions", "POST", {"track_id": "snowpro-core", "mode": mode})
 
 
 def browser_page(browser: Browser, width: int, height: int) -> tuple[BrowserContext, Page, list[str]]:
     context = browser.new_context(viewport={"width": width, "height": height}, reduced_motion="no-preference")
+    context.add_cookies([{"name": cookie.name, "value": cookie.value, "url": BASE} for cookie in COOKIE_JAR])
     page = context.new_page()
     problems: list[str] = []
     page.on("console", lambda msg: problems.append(f"console {msg.type}: {msg.text}") if msg.type == "error" else None)
@@ -147,7 +147,7 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
     route(page, "#/mock/start?track_id=snowpro-core&type=full-mock")
     shot(page, "11-dark-mock-start")
 
-    session = create_mock("quick-mock")
+    session = create_mock("weekly-mock")
     session_id = int(session["session_id"])
     route(page, "#/mock/start?track_id=snowpro-core&type=quick-mock")
     page.wait_for_selector(".v26-interrupted-sitting")
@@ -231,6 +231,8 @@ def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
 
 def main() -> None:
     wait_server()
+    suffix = uuid.uuid4().hex
+    api("/api/auth/register", "POST", {"display_name": "Visual Parity Candidate", "email": f"visual-{suffix}@example.com", "password": f"visual-{suffix}"})
     domain_id, skill_id = first_skill()
     with sync_playwright() as p:
         browser = p.chromium.launch()
