@@ -5,7 +5,7 @@ import sqlite3
 from .database import connect
 
 
-SCHEMA_VERSION = "20260814_008_google_identity_billing_authority_v26"
+SCHEMA_VERSION = "20260814_009_google_identity_billing_authority_v26"
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, declaration: str) -> None:
@@ -156,7 +156,50 @@ def ensure_identity_billing_schema() -> None:
         )
         # Upgrade databases created by the earlier V26 feature revisions too.
         _ensure_column(conn, "billing_subscriptions", "last_provider_event_created", "INTEGER NOT NULL DEFAULT 0")
+        conn.executescript(
+            """
+            DROP TRIGGER IF EXISTS trg_restore_exam_pack_after_membership_expiry;
+            CREATE TRIGGER trg_restore_exam_pack_after_membership_expiry
+            AFTER UPDATE OF status ON candidate_memberships
+            WHEN OLD.status = 'active'
+             AND NEW.status = 'expired'
+             AND EXISTS (
+               SELECT 1 FROM billing_purchases p
+               WHERE p.candidate_id = NEW.candidate_id
+                 AND p.product_type = 'exam_pack_35'
+                 AND p.status = 'paid'
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM candidate_memberships m
+               WHERE m.candidate_id = NEW.candidate_id
+                 AND m.status = 'active'
+                 AND datetime(m.starts_at) <= datetime('now')
+                 AND (m.expires_at IS NULL OR datetime(m.expires_at) > datetime('now'))
+             )
+            BEGIN
+              INSERT INTO candidate_memberships(
+                candidate_id,tier,plan_code,status,starts_at,expires_at,source,entitlement_version
+              )
+              VALUES (
+                NEW.candidate_id,'premium','exam_pack_35','active',datetime('now'),NULL,
+                'entitlement_reconciliation',
+                COALESCE((SELECT MAX(entitlement_version) FROM candidate_memberships WHERE candidate_id=NEW.candidate_id),0)+1
+              );
+              UPDATE candidate_accounts
+                 SET plan='premium',updated_at=datetime('now')
+               WHERE id=NEW.candidate_id;
+              INSERT INTO membership_audit_log(
+                candidate_id,old_plan,new_plan,reason,source,provider_event_id,entitlement_version
+              )
+              SELECT NEW.candidate_id,NEW.plan_code,'exam_pack_35',
+                     'expired_subscription_exam_pack_fallback','entitlement_reconciliation',NULL,
+                     MAX(entitlement_version)
+                FROM candidate_memberships
+               WHERE candidate_id=NEW.candidate_id;
+            END;
+            """
+        )
         conn.execute(
             "INSERT OR IGNORE INTO schema_migrations(version, name) VALUES (?, ?)",
-            (SCHEMA_VERSION, "Google OIDC identities, checkout binding, ordered billing authority, and entitlement versioning"),
+            (SCHEMA_VERSION, "Google OIDC identities, ordered billing authority, entitlement versioning, and Exam Pack expiry reconciliation"),
         )
