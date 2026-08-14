@@ -1,19 +1,19 @@
 export const VIEW_ID = "v26-practice";
 
-import { escapeHtml, getMockConfig, getPracticeTests, gradeQuiz, recordAttempt, startMockSession, startQuiz } from "../api.js";
+import { escapeHtml, getMockConfig, getPracticeTests, getSkillMap, getSkillSummary, gradeQuiz, recordAttempt, startMockSession, startQuiz } from "../api.js";
 import { activeTrack } from "../ui.js";
 import { candidate, refreshCandidate } from "../auth.js";
+import { DOMAIN_COLORS, studyLayout } from "../components/study-shell.js";
 
-const state = { questions: [], answers: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", submitted: false, result: null };
+const state = { questions: [], answers: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", submitted: false, result: null, account: null };
 
 export default async function mount(container, params = {}) {
   state.trackId = params.track_id || activeTrack();
   await refreshCandidate().catch(() => {});
   state.account = candidate();
-  if (["diagnostic", "drill"].includes(params.mode || "") && !state.account) {
-    container.innerHTML = freeFeatureGate(state.trackId);
-    return;
-  }
+  if (!state.account) throw new Error("Candidate session required");
+  if (params.mode === "drill" && params.start !== "1") return drillSetup(container, params);
+  if (params.mode === "diagnostic" && params.start !== "1") return diagnosticSetup(container, params);
   if (["diagnostic", "drill"].includes(params.mode || "")) return launch(container, params);
   return landing(container);
 }
@@ -26,15 +26,45 @@ async function landing(container) {
   ]);
   const quick = config.quick_mock || {};
   const full = config.full_mock || {};
-  const freeHref = state.account ? null : "#";
-  const mockHref = state.account ? null : "#/mock";
-  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Find your gaps, repair a task, or rehearse the timed exam experience.</p></section><section class="v26-section"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", freeHref || `#/practice?track_id=${state.trackId}&mode=diagnostic&count=20`, true, false, !state.account)}${card("Targeted Drill", "Repair weak tasks", "Focused practice prioritizing the selected task, domain, or your lowest evidence.", "15 questions", freeHref || `#/practice?track_id=${state.trackId}&mode=drill&count=15`, false, false, !state.account)}${card("Quick Mock", "Timed readiness check", "The persisted exam player in a focused readiness format.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, mockHref || `#/mock/start?track_id=${state.trackId}&type=quick-mock`, false, false, !state.account)}${card("Full Mock", "Complete simulation", "Flags, free navigation, autosave, refresh/resume, server timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, mockHref || `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true, false)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
+  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Find your gaps, repair a task, or rehearse the timed exam experience.</p></section><section class="v26-section"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", `#/practice?track_id=${state.trackId}&mode=diagnostic`, true)}${card("Targeted Drill", "Repair weak tasks", "Focused practice by domain or across your current weak areas.", "15 questions", `#/practice?track_id=${state.trackId}&mode=drill`)}${card("Quick Mock", "Timed readiness check", "A focused timed sitting using the persisted exam player.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, `#/mock/start?track_id=${state.trackId}&type=quick-mock`)}${card("Full Mock", "Complete simulation", "Flags, navigation, autosave, refresh/resume, timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
   bindSource(container);
 }
 
-function card(kicker, title, body, meta, href, featured = false, full = false, auth = false) { return `<a class="v26-practice-card ${featured ? "featured" : ""} ${full ? "full" : ""}" href="${href}" ${auth ? `data-auth-intent="signup"` : ""}><span>${kicker}</span><h2>${title}</h2><p>${body}</p><div><b>${meta}</b><em>${auth ? "Create free account →" : "Start →"}</em></div></a>`; }
+async function drillSetup(container, params) {
+  const [map, summary] = await Promise.all([
+    getSkillMap(),
+    getSkillSummary({ track_id: state.trackId }).catch(() => ({ skills: [] })),
+  ]);
+  const cert = (map.certifications || []).find((item) => item.id === state.trackId) || (map.certifications || [])[0];
+  if (!cert) throw new Error("Certification is not configured");
+  const skills = summary.skills || [];
+  const attempted = skills.reduce((sum, item) => sum + Number(item.attempts || 0), 0);
+  const mastered = skills.filter((item) => Number(item.attempts || 0) > 0 && Number(item.accuracy_pct || 0) >= 80).length;
+  const weak = skills.filter((item) => Number(item.attempts || 0) > 0 && Number(item.accuracy_pct || 0) < 70).length;
+  state.domainId = params.domain_id || "";
+  container.innerHTML = studyLayout(cert, "drill", `<section class="v26-practice-setup center"><h1>Drill Mode</h1><p class="lede">Up to 15 questions per session, focused on the domain you choose. Use short repeated sessions to repair weak areas without turning practice into another full mock.</p><div class="v26-drill-stats"><div><strong>${attempted}</strong><span>Attempted</span></div><div><strong>${mastered}</strong><span>Mastered tasks</span></div><div><strong>${weak}</strong><span>Weak tasks</span></div><div><strong>15</strong><span>Session length</span></div></div><div class="v26-domain-filter-box"><span>Domain filter</span><div class="v26-domain-filter-chips"><button class="${state.domainId ? "" : "active"}" type="button" data-domain-filter="">All Domains</button>${(cert.domains || []).map((domain, index) => `<button class="${state.domainId === domain.id ? "active" : ""}" type="button" data-domain-filter="${escapeHtml(domain.id)}"><i style="--domain:${DOMAIN_COLORS[index % DOMAIN_COLORS.length]}"></i>${index + 1}. ${escapeHtml(shortTitle(domain.title))}</button>`).join("")}</div></div><button class="v26-btn primary" type="button" data-start-drill>Start Session</button></section>`);
+  container.querySelectorAll("[data-domain-filter]").forEach((button) => button.addEventListener("click", () => {
+    state.domainId = button.dataset.domainFilter || "";
+    container.querySelectorAll("[data-domain-filter]").forEach((item) => item.classList.toggle("active", item === button));
+  }));
+  container.querySelector("[data-start-drill]")?.addEventListener("click", () => {
+    const domain = state.domainId ? `&domain_id=${encodeURIComponent(state.domainId)}` : "";
+    window.location.hash = `#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&start=1&count=15${domain}`;
+  });
+}
 
-function freeFeatureGate(trackId) { return `<main class="v26-page"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(trackId)}">← Practice</a><section class="v26-route-gate"><p class="v26-kicker">Free candidate feature</p><h1>Create a free account to continue.</h1><p>Diagnostic assessment, targeted drills, exercises, bookmarks, notes, and progress persistence are included with Free membership.</p><button class="v26-btn primary" type="button" data-auth-intent="signup">Create Free Account</button><button class="v26-btn secondary" type="button" data-auth-intent="login">Sign In</button></section></main>`; }
+async function diagnosticSetup(container) {
+  const map = await getSkillMap();
+  const cert = (map.certifications || []).find((item) => item.id === state.trackId) || (map.certifications || [])[0];
+  if (!cert) throw new Error("Certification is not configured");
+  container.innerHTML = studyLayout(cert, "diagnostic", `<section class="v26-practice-setup"><p class="v26-kicker">Placement test</p><h1>Diagnostic Assessment</h1><p class="lede" style="margin-left:0">Identify your strongest and weakest SnowPro Core domains before deciding what to study next.</p><div class="v26-diagnostic-card"><h2>How It Works</h2><div class="v26-diagnostic-facts"><div><b>Questions</b><span>20 questions — balanced across all five exam domains</span></div><div><b>Time</b><span>About 12 minutes, no timer — work at your own pace</span></div><div><b>Difficulty</b><span>Recall, application, and scenario-analysis questions</span></div><div><b>Result</b><span>Domain evidence that helps prioritize your next study pass</span></div></div><div class="v26-diagnostic-domains"><h3>Domains Covered</h3>${(cert.domains || []).map((domain, index) => `<div><i style="--domain:${DOMAIN_COLORS[index % DOMAIN_COLORS.length]}"></i><span>${escapeHtml(domain.title)}</span><b>${Number(domain.weight || 0)}%</b></div>`).join("")}</div><div class="v26-diagnostic-expect"><strong>What to expect</strong><ul><li>No timer pressure — focus on the best answer, not speed.</li><li>Your results identify which domains need the most attention.</li><li>You can repeat the diagnostic later to measure improvement.</li></ul></div></div><button class="v26-btn primary" type="button" data-start-diagnostic>Start Diagnostic</button></section>`);
+  container.querySelector("[data-start-diagnostic]")?.addEventListener("click", () => {
+    window.location.hash = `#/practice?track_id=${encodeURIComponent(cert.id)}&mode=diagnostic&start=1&count=20`;
+  });
+}
+
+function shortTitle(value = "") { return String(value).split(/[,&]/)[0].replace(/^Snowflake\s+/i, "").trim().slice(0, 18); }
+function card(kicker, title, body, meta, href, featured = false, full = false) { return `<a class="v26-practice-card ${featured ? "featured" : ""} ${full ? "full" : ""}" href="${href}"><span>${kicker}</span><h2>${title}</h2><p>${body}</p><div><b>${meta}</b><em>Start →</em></div></a>`; }
 
 function sourceSection(current, legacy) {
   if (!current.length && !legacy.length) return "";
@@ -52,7 +82,7 @@ async function launch(container, params) {
   state.answers = new Map();
   state.submitted = false;
   state.result = null;
-  const count = Number(params.count || (mode === "diagnostic" ? 25 : 15));
+  const count = Number(params.count || (mode === "diagnostic" ? 20 : 15));
   container.innerHTML = `<main class="v26-page"><div class="v26-loading">Preparing ${mode === "diagnostic" ? "diagnostic" : "drill"}…</div></main>`;
   const data = await startQuiz({ track_id: state.trackId, count, mode, skill_id: state.skillId || null, domain_id: state.domainId || null });
   state.questions = data.questions || [];
@@ -64,12 +94,11 @@ function drawSession(container) {
   const q = state.questions[state.index];
   const selected = state.answers.get(q.id) || [];
   const answered = state.answers.size;
-  container.innerHTML = `<main class="v26-practice-session"><header><a href="#/practice?track_id=${encodeURIComponent(state.trackId)}">← Practice</a><div><span>${state.mode === "diagnostic" ? "Diagnostic Test" : "Targeted Drill"}</span><strong>${answered}/${state.questions.length} answered</strong></div><button type="button" data-submit>Finish</button></header><div class="v26-practice-session-body"><aside><p>${state.mode === "diagnostic" ? "Diagnostic" : "Drill"}</p><div>${state.questions.map((item, index) => `<button class="${index === state.index ? "current" : ""} ${state.answers.has(item.id) ? "done" : ""}" data-jump="${index}">${index + 1}</button>`).join("")}</div></aside><section><p class="v26-kicker">Question ${state.index + 1} of ${state.questions.length}</p><h1>${escapeHtml(q.question)}</h1><fieldset>${(q.options || []).map((option, index) => answer(q, option, index, selected)).join("")}</fieldset><footer><button type="button" data-prev ${state.index === 0 ? "disabled" : ""}>← Previous</button><button type="button" data-next ${state.index === state.questions.length - 1 ? "disabled" : ""}>Next →</button></footer></section></div></main>`;
+  container.innerHTML = `<main class="v26-practice-session"><header><a href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${encodeURIComponent(state.mode)}">← Practice</a><div><span>${state.mode === "diagnostic" ? "Diagnostic Test" : "Targeted Drill"}</span><strong>${answered}/${state.questions.length} answered</strong></div><button type="button" data-submit>Finish</button></header><div class="v26-practice-session-body"><aside><p>${state.mode === "diagnostic" ? "Diagnostic" : "Drill"}</p><div>${state.questions.map((item, index) => `<button class="${index === state.index ? "current" : ""} ${state.answers.has(item.id) ? "done" : ""}" data-jump="${index}">${index + 1}</button>`).join("")}</div></aside><section><p class="v26-kicker">Question ${state.index + 1} of ${state.questions.length}</p><h1>${escapeHtml(q.question)}</h1><fieldset>${(q.options || []).map((option, index) => answer(q, option, index, selected)).join("")}</fieldset><footer><button type="button" data-prev ${state.index === 0 ? "disabled" : ""}>← Previous</button><button type="button" data-next ${state.index === state.questions.length - 1 ? "disabled" : ""}>Next →</button></footer></section></div></main>`;
   bindSession(container);
 }
 
 function answer(q, option, index, selected) { const type = q.multiple ? "checkbox" : "radio"; return `<label class="v26-practice-answer ${selected.includes(index) ? "selected" : ""}"><input type="${type}" name="practice-answer" value="${index}" ${selected.includes(index) ? "checked" : ""}/><span>${String.fromCharCode(65 + index)}</span><b>${escapeHtml(option)}</b></label>`; }
-
 function bindSession(container) {
   container.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => { capture(container); state.index = Number(button.dataset.jump); drawSession(container); }));
   container.querySelectorAll("input[name='practice-answer']").forEach((input) => input.addEventListener("change", () => { capture(container); drawSession(container); }));
@@ -77,7 +106,6 @@ function bindSession(container) {
   container.querySelector("[data-next]")?.addEventListener("click", () => { capture(container); state.index = Math.min(state.questions.length - 1, state.index + 1); drawSession(container); });
   container.querySelector("[data-submit]")?.addEventListener("click", () => submit(container));
 }
-
 function capture(container) { const q = state.questions[state.index]; let selected = [...container.querySelectorAll("input[name='practice-answer']:checked")].map((input) => Number(input.value)); if (!q.multiple && selected.length > 1) selected = selected.slice(-1); selected.length ? state.answers.set(q.id, selected) : state.answers.delete(q.id); }
 
 async function submit(container) {
@@ -95,7 +123,6 @@ function renderResult(container, result) {
   const total = Math.max(1, result.total || state.questions.length);
   const score = result.score || 0;
   const percent = Math.round(score / total * 100);
-  container.innerHTML = `<main class="v26-page v26-practice-result"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(state.trackId)}">← Practice</a><header class="v26-page-intro centered"><p class="v26-kicker">${state.mode === "diagnostic" ? "Diagnostic Result" : "Drill Result"}</p><h1>${percent}%</h1><p>${score}/${total} correct. Review the explanations below, then continue with the task lessons that need another pass.</p></header><section class="v26-review-list">${(result.results || []).map((row, index) => review(row, index)).join("")}</section><div class="v26-result-actions"><a class="v26-btn primary" href="#/progress?track_id=${encodeURIComponent(state.trackId)}">Open Progress</a><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${state.mode}">Try another set</a></div></main>`;
+  container.innerHTML = `<main class="v26-page v26-practice-result"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${encodeURIComponent(state.mode)}">← Practice</a><header class="v26-page-intro centered"><p class="v26-kicker">${state.mode === "diagnostic" ? "Diagnostic Result" : "Drill Result"}</p><h1>${percent}%</h1><p>${score}/${total} correct. Review the explanations below, then continue with the task lessons that need another pass.</p></header><section class="v26-review-list">${(result.results || []).map((row, index) => review(row, index)).join("")}</section><div class="v26-result-actions"><a class="v26-btn primary" href="#/progress?track_id=${encodeURIComponent(state.trackId)}">Open Progress</a><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${state.mode}">Try another set</a></div></main>`;
 }
-
 function review(row, index) { const options = row.options || []; const selected = (row.selected || []).map((i) => options[i]).filter(Boolean).join("; ") || "No answer"; const correct = (row.correct || []).map((i) => options[i]).filter(Boolean).join("; ") || "Answer unavailable"; return `<details class="v26-review-card ${row.is_correct ? "correct" : "incorrect"}"><summary><span>${row.is_correct ? "✓" : "×"}</span><div><small>Question ${index + 1}</small><strong>${escapeHtml(row.question || "")}</strong></div></summary><div class="v26-review-body"><p><b>Your answer</b>${escapeHtml(selected)}</p><p><b>Correct answer</b>${escapeHtml(correct)}</p>${row.explanation ? `<p><b>Explanation</b>${escapeHtml(row.explanation)}</p>` : ""}</div></details>`; }
