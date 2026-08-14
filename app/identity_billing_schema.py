@@ -5,7 +5,7 @@ import sqlite3
 from .database import connect
 
 
-SCHEMA_VERSION = "20260814_006_google_identity_billing_authority_v26"
+SCHEMA_VERSION = "20260814_007_google_identity_billing_authority_v26"
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, declaration: str) -> None:
@@ -65,6 +65,21 @@ def ensure_identity_billing_schema() -> None:
               updated_at TEXT DEFAULT (datetime('now')),
               UNIQUE(provider, candidate_id),
               UNIQUE(provider, provider_customer_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS billing_checkout_sessions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              provider TEXT NOT NULL,
+              provider_checkout_session_id TEXT NOT NULL,
+              provider_customer_id TEXT NOT NULL,
+              provider_price_id TEXT NOT NULL,
+              internal_plan TEXT NOT NULL,
+              checkout_mode TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'pending',
+              created_at TEXT DEFAULT (datetime('now')),
+              completed_at TEXT,
+              UNIQUE(provider, provider_checkout_session_id)
             );
 
             CREATE TABLE IF NOT EXISTS billing_subscriptions (
@@ -128,6 +143,8 @@ def ensure_identity_billing_schema() -> None:
               ON pending_identity_links(candidate_id, expires_at);
             CREATE INDEX IF NOT EXISTS idx_billing_customers_candidate
               ON billing_customers(candidate_id, provider);
+            CREATE INDEX IF NOT EXISTS idx_billing_checkout_candidate
+              ON billing_checkout_sessions(candidate_id, status, created_at);
             CREATE INDEX IF NOT EXISTS idx_billing_subscriptions_candidate
               ON billing_subscriptions(candidate_id, status, updated_at);
             CREATE INDEX IF NOT EXISTS idx_billing_purchases_candidate
@@ -138,5 +155,5 @@ def ensure_identity_billing_schema() -> None:
         )
         conn.execute(
             "INSERT OR IGNORE INTO schema_migrations(version, name) VALUES (?, ?)",
-            (SCHEMA_VERSION, "Google OIDC identities, trusted billing authority, and entitlement versioning"),
+            (SCHEMA_VERSION, "Google OIDC identities, trusted checkout binding, billing authority, and entitlement versioning"),
         )
