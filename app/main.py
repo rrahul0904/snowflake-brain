@@ -50,7 +50,12 @@ def startup() -> None:
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "product": "snowflake-certification-guide", "architecture": "certification-native-v26-question-bank-v1"}
+    return {
+        "status": "ok",
+        "product": "snowflake-certification-guide",
+        "architecture": "certification-native-v26",
+        "question_bank": "private-v1",
+    }
 
 
 app.include_router(skills.router, prefix="/api")
