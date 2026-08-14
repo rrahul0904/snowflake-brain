@@ -24,6 +24,11 @@ PUBLIC_API_PREFIXES = (
     "/api/auth/",
     "/api/billing/",
 )
+PUBLIC_STATIC_VIEWS = {
+    "/static/views/home-v26.js",
+    "/static/views/membership-v26.js",
+    "/static/views/info-v26.js",
+}
 
 
 class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
@@ -54,7 +59,8 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": str(window)},
             )
 
-        if self._requires_candidate(request):
+        protected = self._requires_candidate(request)
+        if protected:
             candidate = candidate_for_token(request.cookies.get(COOKIE_NAME))
             if not candidate:
                 self._record_denial(key)
@@ -78,7 +84,7 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        if self._requires_candidate(request) or request.url.path.startswith(("/api/auth", "/api/billing", "/api/mock")):
+        if protected or request.url.path.startswith(("/api/auth", "/api/billing", "/api/mock")):
             response.headers["Cache-Control"] = "private, no-store"
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -86,6 +92,8 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
 
     def _requires_candidate(self, request: Request) -> bool:
         path = request.url.path
+        if path.startswith("/static/views/"):
+            return path not in PUBLIC_STATIC_VIEWS
         if not path.startswith("/api/"):
             return False
         if path in PUBLIC_API_EXACT:
