@@ -85,6 +85,19 @@ def _enrich_rows(rows: list[dict[str, Any]], candidate_id: int) -> list[dict[str
     return rows
 
 
+def _safe_fallback_rows(rows: list[dict[str, Any]], *, pinned_internal_test: bool) -> list[dict[str, Any]]:
+    if pinned_internal_test:
+        return rows
+    # Production candidate selection can use the private bank plus the app's
+    # own canonical/curated development fallback. Imported source/legacy banks
+    # are never silently blended into Free/Premium product sessions.
+    return [
+        row
+        for row in rows
+        if row.get("bank_pool") or str(row.get("source_kind") or "") in {"canonical", "curated"}
+    ]
+
+
 def _select_targeted(rows: list[dict[str, Any]], count: int, mode: str, skill_id: str | None, domain_id: str | None) -> list[dict[str, Any]]:
     target = rows
     if skill_id:
@@ -95,9 +108,6 @@ def _select_targeted(rows: list[dict[str, Any]], count: int, mode: str, skill_id
         scoped = [row for row in rows if row.get("mapped_domain_id") == domain_id]
         if scoped:
             target = scoped
-    # Use the existing weakness engine to keep adaptive behavior, then apply
-    # the exposure rank as a deterministic tie-break so unseen/private-bank
-    # items win over repeated fallback questions.
     adaptive = _adaptive_drill(target, count, skill_id, domain_id)
     ranked = sorted(adaptive, key=lambda row: question_exposure_rank(row, mode))
     if len(ranked) >= count:
@@ -143,6 +153,7 @@ def select_certification_questions(
         persisted = _best_reliable_edges(conn, payload.track_id)
     rows, reliable_count, heuristic_count = _assign_edges(rows, payload.track_id, persisted)
     rows = _enrich_rows(rows, candidate["id"])
+    rows = _safe_fallback_rows(rows, pinned_internal_test=bool(payload.test_id and trusted_exam_session))
     rows = filter_rows_for_entitlement(rows, candidate["membership"], mode, count)
 
     if not rows:
@@ -191,8 +202,6 @@ def select_certification_questions(
         difficulty_counts[row.get("difficulty_band") or row.get("difficulty") or "unknown"] += 1
 
     questions = [question_public(row, include_answer=False) for row in selected]
-    # A timed mock reserves quota/attempts through the mock entitlement path.
-    # Charging here too would double-count a Quick Mock.
     quota = None
     if not trusted_exam_session and candidate.get("membership"):
         quota = reserve_daily_questions(candidate["id"], candidate["membership"], len(questions))
