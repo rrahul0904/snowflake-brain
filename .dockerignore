@@ -3,8 +3,13 @@
 __pycache__
 **/__pycache__
 *.pyc
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
 data/*.sqlite
 data/*.sqlite-*
+.pytest_cache
 .DS_Store
 __MACOSX__
 dist

@@ -45,6 +45,10 @@ SNOWFLAKE_LABS_CONFIG = Path(
 ).expanduser()
 SNOWFLAKE_LABS_MODE = os.getenv("SNOWFLAKE_LABS_MODE", "offline").lower()
 
+AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
+FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
+SECURITY_RATE_LIMIT_ENABLED = os.getenv("SECURITY_RATE_LIMIT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+
 EXAM_SIMULATION_CONFIG = Path(
     os.getenv(
         "EXAM_SIMULATION_CONFIG",

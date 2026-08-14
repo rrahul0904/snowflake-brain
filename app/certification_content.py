@@ -8,6 +8,9 @@ from typing import Any
 from .config import CERTIFICATION_CATALOG_CONFIG, CERTIFICATION_CURRICULA_SUPPLEMENT_CONFIG, STUDY_CONTENT_CORE_CONFIG
 from .skill_brain import load_skill_map
 
+FOCUSED_CERTIFICATION_IDS = {"snowpro-core", "advanced-data-engineer", "advanced-architect"}
+LEARNABLE_CERTIFICATION_IDS = {"snowpro-core"}
+
 
 @lru_cache(maxsize=1)
 def load_certification_catalog() -> dict[str, Any]:
@@ -32,9 +35,12 @@ def load_core_study_content() -> dict[str, Any]:
 
 def _raw_configured_skill_map() -> dict[str, Any]:
     skill_map = copy.deepcopy(load_skill_map())
+    skill_map["certifications"] = [
+        cert for cert in skill_map.get("certifications") or [] if cert.get("id") in LEARNABLE_CERTIFICATION_IDS
+    ]
     existing = {cert.get("id") for cert in skill_map.get("certifications") or []}
     for cert in load_curricula_supplement().get("certifications") or []:
-        if cert.get("id") not in existing:
+        if cert.get("id") in LEARNABLE_CERTIFICATION_IDS and cert.get("id") not in existing:
             skill_map.setdefault("certifications", []).append(copy.deepcopy(cert))
             existing.add(cert.get("id"))
     skill_map["supplement_version"] = load_curricula_supplement().get("version")
@@ -55,10 +61,16 @@ def _catalog_by_track() -> dict[str, dict[str, Any]]:
 def certification_catalog() -> dict[str, Any]:
     configured = {item.get("id") for item in (_raw_configured_skill_map().get("certifications") or [])}
     catalog = copy.deepcopy(load_certification_catalog())
+    catalog["official_certifications"] = [
+        row for row in catalog.get("official_certifications") or [] if row.get("id") in FOCUSED_CERTIFICATION_IDS
+    ]
+    focus_order = {"snowpro-core": 0, "advanced-data-engineer": 1, "advanced-architect": 2}
+    catalog["official_certifications"].sort(key=lambda row: focus_order.get(str(row.get("id")), 99))
+    catalog["custom_tracks"] = []
     for group in ("official_certifications", "custom_tracks"):
         for row in catalog.get(group) or []:
             inferred_track = row.get("configured_track_id") or row.get("id")
-            implemented = bool(inferred_track and inferred_track in configured)
+            implemented = bool(inferred_track and inferred_track in configured and inferred_track in LEARNABLE_CERTIFICATION_IDS)
             row["configured_track_id"] = inferred_track if implemented else row.get("configured_track_id")
             row["implemented"] = implemented
             # Catalog entries listed by Snowflake as live certifications are launchable once a curriculum exists.

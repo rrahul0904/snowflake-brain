@@ -20,9 +20,13 @@ RUN pip install --no-cache-dir \
 COPY app ./app
 COPY config ./config
 COPY frontend ./frontend
+COPY scripts/set_membership.py ./scripts/set_membership.py
 
 RUN mkdir -p /data
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).read()"]
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

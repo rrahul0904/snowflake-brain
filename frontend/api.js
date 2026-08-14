@@ -1,5 +1,6 @@
 export async function api(path, options = {}) {
   const response = await fetch(path, {
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
@@ -7,7 +8,7 @@ export async function api(path, options = {}) {
     let message = response.statusText;
     try {
       const body = await response.json();
-      message = body.detail || message;
+      message = body.detail?.message || (Array.isArray(body.detail) ? body.detail.map((item) => item.msg).join(" ") : body.detail) || message;
     } catch {
       message = await response.text();
     }
@@ -15,6 +16,11 @@ export async function api(path, options = {}) {
   }
   return response.json();
 }
+
+export const getCandidateSession = () => api("/api/auth/me");
+export const signupCandidate = (payload) => api("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
+export const loginCandidate = (payload) => api("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
+export const logoutCandidate = () => api("/api/auth/logout", { method: "POST", body: "{}" });
 
 export const getSkillMap = () => api("/api/skills/map");
 export const getCertificationCatalog = () => api("/api/skills/catalog");

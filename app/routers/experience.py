@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ..certification_content import configured_skill_map, content_coverage
 from ..database import connect
 from ..intelligence import command_brief, mistake_queue, portfolio, readiness_model, skill_mastery
 from ..lab_challenges import labs as configured_labs
+from ..auth import require_candidate, require_premium_candidate
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ def _normalize_track(track_id: str) -> tuple[str, list[dict[str, Any]]]:
     return track_id, certs
 
 
-def _summary(conn: Any, track_id: str) -> dict[str, Any]:
+def _summary(conn: Any, track_id: str, candidate_id: int) -> dict[str, Any]:
     def one(sql: str, params: tuple[Any, ...] = (), default: int = 0) -> int:
         try:
             row = conn.execute(sql, params).fetchone()
@@ -43,24 +44,24 @@ def _summary(conn: Any, track_id: str) -> dict[str, Any]:
         "questions": one("SELECT COUNT(*) FROM questions WHERE track_id = ? AND source_kind <> 'legacy'", (track_id,)),
         "source_questions": one("SELECT COUNT(*) FROM questions WHERE track_id = ? AND source_kind = 'source'", (track_id,)),
         "attempts": one(
-            "SELECT COUNT(*) FROM question_attempts a JOIN questions q ON q.id=a.question_id WHERE q.track_id = ? AND q.source_kind <> 'legacy'",
-            (track_id,),
+            "SELECT COUNT(*) FROM question_attempts a JOIN questions q ON q.id=a.question_id WHERE a.candidate_id = ? AND q.track_id = ? AND q.source_kind <> 'legacy'",
+            (candidate_id, track_id),
         ),
         "completed_tasks": one(
-            "SELECT COUNT(*) FROM certification_task_progress WHERE track_id = ? AND completed = 1",
-            (track_id,),
+            "SELECT COUNT(*) FROM candidate_task_progress WHERE candidate_id = ? AND track_id = ? AND completed = 1",
+            (candidate_id, track_id),
         ),
         "mock_exams": one(
-            "SELECT COUNT(*) FROM exam_sessions WHERE track_id = ? AND mode LIKE '%exam%' AND status='finished'",
-            (track_id,),
+            "SELECT COUNT(*) FROM exam_sessions WHERE candidate_id = ? AND track_id = ? AND mode LIKE '%exam%' AND status='finished'",
+            (candidate_id, track_id),
         ),
         "source_exams": one(
             "SELECT COUNT(*) FROM practice_tests WHERE track_id = ? AND source_kind = 'source' AND is_legacy = 0",
             (track_id,),
         ),
         "lab_events": one(
-            "SELECT COUNT(*) FROM learning_events WHERE track_id = ? AND event_type LIKE 'lab_%'",
-            (track_id,),
+            "SELECT COUNT(*) FROM learning_events WHERE candidate_id = ? AND track_id = ? AND event_type LIKE 'lab_%'",
+            (candidate_id, track_id),
         ),
     }
 
@@ -116,14 +117,14 @@ def _lab_preview(track_id: str) -> list[dict[str, Any]]:
 
 
 @router.get("/experience/shell")
-def experience_shell(track_id: str = "snowpro-core") -> dict[str, Any]:
+def experience_shell(track_id: str = "snowpro-core", candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     """Fast certification-product payload. No course/video state exists in this contract."""
     track_id, certs = _normalize_track(track_id)
     with connect() as conn:
-        readiness = readiness_model(conn, track_id)
+        readiness = readiness_model(conn, track_id, candidate_id=candidate["id"]) if candidate["is_premium"] else {"premium_required": True}
         return {
             "selected_track_id": track_id,
-            "summary": _summary(conn, track_id),
+            "summary": _summary(conn, track_id, candidate["id"]),
             "content_trust": _content_trust(conn, track_id),
             "certifications": certs,
             "portfolio": {"certifications": []},
@@ -132,7 +133,8 @@ def experience_shell(track_id: str = "snowpro-core") -> dict[str, Any]:
                 track_id,
                 readiness=readiness,
                 mistakes={"track_id": track_id, "items": [], "total_unresolved": 0},
-            ),
+                candidate_id=candidate["id"],
+            ) if candidate["is_premium"] else {"premium_required": True, "mission": []},
             "readiness": readiness,
             "mastery": {"track_id": track_id, "skills": [], "domains": []},
             "mistakes": {"track_id": track_id, "items": [], "total_unresolved": 0},
@@ -142,19 +144,19 @@ def experience_shell(track_id: str = "snowpro-core") -> dict[str, Any]:
 
 
 @router.get("/experience/command-center")
-def command_center(track_id: str = "snowpro-core") -> dict[str, Any]:
+def command_center(track_id: str = "snowpro-core", candidate: dict = Depends(require_premium_candidate)) -> dict[str, Any]:
     track_id, certs = _normalize_track(track_id)
     with connect() as conn:
-        mastery = skill_mastery(conn, track_id)
-        readiness = readiness_model(conn, track_id, mastery=mastery)
-        mistakes = mistake_queue(conn, track_id, limit=8)
+        mastery = skill_mastery(conn, track_id, candidate_id=candidate["id"])
+        readiness = readiness_model(conn, track_id, mastery=mastery, candidate_id=candidate["id"])
+        mistakes = mistake_queue(conn, track_id, limit=8, candidate_id=candidate["id"])
         return {
             "selected_track_id": track_id,
-            "summary": _summary(conn, track_id),
+            "summary": _summary(conn, track_id, candidate["id"]),
             "content_trust": _content_trust(conn, track_id),
             "certifications": certs,
-            "portfolio": portfolio(conn),
-            "command_brief": command_brief(conn, track_id, readiness=readiness, mistakes=mistakes),
+            "portfolio": portfolio(conn, candidate_id=candidate["id"]),
+            "command_brief": command_brief(conn, track_id, readiness=readiness, mistakes=mistakes, candidate_id=candidate["id"]),
             "readiness": readiness,
             "mastery": mastery,
             "mistakes": mistakes,

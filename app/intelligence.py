@@ -38,7 +38,7 @@ def _clamp(value: float, low: float = 0, high: float = 100) -> float:
     return max(low, min(high, value))
 
 
-def fetch_question_rows(conn: Any, track_id: str = "", limit: int = 8000) -> list[dict[str, Any]]:
+def fetch_question_rows(conn: Any, track_id: str = "", limit: int = 8000, candidate_id: int | None = None) -> list[dict[str, Any]]:
     return [
         dict(row)
         for row in conn.execute(
@@ -55,12 +55,13 @@ def fetch_question_rows(conn: Any, track_id: str = "", limit: int = 8000) -> lis
               COALESCE(SUM(CASE WHEN a.mode LIKE '%exam%' OR a.mode LIKE '%mock%' THEN 1 ELSE 0 END), 0) AS timed_attempts
             FROM questions q
             LEFT JOIN question_attempts a ON a.question_id = q.id
+              AND (? IS NULL OR a.candidate_id = ?)
             WHERE (? = '' OR q.track_id = ?)
               AND q.source_kind <> 'legacy'
             GROUP BY q.id
             LIMIT ?
             """,
-            (track_id or "", track_id or "", limit),
+            (candidate_id, candidate_id, track_id or "", track_id or "", limit),
         )
     ]
 
@@ -159,7 +160,7 @@ def _mapping_resolution(
     return resolved, dict(stats)
 
 
-def _lab_skill_activity(conn: Any, track_id: str) -> dict[str, dict[str, int]]:
+def _lab_skill_activity(conn: Any, track_id: str, candidate_id: int | None = None) -> dict[str, dict[str, int]]:
     activity: dict[str, dict[str, int]] = defaultdict(
         lambda: {"available_labs": 0, "passed_labs": 0, "attempted_labs": 0}
     )
@@ -174,10 +175,10 @@ def _lab_skill_activity(conn: Any, track_id: str) -> dict[str, dict[str, int]]:
         """
         SELECT event_type, skill_id, metadata_json, COUNT(*) AS count
         FROM learning_events
-        WHERE (? = '' OR track_id = ?)
+        WHERE (? = '' OR track_id = ?) AND (? IS NULL OR candidate_id = ?)
         GROUP BY event_type, skill_id, metadata_json
         """,
-        (track_id or "", track_id or ""),
+        (track_id or "", track_id or "", candidate_id, candidate_id),
     ):
         meta = _json_load(event["metadata_json"], {})
         skill_id = event["skill_id"] or meta.get("skill_id") or meta.get("skill")
@@ -190,9 +191,9 @@ def _lab_skill_activity(conn: Any, track_id: str) -> dict[str, dict[str, int]]:
     return activity
 
 
-def skill_mastery(conn: Any, track_id: str = "snowpro-core") -> dict[str, Any]:
+def skill_mastery(conn: Any, track_id: str = "snowpro-core", candidate_id: int | None = None) -> dict[str, Any]:
     skills = flatten_skills(track_id)
-    questions = fetch_question_rows(conn, track_id)
+    questions = fetch_question_rows(conn, track_id, candidate_id=candidate_id)
     resolved, mapping_stats = _mapping_resolution(conn, track_id, questions)
     by_skill: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in questions:
@@ -206,11 +207,11 @@ def skill_mastery(conn: Any, track_id: str = "snowpro-core") -> dict[str, Any]:
     completed = {
         row["skill_id"]
         for row in conn.execute(
-            "SELECT skill_id FROM certification_task_progress WHERE track_id = ? AND completed = 1",
-            (track_id,),
+            "SELECT skill_id FROM candidate_task_progress WHERE candidate_id = ? AND track_id = ? AND completed = 1",
+            (candidate_id, track_id),
         )
-    }
-    lab_activity = _lab_skill_activity(conn, track_id)
+    } if candidate_id is not None else set()
+    lab_activity = _lab_skill_activity(conn, track_id, candidate_id)
     output = []
     for skill in skills:
         skill_id = skill.get("id")
@@ -338,12 +339,13 @@ def readiness_model(
     conn: Any,
     track_id: str = "snowpro-core",
     mastery: dict[str, Any] | None = None,
+    candidate_id: int | None = None,
 ) -> dict[str, Any]:
     cert = next(
         (cert for cert in configured_skill_map().get("certifications") or [] if cert.get("id") == track_id),
         None,
     )
-    mastery = mastery or skill_mastery(conn, track_id)
+    mastery = mastery or skill_mastery(conn, track_id, candidate_id=candidate_id)
     skills = mastery.get("skills") or []
     if not skills:
         return {
@@ -373,8 +375,9 @@ def readiness_model(
                    MAX(CASE WHEN total_questions > 0 THEN ROUND(score * 100.0 / total_questions) ELSE 0 END) AS best_score
             FROM exam_sessions
             WHERE (? = '' OR track_id = ?) AND mode LIKE '%exam%' AND status = 'finished'
+              AND (? IS NULL OR candidate_id = ?)
             """,
-            (track_id or "", track_id or ""),
+            (track_id or "", track_id or "", candidate_id, candidate_id),
         ).fetchone()
     )
     mock_attempts = int(mock.get("attempts") or 0)
@@ -498,8 +501,8 @@ def _resolved_skill_for_row(
     return skills.get(assignment.get("skill_id")) if assignment else {}
 
 
-def mistake_queue(conn: Any, track_id: str = "snowpro-core", limit: int = 20) -> dict[str, Any]:
-    rows = fetch_question_rows(conn, track_id, limit=8000)
+def mistake_queue(conn: Any, track_id: str = "snowpro-core", limit: int = 20, candidate_id: int | None = None) -> dict[str, Any]:
+    rows = fetch_question_rows(conn, track_id, limit=8000, candidate_id=candidate_id)
     resolved, _ = _mapping_resolution(conn, track_id, rows)
     skills = {skill["id"]: skill for skill in flatten_skills(track_id)}
     items = []
@@ -549,9 +552,9 @@ def repair_action_for_mistake(mistake_type: str, skill: dict[str, Any]) -> str:
     return f"Relearn the written task for {skill_name}, then answer similar questions."
 
 
-def diagnostic_plan(conn: Any, track_id: str = "snowpro-core", count: int = 30) -> dict[str, Any]:
+def diagnostic_plan(conn: Any, track_id: str = "snowpro-core", count: int = 30, candidate_id: int | None = None) -> dict[str, Any]:
     count = max(10, min(100, int(count or 30)))
-    questions = fetch_question_rows(conn, track_id, limit=8000)
+    questions = fetch_question_rows(conn, track_id, limit=8000, candidate_id=candidate_id)
     resolved, _ = _mapping_resolution(conn, track_id, questions)
     skills = {skill["id"]: skill for skill in flatten_skills(track_id)}
     by_domain: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -607,9 +610,10 @@ def command_brief(
     track_id: str = "snowpro-core",
     readiness: dict[str, Any] | None = None,
     mistakes: dict[str, Any] | None = None,
+    candidate_id: int | None = None,
 ) -> dict[str, Any]:
-    readiness = readiness or readiness_model(conn, track_id)
-    mistakes = mistakes or mistake_queue(conn, track_id, limit=5)
+    readiness = readiness or readiness_model(conn, track_id, candidate_id=candidate_id)
+    mistakes = mistakes or mistake_queue(conn, track_id, limit=5, candidate_id=candidate_id)
     mission = []
     if readiness["status"] in {"not_started", "learning"} and readiness["attempts"] < 30:
         mission.append(
@@ -660,10 +664,10 @@ def command_brief(
     }
 
 
-def portfolio(conn: Any) -> dict[str, Any]:
+def portfolio(conn: Any, candidate_id: int | None = None) -> dict[str, Any]:
     rows = []
     for cert in configured_skill_map().get("certifications") or []:
-        readiness = readiness_model(conn, cert.get("id"))
+        readiness = readiness_model(conn, cert.get("id"), candidate_id=candidate_id)
         rows.append(
             {
                 "track_id": cert.get("id"),

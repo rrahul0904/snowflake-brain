@@ -2,11 +2,17 @@ export const VIEW_ID = "v26-exercises";
 
 import { escapeHtml, getLabs, getSkillMap } from "../api.js";
 import { activeTrack } from "../ui.js";
+import { candidate, refreshCandidate } from "../auth.js";
 
 const COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 
 export default async function mount(container, params = {}) {
   const trackId = params.track_id || activeTrack();
+  await refreshCandidate().catch(() => {});
+  if (!candidate()) {
+    container.innerHTML = `<main class="v26-page"><a class="v26-back" href="#/curriculum?track_id=${encodeURIComponent(trackId)}">← Curriculum</a><section class="v26-route-gate"><p class="v26-kicker">Free candidate feature</p><h1>Create a free account to continue.</h1><p>Build Exercises are included with Free membership and their completion state belongs to your candidate account.</p><button class="v26-btn primary" type="button" data-auth-intent="signup">Create Free Account</button><button class="v26-btn secondary" type="button" data-auth-intent="login">Sign In</button></section></main>`;
+    return;
+  }
   const [map, payload] = await Promise.all([getSkillMap(), getLabs({ track_id: trackId }).catch(() => ({ labs: [] }))]);
   const cert = (map.certifications || []).find((item) => item.id === trackId) || (map.certifications || [])[0];
   if (!cert) throw new Error("Certification is not configured");

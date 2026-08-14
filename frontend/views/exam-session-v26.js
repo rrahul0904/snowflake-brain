@@ -1,6 +1,8 @@
 export const VIEW_ID = "v26-exam-session";
 
 import { getMockConfig, getMockSession, saveMockAnswer, saveMockFlag, submitMockSession } from "../api.js";
+import { candidate, refreshCandidate } from "../auth.js";
+import { premiumGate } from "../components/entitlement-gates.js";
 
 const DOMAIN_COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 const state = { session: null, config: null, index: 0, filter: "all", timer: null, loadedAt: 0, remaining: 0, saving: false };
@@ -14,6 +16,12 @@ export function unmount() {
 
 export default async function mount(container, params = {}) {
   unmount();
+  await refreshCandidate().catch(() => {});
+  const account = candidate();
+  if (!account) {
+    container.innerHTML = premiumGate(account);
+    return;
+  }
   const sessionId = Number(params.session_id || 0);
   if (!sessionId) throw new Error("A mock session is required");
   const session = await getMockSession(sessionId);

@@ -2,11 +2,18 @@ export const VIEW_ID = "v26-practice";
 
 import { escapeHtml, getMockConfig, getPracticeTests, gradeQuiz, recordAttempt, startMockSession, startQuiz } from "../api.js";
 import { activeTrack } from "../ui.js";
+import { candidate, refreshCandidate } from "../auth.js";
 
 const state = { questions: [], answers: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", submitted: false, result: null };
 
 export default async function mount(container, params = {}) {
   state.trackId = params.track_id || activeTrack();
+  await refreshCandidate().catch(() => {});
+  state.account = candidate();
+  if (["diagnostic", "drill"].includes(params.mode || "") && !state.account) {
+    container.innerHTML = freeFeatureGate(state.trackId);
+    return;
+  }
   if (["diagnostic", "drill"].includes(params.mode || "")) return launch(container, params);
   return landing(container);
 }
@@ -19,11 +26,15 @@ async function landing(container) {
   ]);
   const quick = config.quick_mock || {};
   const full = config.full_mock || {};
-  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Find your gaps, repair a task, or rehearse the timed exam experience.</p></section><section class="v26-section"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "25 questions", `#/practice?track_id=${state.trackId}&mode=diagnostic&count=25`, true)}${card("Targeted Drill", "Repair weak tasks", "Focused practice prioritizing the selected task, domain, or your lowest evidence.", "15 questions", `#/practice?track_id=${state.trackId}&mode=drill&count=15`)}${card("Quick Mock", "Timed readiness check", "The same persisted exam player as the full sitting, in a shorter format.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, `#/mock/start?track_id=${state.trackId}&type=quick-mock`)}${card("Full Mock", "Complete simulation", "Flags, free navigation, autosave, refresh/resume, server timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true)}</div></section>${sourceSection(current.tests || [], legacy.tests || [])}</main>`;
+  const freeHref = state.account ? null : "#";
+  const mockHref = state.account ? null : "#/mock";
+  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Find your gaps, repair a task, or rehearse the timed exam experience.</p></section><section class="v26-section"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", freeHref || `#/practice?track_id=${state.trackId}&mode=diagnostic&count=20`, true, false, !state.account)}${card("Targeted Drill", "Repair weak tasks", "Focused practice prioritizing the selected task, domain, or your lowest evidence.", "15 questions", freeHref || `#/practice?track_id=${state.trackId}&mode=drill&count=15`, false, false, !state.account)}${card("Quick Mock", "Timed readiness check", "The persisted exam player in a focused readiness format.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, mockHref || `#/mock/start?track_id=${state.trackId}&type=quick-mock`, false, false, !state.account)}${card("Full Mock", "Complete simulation", "Flags, free navigation, autosave, refresh/resume, server timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, mockHref || `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true, false)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
   bindSource(container);
 }
 
-function card(kicker, title, body, meta, href, featured = false, full = false) { return `<a class="v26-practice-card ${featured ? "featured" : ""} ${full ? "full" : ""}" href="${href}"><span>${kicker}</span><h2>${title}</h2><p>${body}</p><div><b>${meta}</b><em>Start →</em></div></a>`; }
+function card(kicker, title, body, meta, href, featured = false, full = false, auth = false) { return `<a class="v26-practice-card ${featured ? "featured" : ""} ${full ? "full" : ""}" href="${href}" ${auth ? `data-auth-intent="signup"` : ""}><span>${kicker}</span><h2>${title}</h2><p>${body}</p><div><b>${meta}</b><em>${auth ? "Create free account →" : "Start →"}</em></div></a>`; }
+
+function freeFeatureGate(trackId) { return `<main class="v26-page"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(trackId)}">← Practice</a><section class="v26-route-gate"><p class="v26-kicker">Free candidate feature</p><h1>Create a free account to continue.</h1><p>Diagnostic assessment, targeted drills, exercises, bookmarks, notes, and progress persistence are included with Free membership.</p><button class="v26-btn primary" type="button" data-auth-intent="signup">Create Free Account</button><button class="v26-btn secondary" type="button" data-auth-intent="login">Sign In</button></section></main>`; }
 
 function sourceSection(current, legacy) {
   if (!current.length && !legacy.length) return "";

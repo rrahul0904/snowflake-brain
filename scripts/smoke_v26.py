@@ -41,9 +41,13 @@ for name in (
 for name in (
     'styles/tokens.css', 'styles/utilities.css', 'styles/shell.css', 'styles/home.css',
     'styles/study.css', 'styles/practice.css', 'styles/mock.css', 'styles/content.css',
-    'styles/exam.css', 'styles/responsive.css', 'styles/accessibility.css',
+    'styles/exam.css', 'styles/membership.css', 'styles/responsive.css', 'styles/accessibility.css',
 ):
     ok('/static/' + name in html, 'canonical css ' + name)
+
+membership_source = (ROOT / 'frontend' / 'views' / 'membership-v26.js').read_text(encoding='utf-8')
+for expected in ('$20', '$40', '$100', '$35', 'plus applicable taxes', '20 real practice questions every day', 'Lifetime access to a 100-question Practice Mock'):
+    ok(expected in membership_source, 'membership UI contract ' + expected)
 
 world_response = c.get('/static/assets/world-major-land.geojson')
 ok(world_response.status_code == 200, 'world geometry served')
@@ -83,6 +87,9 @@ ok(activity_live['active_total'] == 3, 'only public aggregate counted')
 ok([row['bucket_key'] for row in activity_live['locations']] == ['public-test'], 'sub-threshold bucket hidden')
 
 sm = c.get('/api/skills/map').json()
+catalog = c.get('/api/skills/catalog').json()['official_certifications']
+ok([(x['id'], x['exam_code']) for x in catalog] == [('snowpro-core', 'COF-C03'), ('advanced-data-engineer', 'DEA-C02'), ('advanced-architect', 'ARA-C01')], 'exact focused certification catalog')
+ok(all(x['id'] not in {'cost-optimization', 'cortex-genai'} for x in catalog), 'no fake certification paths')
 cert = next(x for x in sm['certifications'] if x['id'] == 'snowpro-core')
 domains = cert['domains']
 ok(len(domains) == 5, 'domains')
@@ -95,6 +102,16 @@ ok(cfg['quick_mock']['time_limit_minutes'] == 45, 'quick time')
 ok(cfg['full_mock']['question_count'] == 100, 'full count')
 ok(cfg['full_mock']['time_limit_minutes'] == 120, 'full time')
 ok(cfg['pass_scaled_score'] == 750, 'threshold')
+
+ok(c.get('/api/auth/me').json() == {'authenticated': False, 'candidate': None, 'membership': None}, 'guest membership state')
+ok(c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'}).status_code == 401, 'guest mock gate')
+signup = c.post('/api/auth/register', json={'display_name': 'V26 Smoke Candidate', 'email': 'v26-smoke@example.com', 'password': 'v26-smoke-password'})
+ok(signup.status_code == 201 and signup.json()['membership']['tier'] == 'free', signup.text)
+ok(c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'}).status_code == 403, 'free mock gate')
+with connect() as conn:
+    candidate_id = signup.json()['candidate']['id']
+    conn.execute("INSERT INTO candidate_memberships(candidate_id,tier,plan_code,status,source) VALUES (?, 'premium','premium_20','active','smoke_fixture')", (candidate_id,))
+ok(c.get('/api/auth/me').json()['membership']['tier'] == 'premium', 'server Premium state')
 
 s = c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'})
 ok(s.status_code == 200, s.text)

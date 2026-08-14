@@ -2,10 +2,12 @@ import json
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ..database import connect
+from ..auth import optional_candidate, require_candidate
+from ..entitlements import reserve_daily_questions
 from ..serializers import json_list, question_public
 
 router = APIRouter()
@@ -49,7 +51,10 @@ def questions(
     limit: int = Query(40, ge=1, le=500),
     offset: int = Query(0, ge=0),
     include_answers: bool = False,
+    candidate: dict | None = Depends(optional_candidate),
 ) -> dict[str, Any]:
+    if (unanswered or bookmarked) and not candidate:
+        require_candidate(candidate)
     where, params = _question_filters(
         track_id,
         test_id,
@@ -59,6 +64,7 @@ def questions(
         unanswered,
         bookmarked,
         source_kind,
+        candidate["id"] if candidate else None,
     )
     with connect() as conn:
         total = conn.execute(f"SELECT COUNT(*) AS count FROM questions q {where}", params).fetchone()["count"]
@@ -143,7 +149,7 @@ def question_detail(question_id: str) -> dict[str, Any]:
 
 
 @router.post("/quiz/start")
-def quiz_start(payload: QuizStartRequest) -> dict[str, Any]:
+def quiz_start(payload: QuizStartRequest, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     tags = ",".join(payload.tags or [])
     where, params = _question_filters(
         payload.track_id,
@@ -154,6 +160,7 @@ def quiz_start(payload: QuizStartRequest) -> dict[str, Any]:
         payload.unanswered_only,
         False,
         None,
+        candidate["id"],
     )
     order = "COALESCE(q.question_position, 0), q.question" if payload.test_id else (
         "RANDOM()" if payload.mode == "random" else "q.test_title, COALESCE(q.question_position, 0), q.question"
@@ -166,11 +173,12 @@ def quiz_start(payload: QuizStartRequest) -> dict[str, Any]:
                 [*params, payload.count],
             )
         ]
-    return {"questions": rows, "total": len(rows)}
+    quota = reserve_daily_questions(candidate["id"], candidate["membership"], len(rows))
+    return {"questions": rows, "total": len(rows), "quota": quota}
 
 
 @router.post("/quiz/grade")
-def quiz_grade(payload: QuizGradeRequest) -> dict[str, Any]:
+def quiz_grade(payload: QuizGradeRequest, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     ids = [answer.question_id for answer in payload.answers]
     if not ids:
         return {"score": 0, "total": 0, "results": []}
@@ -210,7 +218,7 @@ def quiz_grade(payload: QuizGradeRequest) -> dict[str, Any]:
 
 
 @router.post("/questions/{question_id}/attempt")
-def record_attempt(question_id: str, payload: AttemptRequest) -> dict[str, bool]:
+def record_attempt(question_id: str, payload: AttemptRequest, candidate: dict = Depends(require_candidate)) -> dict[str, bool]:
     selected = sorted(set(int(item) for item in payload.selected))
     with connect() as conn:
         question = conn.execute(
@@ -221,79 +229,80 @@ def record_attempt(question_id: str, payload: AttemptRequest) -> dict[str, bool]
             raise HTTPException(status_code=404, detail="Question not found")
         conn.execute(
             """
-            INSERT INTO question_attempts(question_id, selected, correct, mode)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO question_attempts(question_id, selected, correct, mode, candidate_id)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (question_id, json.dumps(selected), int(payload.correct), payload.mode),
+            (question_id, json.dumps(selected), int(payload.correct), payload.mode, candidate["id"]),
         )
         conn.execute(
             """
-            INSERT INTO learning_events(event_type, track_id, practice_test_id, question_id, metadata_json)
-            VALUES ('question_answered', ?, ?, ?, ?)
+            INSERT INTO learning_events(event_type, track_id, practice_test_id, question_id, metadata_json, candidate_id)
+            VALUES ('question_answered', ?, ?, ?, ?, ?)
             """,
             (
                 question["track_id"],
                 question["test_id"] or None,
                 question_id,
                 json.dumps({"mode": payload.mode, "correct": bool(payload.correct)}),
+                candidate["id"],
             ),
         )
         today = date.today().isoformat()
         conn.execute(
             """
-            INSERT INTO daily_activity(date, questions_answered, correct_answers)
-            VALUES (?, 1, ?)
-            ON CONFLICT(date) DO UPDATE SET
+            INSERT INTO candidate_daily_activity(candidate_id, date, questions_answered, correct_answers)
+            VALUES (?, ?, 1, ?)
+            ON CONFLICT(candidate_id, date) DO UPDATE SET
               questions_answered = questions_answered + 1,
               correct_answers = correct_answers + excluded.correct_answers
             """,
-            (today, int(payload.correct)),
+            (candidate["id"], today, int(payload.correct)),
         )
     return {"ok": True}
 
 
 @router.get("/questions/{question_id}/bookmark")
-def bookmark_state(question_id: str) -> dict[str, bool]:
+def bookmark_state(question_id: str, candidate: dict = Depends(require_candidate)) -> dict[str, bool]:
     with connect() as conn:
-        row = conn.execute("SELECT id FROM bookmarks WHERE question_id = ?", (question_id,)).fetchone()
+        row = conn.execute("SELECT id FROM candidate_bookmarks WHERE candidate_id = ? AND question_id = ?", (candidate["id"], question_id)).fetchone()
     return {"bookmarked": bool(row)}
 
 
 @router.post("/questions/{question_id}/bookmark")
-def toggle_bookmark(question_id: str) -> dict[str, bool]:
+def toggle_bookmark(question_id: str, candidate: dict = Depends(require_candidate)) -> dict[str, bool]:
     with connect() as conn:
         if not conn.execute("SELECT id FROM questions WHERE id = ?", (question_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Question not found")
-        existing = conn.execute("SELECT id FROM bookmarks WHERE question_id = ?", (question_id,)).fetchone()
+        existing = conn.execute("SELECT id FROM candidate_bookmarks WHERE candidate_id = ? AND question_id = ?", (candidate["id"], question_id)).fetchone()
         if existing:
-            conn.execute("DELETE FROM bookmarks WHERE id = ?", (existing["id"],))
+            conn.execute("DELETE FROM candidate_bookmarks WHERE id = ?", (existing["id"],))
             return {"bookmarked": False}
-        conn.execute("INSERT INTO bookmarks(question_id) VALUES (?)", (question_id,))
+        conn.execute("INSERT INTO candidate_bookmarks(candidate_id, question_id) VALUES (?, ?)", (candidate["id"], question_id))
     return {"bookmarked": True}
 
 
 @router.get("/questions/{question_id}/notes")
-def question_notes(question_id: str) -> dict[str, Any]:
+def question_notes(question_id: str, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     with connect() as conn:
         rows = [
             dict(row)
             for row in conn.execute(
-                "SELECT id, body, created_at FROM notes WHERE question_id = ? ORDER BY created_at DESC",
-                (question_id,),
+                "SELECT id, body, created_at FROM candidate_notes WHERE candidate_id = ? AND question_id = ? ORDER BY created_at DESC",
+                (candidate["id"], question_id),
             )
         ]
     return {"notes": rows}
 
 
 @router.post("/questions/{question_id}/notes")
-def add_question_note(question_id: str, payload: dict[str, str]) -> dict[str, Any]:
+def add_question_note(question_id: str, payload: dict[str, str], candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     body = (payload.get("body") or "").strip()
     if not body:
         raise HTTPException(status_code=400, detail="Note body is required")
     with connect() as conn:
         if not conn.execute("SELECT id FROM questions WHERE id = ?", (question_id,)).fetchone():
             raise HTTPException(status_code=404, detail="Question not found")
-        cursor = conn.execute("INSERT INTO notes(question_id, body) VALUES (?, ?)", (question_id, body))
+        cursor = conn.execute("INSERT INTO candidate_notes(candidate_id, question_id, body) VALUES (?, ?, ?)", (candidate["id"], question_id, body))
     return {"ok": True, "id": cursor.lastrowid}
 
 
@@ -306,6 +315,7 @@ def _question_filters(
     unanswered: bool,
     bookmarked: bool,
     source_kind: str | None,
+    candidate_id: int | None = None,
 ) -> tuple[str, list[Any]]:
     filters = ["q.track_id = ?"]
     params: list[Any] = [track_id]
@@ -326,7 +336,9 @@ def _question_filters(
         filters.append("q.source_kind = ?")
         params.append(source_kind)
     if unanswered:
-        filters.append("NOT EXISTS (SELECT 1 FROM question_attempts qa WHERE qa.question_id = q.id)")
+        filters.append("NOT EXISTS (SELECT 1 FROM question_attempts qa WHERE qa.question_id = q.id AND qa.candidate_id = ?)")
+        params.append(candidate_id)
     if bookmarked:
-        filters.append("EXISTS (SELECT 1 FROM bookmarks b WHERE b.question_id = q.id)")
+        filters.append("EXISTS (SELECT 1 FROM candidate_bookmarks b WHERE b.question_id = q.id AND b.candidate_id = ?)")
+        params.append(candidate_id)
     return "WHERE " + " AND ".join(filters), params
