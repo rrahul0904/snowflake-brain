@@ -85,9 +85,10 @@ def create_mock(mode: str = "weekly-mock") -> dict[str, Any]:
     return api("/api/mock/sessions", "POST", {"track_id": "snowpro-core", "mode": mode})
 
 
-def browser_page(browser: Browser, width: int, height: int) -> tuple[BrowserContext, Page, list[str]]:
+def browser_page(browser: Browser, width: int, height: int, *, authenticated: bool = True) -> tuple[BrowserContext, Page, list[str]]:
     context = browser.new_context(viewport={"width": width, "height": height}, reduced_motion="no-preference")
-    context.add_cookies([{"name": cookie.name, "value": cookie.value, "url": BASE} for cookie in COOKIE_JAR])
+    if authenticated:
+        context.add_cookies([{"name": cookie.name, "value": cookie.value, "url": BASE} for cookie in COOKIE_JAR])
     page = context.new_page()
     problems: list[str] = []
     page.on("console", lambda msg: problems.append(f"console {msg.type}: {msg.text}") if msg.type == "error" else None)
@@ -98,6 +99,39 @@ def browser_page(browser: Browser, width: int, height: int) -> tuple[BrowserCont
 def assert_no_browser_errors(problems: list[str], label: str) -> None:
     if problems:
         raise AssertionError(f"Browser errors during {label}: {problems}")
+
+
+def guest_identity_pass(browser: Browser) -> None:
+    context, page, problems = browser_page(browser, 1440, 1000, authenticated=False)
+    page.add_init_script("localStorage.setItem('snowflake-certification.theme','dark')")
+    route(page, "#/home")
+    page.locator(".v26-login-link[data-auth-intent='login']").click()
+    page.wait_for_selector(".v26-auth-modal")
+    page.wait_for_timeout(350)
+    shot(page, "00-dark-google-sign-in")
+    check_google = page.locator("[data-google-auth]")
+    if not check_google.count() or "Continue with Google" not in check_google.inner_text():
+        raise AssertionError("Continue with Google is missing from sign-in")
+    page.locator("[data-auth-close]").first.click()
+    page.locator(".v26-signup-link[data-auth-intent='signup']").click()
+    page.wait_for_selector(".v26-auth-modal")
+    page.wait_for_timeout(200)
+    shot(page, "00b-dark-google-create-account")
+    assert_no_browser_errors(problems, "guest identity pass")
+    context.close()
+
+
+def guest_mobile_identity_pass(browser: Browser) -> None:
+    context, page, problems = browser_page(browser, 390, 844, authenticated=False)
+    page.add_init_script("localStorage.setItem('snowflake-certification.theme','dark')")
+    route(page, "#/home")
+    page.locator("[data-menu]").click()
+    page.locator(".v26-mobile-auth[data-auth-intent='login']").click()
+    page.wait_for_selector(".v26-auth-modal")
+    page.wait_for_timeout(200)
+    shot(page, "00c-mobile-google-sign-in")
+    assert_no_browser_errors(problems, "guest mobile identity pass")
+    context.close()
 
 
 def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
@@ -169,6 +203,13 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
     shot(page, "15-dark-feedback-drawer")
     page.locator("[data-feedback-close]").click()
 
+    route(page, "#/membership")
+    shot(page, "15b-dark-membership-account")
+
+    route(page, "#/account")
+    page.wait_for_selector(".v26-account-sessions")
+    shot(page, "15c-dark-account-sessions")
+
     set_theme(page, "light")
     route(page, "#/home", theme="light")
     page.wait_for_timeout(500)
@@ -219,11 +260,13 @@ def mobile_pass(browser: Browser, session_id: int) -> None:
 def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
     manifest = {
         "base_url": BASE,
-        "reference": "user-supplied screen recording",
+        "reference": "user-supplied screen recording plus candidate identity/membership security feature",
         "screenshots": sorted(path.name for path in OUT.glob("*.png")),
         "domain_id": domain_id,
         "skill_id": skill_id,
         "mock_session_id": session_id,
+        "identity": "Google sign-in is rendered in guest desktop/mobile states. CI uses disabled-provider mode because no production OAuth secret is stored in GitHub.",
+        "paid_access": "Membership and account/session states are rendered; paid activation remains server-authoritative and requires deployment billing credentials.",
         "activity_truthfulness": "No synthetic learner markers are injected. Live markers require privacy-safe aggregated activity from /api/activity/globe; otherwise the globe renders the truthful worldwide fallback.",
     }
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -232,10 +275,12 @@ def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
 def main() -> None:
     wait_server()
     suffix = uuid.uuid4().hex
-    api("/api/auth/register", "POST", {"display_name": "Visual Parity Candidate", "email": f"visual-{suffix}@example.com", "password": f"visual-{suffix}"})
     domain_id, skill_id = first_skill()
     with sync_playwright() as p:
         browser = p.chromium.launch()
+        guest_identity_pass(browser)
+        guest_mobile_identity_pass(browser)
+        api("/api/auth/register", "POST", {"display_name": "Visual Parity Candidate", "email": f"visual-{suffix}@example.com", "password": f"visual-{suffix}"})
         session_id = desktop_pass(browser, domain_id, skill_id)
         mobile_pass(browser, session_id)
         browser.close()
