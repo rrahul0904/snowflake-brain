@@ -38,6 +38,10 @@ jobs:
         run: python scripts/smoke_certification_native.py
       - name: Verify V26 end-to-end backend flow
         run: python scripts/smoke_v26.py
+      - name: Verify candidate auth and memberships
+        run: python scripts/test_auth_membership.py
+      - name: Verify Google identity and trusted billing authority
+        run: python scripts/test_google_billing_security.py
       - name: Verify active frontend syntax
         shell: bash
         run: |
@@ -46,8 +50,10 @@ jobs:
             frontend/app-complete.js
             frontend/router-complete.js
             frontend/api.js
+            frontend/auth.js
             frontend/ui.js
             frontend/components/nav.js
+            frontend/components/candidate-access.js
             frontend/components/feedback.js
             frontend/components/globe.js
             frontend/components/home-extras.js
@@ -67,6 +73,8 @@ jobs:
             frontend/views/reference.js
             frontend/views/journal.js
             frontend/views/journal-v26.js
+            frontend/views/membership-v26.js
+            frontend/views/account-v26.js
             frontend/views/labs.js
             frontend/views/info-v26.js
           )
@@ -84,3 +92,11 @@ jobs:
           for file in "${forbidden[@]}"; do
             if [[ -e "$file" ]]; then echo "Forbidden legacy runtime file exists: $file"; exit 1; fi
           done
+      - name: Verify secret files are not tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)(\.env$|.*\.pem$|.*\.key$|secrets/|private_content/)'; then
+            echo 'A local secret/private content file is tracked'
+            exit 1
+          fi
