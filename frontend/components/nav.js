@@ -1,12 +1,13 @@
 import { getSkillMap } from "../api.js";
 import { activeTrack, navigateWithTrack, normalizeTrack, setActiveTrack } from "../ui.js";
 
-const items = [
+const certificationItems = [
   ["#/curriculum", "Curriculum"],
   ["#/practice", "Practice"],
   ["#/reference", "Reference"],
   ["#/journal", "Journal"],
 ];
+const homeItems = certificationItems.filter(([href]) => href === "#/reference" || href === "#/journal");
 
 const aliases = new Map([
   ["#/domain", "#/curriculum"], ["#/skill", "#/curriculum"],
@@ -25,18 +26,20 @@ export async function renderNav() {
   setActiveTrack(selected);
   const cert = tracks.find((item) => item.id === selected) || { id: "snowpro-core", title: "SnowPro Core", exam_code: "COF-C03" };
   const theme = document.documentElement.dataset.theme || "dark";
+  const rawPath = (window.location.hash || "#/home").split("?")[0];
+  const primaryItems = rawPath === "#/home" || rawPath === "#/" ? homeItems : certificationItems;
 
   nav.className = "v26-header";
   nav.innerHTML = `<div class="v26-nav-inner">
     <a class="v26-brand" href="#/home" aria-label="Snowflake Certified home"><span class="v26-brand-mark">S</span><span>Snowflake Certified</span></a>
     <button class="v26-mobile-menu" type="button" data-menu aria-label="Open navigation" aria-expanded="false">Menu</button>
-    <nav class="v26-primary-nav" aria-label="Primary navigation">${items.map(([href, label]) => `<a href="${href}" data-href="${href}">${label}</a>`).join("")}</nav>
+    <nav class="v26-primary-nav" aria-label="Primary navigation">${primaryItems.map(([href, label]) => `<a href="${href}" data-href="${href}">${label}</a>`).join("")}</nav>
     <div class="v26-nav-actions">
       <div class="v26-cert-menu">
-        <button class="v26-cert-trigger" type="button" data-cert-trigger aria-expanded="false"><span>${cert.exam_code || "COF-C03"}</span><b>${cert.title || "SnowPro Core"}</b><i>⌄</i></button>
-        <div class="v26-cert-popover" data-cert-popover hidden>
-          <a class="v26-cert-all" href="#/certifications"><span>All certifications</span><b>View paths →</b></a>
-          ${(tracks.length ? tracks : [cert]).map((item) => `<button type="button" data-track="${item.id}" class="${item.id === selected ? "selected" : ""}"><span>${item.exam_code || "SnowPro"}</span><b>${item.title || item.id}</b>${item.id === selected ? `<em>Selected</em>` : ""}</button>`).join("")}
+        <button class="v26-cert-trigger" type="button" data-cert-trigger aria-haspopup="menu" aria-expanded="false"><span>${cert.exam_code || "COF-C03"}</span><b>${cert.title || "SnowPro Core"}</b><i>⌄</i></button>
+        <div class="v26-cert-popover" data-cert-popover role="menu" hidden>
+          <a class="v26-cert-all" href="#/certifications" role="menuitem"><span>All certifications</span><b>View paths →</b></a>
+          ${(tracks.length ? tracks : [cert]).map((item) => `<button type="button" role="menuitem" data-track="${item.id}" class="${item.id === selected ? "selected" : ""}"><span>${item.exam_code || "SnowPro"}</span><b>${item.title || item.id}</b>${item.id === selected ? `<em>Selected</em>` : ""}</button>`).join("")}
           <div class="v26-cert-soon"><span>Advanced & specialty paths</span><b>More guides coming soon</b></div>
         </div>
       </div>
