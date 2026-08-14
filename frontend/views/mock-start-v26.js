@@ -1,6 +1,6 @@
 export const VIEW_ID = "v26-mock-start";
 
-import { getActiveMockSession, getMockConfig, startMockSession } from "../api.js";
+import { cancelMockSession, getActiveMockSession, getMockConfig, startMockSession } from "../api.js";
 import { activeTrack } from "../ui.js";
 
 export default async function mount(container, params = {}) {
@@ -9,7 +9,7 @@ export default async function mount(container, params = {}) {
   let selected = params.type === "quick-mock" ? "quick-mock" : "full-mock";
   const quick = config.quick_mock || {};
   const full = config.full_mock || {};
-  container.innerHTML = `<main class="v26-page v26-sitting-page"><a class="v26-back" href="#/mock?track_id=${encodeURIComponent(trackId)}">← Mock Exam</a>${active.session ? `<section class="v26-interrupted-sitting"><span>Interrupted Sitting Found</span><strong>Resume your active mock</strong><p>${minutes(active.session.remaining_seconds)} remaining. Saved answers, flags, question order, and the deadline are still active.</p><a class="v26-btn primary" href="#/mock/session?session_id=${active.session.session_id}">Resume Exam</a></section>` : ""}<header class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Choose Your Sitting</h1><p>Select a shorter readiness check or the full Snowflake Brain exam simulation.</p></header><section class="v26-sitting-choice"><label data-sitting="quick-mock"><input type="radio" name="sitting" value="quick-mock"/><span>Quick Mock</span><strong>${quick.question_count || 30} questions</strong><em>${quick.time_limit_minutes || 45} minutes</em><p>A focused timed readiness check between study sessions.</p></label><label data-sitting="full-mock"><input type="radio" name="sitting" value="full-mock"/><span>Full-Length Mock</span><strong>${full.question_count || 100} questions</strong><em>${full.time_limit_minutes || 120} minutes</em><p>The complete Snowflake Brain certification simulation.</p></label></section><section class="v26-exam-info"><div><p class="v26-kicker">Exam Format</p><dl data-format></dl></div><div><p class="v26-kicker">Domain Weights</p><div class="v26-weight-list">${(config.domains || []).map((domain, index) => `<div><i data-domain="${index + 1}"></i><span>${domain.title}</span><strong>${domain.weight}%</strong></div>`).join("")}</div></div></section><section class="v26-before-start"><p class="v26-kicker">Before You Start</p><ul><li>The timer cannot be paused.</li><li>Answers and review flags save automatically.</li><li>You can navigate freely between questions.</li><li>Refreshing resumes the same sitting and deadline.</li><li>Explanations appear only after submission.</li><li>The sitting submits automatically when time expires.</li></ul></section><button class="v26-start-wide" type="button" data-start></button><p class="v26-scoring-note">${config.scoring_note || "Practice scoring is a study readiness estimate."}</p></main>`;
+  container.innerHTML = `<main class="v26-page v26-sitting-page"><a class="v26-back" href="#/mock?track_id=${encodeURIComponent(trackId)}">← Mock Exam</a>${active.session ? `<section class="v26-interrupted-sitting" data-interrupted><span>Interrupted Sitting Found</span><strong>Resume your active mock</strong><p>${minutes(active.session.remaining_seconds)} remaining. Saved answers, flags, question order, and the deadline are still active.</p><div class="v26-interrupted-actions"><button class="v26-btn secondary" type="button" data-discard>Discard Sitting</button><a class="v26-btn primary" href="#/mock/session?session_id=${active.session.session_id}">Resume Exam</a></div></section>` : ""}<header class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Choose Your Sitting</h1><p>Select a shorter readiness check or the full Snowflake Brain exam simulation.</p></header><section class="v26-sitting-choice"><label data-sitting="quick-mock"><input type="radio" name="sitting" value="quick-mock"/><span>Quick Mock</span><strong>${quick.question_count || 30} questions</strong><em>${quick.time_limit_minutes || 45} minutes</em><p>A focused timed readiness check between study sessions.</p></label><label data-sitting="full-mock"><input type="radio" name="sitting" value="full-mock"/><span>Full-Length Mock</span><strong>${full.question_count || 100} questions</strong><em>${full.time_limit_minutes || 120} minutes</em><p>The complete Snowflake Brain certification simulation.</p></label></section><section class="v26-exam-info"><div><p class="v26-kicker">Exam Format</p><dl data-format></dl></div><div><p class="v26-kicker">Domain Weights</p><div class="v26-weight-list">${(config.domains || []).map((domain, index) => `<div><i data-domain="${index + 1}"></i><span>${domain.title}</span><strong>${domain.weight}%</strong></div>`).join("")}</div></div></section><section class="v26-before-start"><p class="v26-kicker">Before You Start</p><ul><li>The timer cannot be paused.</li><li>Answers and review flags save automatically.</li><li>You can navigate freely between questions.</li><li>Refreshing resumes the same sitting and deadline.</li><li>Explanations appear only after submission.</li><li>The sitting submits automatically when time expires.</li></ul></section><button class="v26-start-wide" type="button" data-start></button><p class="v26-scoring-note">${config.scoring_note || "Practice scoring is a study readiness estimate."}</p></main>`;
   const update = () => {
     container.querySelectorAll("[data-sitting]").forEach((node) => node.classList.toggle("selected", node.dataset.sitting === selected));
     const setting = selected === "quick-mock" ? quick : full;
@@ -18,6 +18,17 @@ export default async function mount(container, params = {}) {
     container.querySelector(`[data-sitting='${selected}'] input`).checked = true;
   };
   container.querySelectorAll("[data-sitting]").forEach((node) => node.addEventListener("click", () => { selected = node.dataset.sitting; update(); }));
+  container.querySelector("[data-discard]")?.addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    event.currentTarget.textContent = "Discarding…";
+    try {
+      await cancelMockSession(active.session.session_id);
+      container.querySelector("[data-interrupted]")?.remove();
+    } catch (error) {
+      event.currentTarget.disabled = false;
+      event.currentTarget.textContent = error.message || "Unable to discard";
+    }
+  });
   container.querySelector("[data-start]").addEventListener("click", async (event) => {
     event.currentTarget.disabled = true;
     try { const session = await startMockSession({ track_id: trackId, mode: selected }); window.location.hash = `#/mock/session?session_id=${session.session_id}`; }
