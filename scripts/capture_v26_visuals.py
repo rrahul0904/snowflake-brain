@@ -118,6 +118,17 @@ def guest_identity_pass(browser: Browser) -> None:
     page.wait_for_selector(".v26-auth-modal")
     page.wait_for_timeout(200)
     shot(page, "00b-dark-google-create-account")
+    page.locator(".v26-modal-close[data-auth-close]").click()
+    page.wait_for_selector(".v26-auth-modal", state="detached")
+
+    # Deep-linking to study content without a session must render only the access
+    # gate. The protected view module is not imported or mounted.
+    route(page, "#/curriculum?track_id=snowpro-core")
+    page.wait_for_selector("#view-root[data-view-id='authentication-required']")
+    if page.locator("[data-domain-toggle]").count():
+        raise AssertionError("Anonymous curriculum content rendered behind the candidate gate")
+    shot(page, "00d-guest-content-login-gate")
+
     assert_no_browser_errors(problems, "guest identity pass")
     context.close()
 
@@ -267,6 +278,7 @@ def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
         "skill_id": skill_id,
         "mock_session_id": session_id,
         "identity": "Google sign-in is rendered in guest desktop/mobile states. CI uses disabled-provider mode because no production OAuth secret is stored in GitHub.",
+        "content_boundary": "Guest browser contexts deep-link to curriculum and must render authentication-required without loading domain content. Study APIs require a valid candidate session.",
         "paid_access": "Membership and account/session states are rendered; paid activation remains server-authoritative and requires deployment billing credentials.",
         "activity_truthfulness": "No synthetic learner markers are injected. Live markers require privacy-safe aggregated activity from /api/activity/globe; otherwise the globe renders the truthful worldwide fallback.",
     }
@@ -276,12 +288,15 @@ def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
 def main() -> None:
     wait_server()
     suffix = uuid.uuid4().hex
+    # Create the isolated CI candidate before requesting any certification
+    # metadata. Guest browser contexts below intentionally do not receive this
+    # cookie and therefore still prove the anonymous boundary.
+    api("/api/auth/register", "POST", {"display_name": "Visual Parity Candidate", "email": f"visual-{suffix}@example.com", "password": f"visual-{suffix}"})
     domain_id, skill_id = first_skill()
     with sync_playwright() as p:
         browser = p.chromium.launch()
         guest_identity_pass(browser)
         guest_mobile_identity_pass(browser)
-        api("/api/auth/register", "POST", {"display_name": "Visual Parity Candidate", "email": f"visual-{suffix}@example.com", "password": f"visual-{suffix}"})
         session_id = desktop_pass(browser, domain_id, skill_id)
         mobile_pass(browser, session_id)
         browser.close()
