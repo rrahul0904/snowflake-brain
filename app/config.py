@@ -45,6 +45,17 @@ SNOWFLAKE_LABS_CONFIG = Path(
 ).expanduser()
 SNOWFLAKE_LABS_MODE = os.getenv("SNOWFLAKE_LABS_MODE", "offline").lower()
 
+# Commercial question-bank content is deliberately outside the repository and
+# outside the frontend static tree. The checked-in repository contains only the
+# importer/schema/selection engine; production bank files arrive through a
+# private deployment volume or secret-backed content store.
+PRIVATE_QUESTION_BANK_DIR = Path(
+    os.getenv(
+        "PRIVATE_QUESTION_BANK_DIR",
+        str(ROOT_DIR / "private_content" / "question_bank"),
+    )
+).expanduser()
+
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
 SECURITY_RATE_LIMIT_ENABLED = os.getenv("SECURITY_RATE_LIMIT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
