@@ -36,6 +36,9 @@ echo "== V26 functional and visual contract =="
 echo "== Candidate authentication and membership =="
 "$PYTHON_BIN" scripts/test_auth_membership.py
 
+echo "== Google identity and trusted billing authority =="
+"$PYTHON_BIN" scripts/test_google_billing_security.py
+
 echo "== Retired media UI guard =="
 if rg -n -i '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend --glob '!*.map'; then
   echo "Retired course/media runtime identifiers remain in the active frontend." >&2
