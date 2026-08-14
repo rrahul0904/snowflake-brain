@@ -49,10 +49,11 @@ def billing_configured() -> bool:
 
 
 def billing_public_config() -> dict[str, Any]:
+    configured = billing_configured()
     return {
-        "enabled": billing_configured(),
-        "provider": "stripe" if billing_configured() else None,
-        "available_plans": [plan for plan, price in price_map().items() if price] if billing_configured() else [],
+        "enabled": configured,
+        "provider": "stripe" if configured else None,
+        "available_plans": [plan for plan, price in price_map().items() if price] if configured else [],
     }
 
 
@@ -188,7 +189,6 @@ def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str
     if not customer_id or not subscription_id:
         raise ValueError("Subscription event is missing customer or subscription ID")
     if not plan_code:
-        existing = None
         with connect() as conn:
             existing = conn.execute(
                 "SELECT internal_plan,provider_price_id FROM billing_subscriptions WHERE provider='stripe' AND provider_subscription_id=?",
@@ -207,7 +207,7 @@ def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str
     with connect() as conn:
         conn.execute(
             "INSERT INTO billing_subscriptions(candidate_id,provider,provider_customer_id,provider_subscription_id,provider_price_id,internal_plan,status,current_period_start,current_period_end,cancel_at_period_end) "
-            "VALUES (?,'stripe',?,?,?,?,?,?,?,?,?) "
+            "VALUES (?,'stripe',?,?,?,?,?,?,?,?) "
             "ON CONFLICT(provider,provider_subscription_id) DO UPDATE SET provider_customer_id=excluded.provider_customer_id, "
             "provider_price_id=excluded.provider_price_id,internal_plan=excluded.internal_plan,status=excluded.status, "
             "current_period_start=excluded.current_period_start,current_period_end=excluded.current_period_end, "
@@ -318,19 +318,36 @@ def _handle_event(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def process_stripe_webhook(payload: bytes, signature_header: str) -> dict[str, Any]:
+    if not billing_configured():
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "billing_unavailable", "message": "Billing webhook processing is disabled in this environment."},
+        )
     ensure_identity_billing_schema()
     event = StripeProvider().verify_webhook(payload, signature_header)
     event_id = str(event["id"])
     event_type = str(event["type"])
     payload_hash = hashlib.sha256(payload).hexdigest()
-    try:
-        with connect() as conn:
+
+    with connect() as conn:
+        existing = conn.execute(
+            "SELECT processing_status,payload_hash FROM billing_events WHERE provider='stripe' AND provider_event_id=?",
+            (event_id,),
+        ).fetchone()
+        if existing:
+            if str(existing["payload_hash"]) != payload_hash:
+                raise HTTPException(status_code=400, detail="Billing event ID was replayed with a different payload.")
+            if existing["processing_status"] == "processed":
+                return {"received": True, "duplicate": True, "event_id": event_id}
+            conn.execute(
+                "UPDATE billing_events SET processing_status='processing',error_message='' WHERE provider='stripe' AND provider_event_id=?",
+                (event_id,),
+            )
+        else:
             conn.execute(
                 "INSERT INTO billing_events(provider,provider_event_id,event_type,payload_hash,processing_status) VALUES ('stripe',?,?,?,'processing')",
                 (event_id, event_type, payload_hash),
             )
-    except sqlite3.IntegrityError:
-        return {"received": True, "duplicate": True, "event_id": event_id}
 
     try:
         result = _handle_event(event)
@@ -340,6 +357,8 @@ def process_stripe_webhook(payload: bytes, signature_header: str) -> dict[str, A
                 "UPDATE billing_events SET processing_status='failed',processed_at=datetime('now'),error_message=? WHERE provider='stripe' AND provider_event_id=?",
                 (str(error)[:500], event_id),
             )
+        if isinstance(error, HTTPException):
+            raise
         raise HTTPException(status_code=400, detail="Billing event could not be applied safely.") from error
 
     with connect() as conn:
