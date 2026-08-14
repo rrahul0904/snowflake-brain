@@ -3,7 +3,7 @@ export const VIEW_ID = "v26-curriculum";
 import { escapeHtml, getSkillMap, getTaskProgress } from "../api.js";
 import { activeTrack, setActiveTrack } from "../ui.js";
 
-const COLORS = ["#e39a60", "#77a4d5", "#9b82cf", "#70af81", "#d16d68"];
+const COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 
 export default async function mount(container, params = {}) {
   const trackId = params.track_id || activeTrack();
@@ -34,7 +34,7 @@ function domainBlock(cert, domain, index, complete) {
   const skills = domain.skills || [];
   const done = skills.filter((skill) => complete.has(skill.id)).length;
   const id = `v26-domain-${index}`;
-  return `<article class="v26-domain-block"><header><div class="v26-domain-index" style="--domain:${COLORS[index % COLORS.length]}"><i></i><strong>${String(index + 1).padStart(2, "0")}</strong></div><div><span>${Number(domain.weight || 0)}% of exam</span><h2>${escapeHtml(domain.title)}</h2><p>${escapeHtml(domain.description || `${skills.length} task statements in this domain.`)}</p></div><div class="v26-domain-progress"><strong>${done}/${skills.length}</strong><span>complete</span><button type="button" data-domain-toggle="${id}" aria-expanded="true"><span>−</span></button></div></header><div class="v26-task-rows" id="${id}">${skills.map((skill, skillIndex) => `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(skill.id)}"><b>${index + 1}.${skillIndex + 1}</b><span><strong>${escapeHtml(skill.title)}</strong><small>${escapeHtml(skill.objective || "")}</small></span><em>${complete.has(skill.id) ? "✓ Complete" : "Study →"}</em></a>`).join("")}</div></article>`;
+  return `<article class="v26-domain-block"><header><div class="v26-domain-index" style="--domain:${COLORS[index % COLORS.length]}"><i></i><strong>${String(index + 1).padStart(2, "0")}</strong></div><div><span>${Number(domain.weight || 0)}% of exam</span><h2>${escapeHtml(domain.title)}</h2><p>${escapeHtml(domain.description || `${skills.length} task statements in this domain.`)}</p></div><div class="v26-domain-progress"><strong>${done}/${skills.length}</strong><span>complete</span><button type="button" data-domain-toggle="${id}" aria-expanded="true" aria-controls="${id}" aria-label="Collapse ${escapeHtml(domain.title)} tasks"><span>−</span></button></div></header><div class="v26-task-rows" id="${id}">${skills.map((skill, skillIndex) => `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(skill.id)}"><b>${index + 1}.${skillIndex + 1}</b><span><strong>${escapeHtml(skill.title)}</strong><small>${escapeHtml(skill.objective || "")}</small></span><em>${complete.has(skill.id) ? "✓ Complete" : "Study →"}</em></a>`).join("")}</div></article>`;
 }
 
 function bindToggles(container) {
@@ -43,6 +43,7 @@ function bindToggles(container) {
     const open = target.hidden;
     target.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
+    button.setAttribute("aria-label", `${open ? "Collapse" : "Expand"} domain tasks`);
     button.querySelector("span").textContent = open ? "−" : "+";
   }));
 }
@@ -53,7 +54,7 @@ function layout(cert, active, body) {
 
 function sidebar(cert, active) {
   const domains = (cert.domains || []).map((domain, index) => `<a class="v26-side-domain ${active === domain.id ? "active" : ""}" href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(domain.id)}"><i style="--domain:${COLORS[index % COLORS.length]}"></i><b>${index + 1}</b><span>${escapeHtml(domain.title)}</span><em>${Number(domain.weight || 0)}%</em></a>`).join("");
-  return `<aside class="v26-study-nav"><div class="v26-side-brand"><span>${escapeHtml(cert.exam_code || "COF-C03")}</span><strong>${escapeHtml(cert.title || "SnowPro Core")}</strong></div><div class="v26-side-group"><small>Study Tools</small>${side("#/progress", "Progress Dashboard", cert.id, active === "progress")}${side("#/practice?mode=drill", "Drill Mode", cert.id, false)}</div><div class="v26-side-group"><small>Curriculum</small>${side("#/curriculum", "Exam Domains", cert.id, active === "curriculum")}${domains}</div><div class="v26-side-group"><small>Practice</small>${side("#/exercises", "Build Exercises", cert.id, active === "exercises")}${side("#/practice?mode=diagnostic", "Diagnostic Test", cert.id, false)}</div><div class="v26-side-group"><small>Look Up</small>${side("#/quick-reference", "Quick Reference", cert.id, active === "quick-reference")}${side("#/glossary", "Glossary", cert.id, active === "glossary")}</div></aside>`;
+  return `<aside class="v26-study-nav" aria-label="Study navigation"><div class="v26-side-group"><small>Study Tools</small>${side("#/progress", "Progress Dashboard", cert.id, active === "progress")}${side("#/practice?mode=drill", "Drill Mode", cert.id, false)}</div><div class="v26-side-group"><small>Curriculum</small>${side("#/curriculum", "Exam Domains", cert.id, active === "curriculum")}${domains}</div><div class="v26-side-group"><small>Practice</small>${side("#/exercises", "Build Exercises", cert.id, active === "exercises")}${side("#/practice?mode=diagnostic", "Diagnostic Test", cert.id, false)}</div><div class="v26-side-group"><small>Look Up</small>${side("#/quick-reference", "Quick Reference", cert.id, active === "quick-reference")}${side("#/glossary", "Glossary", cert.id, active === "glossary")}</div></aside>`;
 }
 
 function side(path, label, trackId, active) {
