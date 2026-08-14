@@ -3,6 +3,7 @@ export const VIEW_ID = "v26-exam-result";
 import { escapeHtml, getMockHistory, getMockResult } from "../api.js";
 import { activeTrack } from "../ui.js";
 
+const DOMAIN_COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
 let reviewFilter = "all";
 
 export default async function mount(container, params = {}) {
@@ -38,4 +39,4 @@ async function historyPage(container, trackId) {
 
 function filterButton(value, label, count) { return `<button class="${reviewFilter === value ? "active" : ""}" type="button" data-review-filter="${value}">${label}<span>${count}</span></button>`; }
 function formatTime(seconds) { const s = Math.max(0, Number(seconds || 0)); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h ? `${h}h ${m}m` : `${m} min`; }
-function color(index) { return ["#e39a60", "#77a4d5", "#9b82cf", "#70af81", "#d16d68"][index % 5]; }
+function color(index) { return DOMAIN_COLORS[index % DOMAIN_COLORS.length]; }
