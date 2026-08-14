@@ -40,8 +40,8 @@ for name in (
     ok('/static/' + name not in html, 'inactive legacy css ' + name)
 for name in (
     'styles/tokens.css', 'styles/utilities.css', 'styles/shell.css', 'styles/home.css',
-    'styles/study.css', 'styles/practice.css', 'styles/content.css', 'styles/exam.css',
-    'styles/responsive.css', 'styles/accessibility.css',
+    'styles/study.css', 'styles/practice.css', 'styles/mock.css', 'styles/content.css',
+    'styles/exam.css', 'styles/responsive.css', 'styles/accessibility.css',
 ):
     ok('/static/' + name in html, 'canonical css ' + name)
 
@@ -57,6 +57,7 @@ ok('const LOCATIONS' not in globe_source, 'no seeded fake globe locations')
 ok('getGlobeActivity' in globe_source, 'globe uses activity api')
 ok('world-major-land.geojson' in globe_source, 'globe uses real local geography')
 ok('ROTATION_PERIOD_MS' in globe_source, 'globe rotation configured')
+ok('buildLandDots' in globe_source, 'globe derives pointillist land from real geometry')
 
 activity = c.get('/api/activity/globe')
 ok(activity.status_code == 200, 'activity globe endpoint')
