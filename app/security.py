@@ -11,8 +11,19 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
-from .auth import COOKIE_NAME
+from .auth import COOKIE_NAME, candidate_for_token
 from .config import FORCE_HTTPS, SECURITY_RATE_LIMIT_ENABLED
+
+
+PUBLIC_API_EXACT = {
+    "/api/health",
+    "/api/activity/globe",
+    "/api/feedback",
+}
+PUBLIC_API_PREFIXES = (
+    "/api/auth/",
+    "/api/billing/",
+)
 
 
 class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
@@ -43,6 +54,22 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": str(window)},
             )
 
+        if self._requires_candidate(request):
+            candidate = candidate_for_token(request.cookies.get(COOKIE_NAME))
+            if not candidate:
+                self._record_denial(key)
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "detail": {
+                            "code": "authentication_required",
+                            "message": "Create a free candidate account or sign in to access certification content.",
+                        }
+                    },
+                    headers={"Cache-Control": "private, no-store"},
+                )
+            request.state.candidate = candidate
+
         response = await call_next(request)
         if response.status_code in {401, 403, 429}:
             self._record_denial(key)
@@ -51,11 +78,19 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        if request.url.path.startswith(("/api/auth", "/api/billing", "/api/mock")):
+        if self._requires_candidate(request) or request.url.path.startswith(("/api/auth", "/api/billing", "/api/mock")):
             response.headers["Cache-Control"] = "private, no-store"
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
+
+    def _requires_candidate(self, request: Request) -> bool:
+        path = request.url.path
+        if not path.startswith("/api/"):
+            return False
+        if path in PUBLIC_API_EXACT:
+            return False
+        return not any(path.startswith(prefix) for prefix in PUBLIC_API_PREFIXES)
 
     def _cross_site_mutation(self, request: Request) -> bool:
         if request.method in {"GET", "HEAD", "OPTIONS"} or request.url.path == "/api/billing/webhook":
