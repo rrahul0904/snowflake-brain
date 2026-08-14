@@ -9,6 +9,10 @@ const certificationItems = [
   ["#/journal", "Journal"],
   ["#/membership", "Membership"],
 ];
+const guestItems = [
+  ["#/membership", "Membership"],
+  ["#/about", "About"],
+];
 const homeItems = certificationItems.filter(([href]) => ["#/reference", "#/journal", "#/membership"].includes(href));
 
 const aliases = new Map([
@@ -22,20 +26,22 @@ const aliases = new Map([
 export async function renderNav() {
   const nav = document.querySelector("#sidebar");
   if (!nav) return;
+  const account = candidate();
   let tracks = [];
   let catalog = [];
-  try {
-    const [map, catalogPayload] = await Promise.all([getSkillMap(), getCertificationCatalog()]);
-    tracks = map.certifications || [];
-    catalog = catalogPayload.official_certifications || [];
-  } catch {}
+  if (account) {
+    try {
+      const [map, catalogPayload] = await Promise.all([getSkillMap(), getCertificationCatalog()]);
+      tracks = map.certifications || [];
+      catalog = catalogPayload.official_certifications || [];
+    } catch {}
+  }
   const selected = normalizeTrack(activeTrack(), tracks);
   setActiveTrack(selected);
   const cert = tracks.find((item) => item.id === selected) || { id: "snowpro-core", title: "SnowPro Core", exam_code: "COF-C03" };
   const theme = document.documentElement.dataset.theme || "dark";
   const rawPath = (window.location.hash || "#/home").split("?")[0];
-  const primaryItems = rawPath === "#/home" || rawPath === "#/" ? homeItems : certificationItems;
-  const account = candidate();
+  const primaryItems = account ? (rawPath === "#/home" || rawPath === "#/" ? homeItems : certificationItems) : guestItems;
   const initials = account?.display_name?.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "";
   const methods = (account?.sign_in_methods || []).map((item) => item === "google" ? "Google" : "Email").join(" + ");
 
@@ -45,16 +51,16 @@ export async function renderNav() {
     <button class="v26-mobile-menu" type="button" data-menu aria-label="Open navigation" aria-expanded="false">Menu</button>
     <nav class="v26-primary-nav" aria-label="Primary navigation">${primaryItems.map(([href, label]) => `<a href="${href}" data-href="${href}">${label}</a>`).join("")}${account ? "" : `<button class="v26-mobile-auth" type="button" data-auth-intent="login">Sign In</button><button class="v26-mobile-auth" type="button" data-auth-intent="signup">Create Account</button>`}</nav>
     <div class="v26-nav-actions">
-      <div class="v26-cert-menu">
+      ${account ? `<div class="v26-cert-menu">
         <button class="v26-cert-trigger" type="button" data-cert-trigger aria-haspopup="menu" aria-expanded="false"><span>${cert.exam_code || "COF-C03"}</span><b>${cert.title || "SnowPro Core"}</b><i>⌄</i></button>
         <div class="v26-cert-popover" data-cert-popover role="menu" hidden>
           <a class="v26-cert-all" href="#/certifications" role="menuitem"><span>All certifications</span><b>View paths →</b></a>
           ${(catalog.length ? catalog : [cert]).map((item) => item.id === "snowpro-core" ? `<button type="button" role="menuitem" data-track="snowpro-core" class="selected"><span>${escapeHtml(item.exam_code || "COF-C03")}</span><b>${escapeHtml(item.title || "SnowPro Core")}</b><em>Current</em></button>` : `<div class="v26-cert-option-soon" role="menuitem" aria-disabled="true"><span>${escapeHtml(item.exam_code || "SnowPro")}</span><b>${escapeHtml(item.title || "Advanced certification")}</b><em>Coming Soon</em></div>`).join("")}
         </div>
-      </div>
+      </div>` : ""}
       <button class="v26-theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme">${theme === "dark" ? "☼" : "☾"}</button>
       ${account ? `<div class="v26-account-menu"><button class="v26-account-link" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu, ${escapeHtml(account.plan)}" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span><b>${escapeHtml(account.display_name)} ▾</b><em>${escapeHtml(account.plan)}</em></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em>${methods ? `<small>Signed in with ${escapeHtml(methods)}</small>` : ""}</div><a href="#/account" role="menuitem">Account & Sessions</a><a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">My Progress</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
-      <a class="v26-mock-cta" href="#/mock?track_id=${encodeURIComponent(selected)}">${account?.plan_code === "free" ? "Weekly Mock" : "Take Mock Exam"}</a>
+      ${account ? `<a class="v26-mock-cta" href="#/mock?track_id=${encodeURIComponent(selected)}">${account?.plan_code === "free" ? "Weekly Mock" : "Take Mock Exam"}</a>` : ""}
     </div>
   </div>`;
 
