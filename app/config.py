@@ -4,8 +4,8 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
-# V24 is certification-native. The previous course/video archive database is not
-# opened by default; this gives the rebuilt product a clean schema boundary.
+# V26 is certification-native. Historical course/video archive data is not
+# opened by default; the certification product owns its persistence boundary.
 BRAIN_DB = Path(
     os.getenv("BRAIN_DB", str(ROOT_DIR / "data" / "snowflake_certification.sqlite"))
 ).expanduser()
@@ -48,6 +48,27 @@ SNOWFLAKE_LABS_MODE = os.getenv("SNOWFLAKE_LABS_MODE", "offline").lower()
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
 SECURITY_RATE_LIMIT_ENABLED = os.getenv("SECURITY_RATE_LIMIT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8010").rstrip("/")
+
+GOOGLE_AUTH_ENABLED = os.getenv("GOOGLE_AUTH_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+GOOGLE_OIDC_CLIENT_ID = os.getenv("GOOGLE_OIDC_CLIENT_ID", "").strip()
+GOOGLE_OIDC_CLIENT_SECRET = os.getenv("GOOGLE_OIDC_CLIENT_SECRET", "").strip()
+GOOGLE_OIDC_REDIRECT_URI = os.getenv(
+    "GOOGLE_OIDC_REDIRECT_URI", f"{APP_BASE_URL}/api/auth/google/callback"
+).strip()
+GOOGLE_OIDC_FLOW_MINUTES = max(3, int(os.getenv("GOOGLE_OIDC_FLOW_MINUTES", "10")))
+
+BILLING_ENABLED = os.getenv("BILLING_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_API_BASE = os.getenv("STRIPE_API_BASE", "https://api.stripe.com").rstrip("/")
+STRIPE_PRICE_PREMIUM_100 = os.getenv("STRIPE_PRICE_PREMIUM_100", "").strip()
+STRIPE_PRICE_PREMIUM_250 = os.getenv("STRIPE_PRICE_PREMIUM_250", "").strip()
+STRIPE_PRICE_PREMIUM_500 = os.getenv("STRIPE_PRICE_PREMIUM_500", "").strip()
+STRIPE_PRICE_EXAM_PACK = os.getenv("STRIPE_PRICE_EXAM_PACK", "").strip()
+BILLING_PAST_DUE_GRACE_DAYS = max(0, int(os.getenv("BILLING_PAST_DUE_GRACE_DAYS", "3")))
+ALLOW_MEMBERSHIP_DEV_OVERRIDE = os.getenv("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "false").lower() in {"1", "true", "yes", "on"}
 
 EXAM_SIMULATION_CONFIG = Path(
     os.getenv(
