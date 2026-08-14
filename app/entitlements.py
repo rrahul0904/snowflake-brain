@@ -49,7 +49,7 @@ def apply_membership_plan(
     """Single trusted write path for plan changes.
 
     Browsers never call this directly. Billing webhooks and explicit local CLI
-    tooling are the only intended callers. Every transition increments an
+    tooling are the only intended callers. Actual changes increment an
     entitlement version so stale entitlement caches can be invalidated later.
     """
     ensure_identity_billing_schema()
@@ -59,12 +59,16 @@ def apply_membership_plan(
     with connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
         current = conn.execute(
-            "SELECT plan_code, entitlement_version FROM candidate_memberships "
+            "SELECT plan_code, entitlement_version, expires_at FROM candidate_memberships "
             "WHERE candidate_id=? AND status='active' ORDER BY id DESC LIMIT 1",
             (candidate_id,),
         ).fetchone()
         old_plan = current["plan_code"] if current else "free"
         previous_version = int(current["entitlement_version"] if current else 0)
+        current_expiry = str(current["expires_at"] or "") if current else ""
+        requested_expiry = str(expires_at or "")
+        if current and old_plan == plan_code and current_expiry == requested_expiry:
+            return {"old_plan": old_plan, "new_plan": plan_code, "entitlement_version": previous_version, "changed": False}
         maximum = conn.execute(
             "SELECT COALESCE(MAX(entitlement_version), 0) AS v FROM candidate_memberships WHERE candidate_id=?",
             (candidate_id,),
@@ -89,7 +93,7 @@ def apply_membership_plan(
             "INSERT INTO membership_events(candidate_id,previous_plan,next_plan,source) VALUES (?,?,?,?)",
             (candidate_id, old_plan, plan_code, source),
         )
-    return {"old_plan": old_plan, "new_plan": plan_code, "entitlement_version": next_version}
+    return {"old_plan": old_plan, "new_plan": plan_code, "entitlement_version": next_version, "changed": True}
 
 
 def entitlement_usage(candidate_id: int, membership: dict[str, Any]) -> dict[str, Any]:
