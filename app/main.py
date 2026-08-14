@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import run_migrations
-from .routers import certification_practice, experience, feedback, intelligence, labs, mock_exam, questions, skills
+from .routers import activity, certification_practice, experience, feedback, intelligence, labs, mock_exam, questions, skills
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
@@ -35,6 +35,7 @@ app.include_router(intelligence.router, prefix="/api")
 app.include_router(experience.router, prefix="/api")
 app.include_router(labs.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
+app.include_router(activity.router, prefix="/api")
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
