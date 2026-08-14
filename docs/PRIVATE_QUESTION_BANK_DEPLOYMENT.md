@@ -18,10 +18,10 @@ The application expects production question-bank files through `PRIVATE_QUESTION
 ## Current beta artifact
 
 - Certification: SnowPro Core COF-C03
-- Bank version: `2026-08-14-beta-1200-v1`
-- Filename: `snowpro_core_cof_c03_private_bank_1200_beta.json`
+- Bank version: `2026-08-14-beta-1200-v2`
+- Filename: `snowpro_core_cof_c03_private_bank_1200_beta_v2.json`
 - Questions: 1,200
-- SHA-256: `0e651e75f3e0c681a8ce6f3f9f1c35bc7319ad085ac4fb2d0005c87cffd21960`
+- SHA-256: `da57f636a57180631448fda79cfdcad2acf8e38ae2f381ea891a8cea91e704c5`
 
 The public repository contains only the non-content manifest at `docs/COF_C03_PRIVATE_BANK_1200_MANIFEST.md`.
 
@@ -30,7 +30,7 @@ The public repository contains only the non-content manifest at `docs/COF_C03_PR
 On the backend host/container, with the private artifact available only to administrators:
 
 ```bash
-sha256sum /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta.json
+sha256sum /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta_v2.json
 ```
 
 The result must match the manifest SHA-256 before import.
@@ -39,7 +39,7 @@ Then run the repository's backend-only validator:
 
 ```bash
 python scripts/question_bank_admin.py validate \
-  /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta.json
+  /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta_v2.json
 ```
 
 Validation must report `valid: true`, all 19 tasks covered, and 1,200 active questions before import.
@@ -56,7 +56,7 @@ Import one reviewed artifact explicitly:
 
 ```bash
 python scripts/question_bank_admin.py import \
-  /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta.json
+  /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta_v2.json
 ```
 
 Or dry-run a directory before importing it:
