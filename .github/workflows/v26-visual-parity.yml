@@ -1,0 +1,77 @@
+name: V26 Visual Parity
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "app/**"
+      - "config/**"
+      - "scripts/capture_v26_visuals.py"
+      - ".github/workflows/v26-visual-parity.yml"
+  push:
+    branches:
+      - agent/v26-screen-recording-rebuild
+    paths:
+      - "frontend/**"
+      - "app/**"
+      - "config/**"
+      - "scripts/capture_v26_visuals.py"
+      - ".github/workflows/v26-visual-parity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BRAIN_DB: /tmp/snowflake-v26-visual.sqlite
+      V26_BASE_URL: http://127.0.0.1:8000
+      V26_VISUAL_DIR: artifacts/v26-visual-parity
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright
+        run: |
+          pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+
+      - name: Start certification guide
+        shell: bash
+        run: |
+          set -euo pipefail
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/v26-server.log 2>&1 &
+          echo $! > /tmp/v26-server.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/v26-server.log
+          exit 1
+
+      - name: Capture dark light and mobile parity screens
+        run: python scripts/capture_v26_visuals.py
+
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/v26-server.log || true
+
+      - name: Upload visual parity artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v26-visual-parity-${{ github.sha }}
+          path: artifacts/v26-visual-parity
+          if-no-files-found: error
+          retention-days: 14
