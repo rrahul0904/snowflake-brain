@@ -8,16 +8,11 @@ on:
       - "config/**"
       - "scripts/capture_v26_visuals.py"
       - ".github/workflows/v26-visual-parity.yml"
-  push:
-    branches:
-      - agent/v26-screen-recording-rebuild
-    paths:
-      - "frontend/**"
-      - "app/**"
-      - "config/**"
-      - "scripts/capture_v26_visuals.py"
-      - ".github/workflows/v26-visual-parity.yml"
   workflow_dispatch:
+
+concurrency:
+  group: v26-visual-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
