@@ -72,6 +72,9 @@ echo "== Immutable question versions and sitting linkage =="
 echo "== Question-bank release activation and rollback =="
 "$PYTHON_BIN" scripts/test_question_bank_releases.py
 
+echo "== Blueprint-aware fresh reset fallback =="
+"$PYTHON_BIN" scripts/test_blueprint_fresh_fallback.py
+
 echo "== Tier resets and fresh timed mock rotation =="
 "$PYTHON_BIN" scripts/test_tier_reset_full_exams.py
 
