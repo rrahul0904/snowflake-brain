@@ -66,6 +66,9 @@ echo "== Concurrent identity/billing schema bootstrap =="
 echo "== Private question bank tiers and exam allocation =="
 "$PYTHON_BIN" scripts/test_question_bank_tiers.py
 
+echo "== Immutable question versions and sitting linkage =="
+"$PYTHON_BIN" scripts/test_question_version_immutability.py
+
 echo "== Tier resets and fresh timed mock rotation =="
 "$PYTHON_BIN" scripts/test_tier_reset_full_exams.py
 
