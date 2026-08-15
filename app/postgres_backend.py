@@ -367,7 +367,13 @@ class PostgresConnectionAdapter:
         except errors.ForeignKeyViolation as exc:
             raise sqlite3.IntegrityError("FOREIGN KEY constraint failed") from exc
         except errors.CheckViolation as exc:
-            raise sqlite3.IntegrityError("CHECK constraint failed") from exc
+            raise sqlite3.IntegrityError(str(exc)) from exc
+        except errors.RaiseException as exc:
+            # PostgreSQL trigger RAISE EXCEPTION is the native equivalent of the
+            # SQLite RAISE(ABORT, ...) invariants used by historical-sitting and
+            # release integrity checks. Preserve the database message so callers
+            # can keep their existing integrity handling contract.
+            raise sqlite3.IntegrityError(str(exc)) from exc
 
     def executemany(self, statement: str, params: Iterable[Iterable[Any]]):
         rewritten = _rewrite_sql(statement)
@@ -379,6 +385,10 @@ class PostgresConnectionAdapter:
             raise sqlite3.IntegrityError("UNIQUE constraint failed") from exc
         except errors.ForeignKeyViolation as exc:
             raise sqlite3.IntegrityError("FOREIGN KEY constraint failed") from exc
+        except errors.CheckViolation as exc:
+            raise sqlite3.IntegrityError(str(exc)) from exc
+        except errors.RaiseException as exc:
+            raise sqlite3.IntegrityError(str(exc)) from exc
 
     def executescript(self, script: str):
         # PostgreSQL schema ownership is centralized in migrations/postgres.
