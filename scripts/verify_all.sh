@@ -66,6 +66,9 @@ echo "== Private question bank tiers and exam allocation =="
 echo "== Tier resets and fresh timed mock rotation =="
 "$PYTHON_BIN" scripts/test_tier_reset_full_exams.py
 
+echo "== Atomic limited-exam entitlement concurrency =="
+"$PYTHON_BIN" scripts/test_exam_entitlement_concurrency.py
+
 echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 
