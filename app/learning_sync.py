@@ -36,9 +36,10 @@ def sync_candidate_learning_state(
 ) -> dict[str, int]:
     """Project unsynchronized answer attempts into SRS and mistake state.
 
-    `question_attempts` remains the authoritative answer ledger. This projection
-    is idempotent, so intelligence endpoints can safely call it before reading
-    candidate learning state without creating a second scoring write path.
+    `question_attempts` remains the authoritative answer ledger. Confidence and
+    response time are read from the same attempt row, so multiple historical
+    attempts for one question cannot inherit metadata from a later answer.
+    This projection is idempotent and can safely run before intelligence reads.
     """
     ensure_learning_sync_schema(conn)
     safe_limit = max(1, min(int(limit), 10000))
@@ -46,7 +47,8 @@ def sync_candidate_learning_state(
         dict(row)
         for row in conn.execute(
             """
-            SELECT a.id,a.question_id,a.selected,a.correct,a.mode,a.attempted_at
+            SELECT a.id,a.question_id,a.selected,a.correct,a.mode,a.attempted_at,
+                   a.confidence,a.response_time_ms
             FROM question_attempts a
             JOIN questions q ON q.id=a.question_id
             LEFT JOIN candidate_learning_attempt_sync s ON s.attempt_id=a.id
@@ -59,15 +61,6 @@ def sync_candidate_learning_state(
     ]
     processed = 0
     for row in rows:
-        confidence_row = conn.execute(
-            """
-            SELECT confidence,response_time_ms
-            FROM candidate_question_history
-            WHERE candidate_id=? AND question_id=? AND confidence IS NOT NULL
-            ORDER BY id DESC LIMIT 1
-            """,
-            (candidate_id, row["question_id"]),
-        ).fetchone()
         try:
             selected = [int(item) for item in json.loads(row["selected"] or "[]")]
         except (TypeError, ValueError, json.JSONDecodeError):
@@ -77,9 +70,9 @@ def sync_candidate_learning_state(
             candidate_id,
             row["question_id"],
             correct=bool(row["correct"]),
-            confidence=int(confidence_row["confidence"]) if confidence_row and confidence_row["confidence"] is not None else None,
+            confidence=int(row["confidence"]) if row["confidence"] is not None else None,
             mode=str(row["mode"] or "practice"),
-            response_time_ms=int(confidence_row["response_time_ms"]) if confidence_row and confidence_row["response_time_ms"] is not None else None,
+            response_time_ms=int(row["response_time_ms"]) if row["response_time_ms"] is not None else None,
             selected=selected,
         )
         conn.execute(
