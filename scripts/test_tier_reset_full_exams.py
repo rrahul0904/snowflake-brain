@@ -109,26 +109,41 @@ def submit(client: TestClient, session_id: int) -> None:
 
 
 def simulate_reset_boundary(candidate_id: int, exam_type: str, *, session_mode: str, session_age_sql: str, prior_window_key: str) -> None:
-    """Move both durable usage and its reservation ledger into a prior window.
+    """Move the latest durable usage window and reservation ledger into history.
 
     Production reset windows advance with wall-clock time. This test cannot
     change the process clock, so a synthetic reset must update both persisted
-    pieces of the entitlement state; backdating only exam_sessions would leave
-    the atomic reservation's current window key intentionally occupied.
+    pieces of the latest entitlement window. Older reservation windows stay
+    distinct, matching real calendar progression and preserving attempt-number
+    uniqueness inside each window.
     """
     with connect() as conn:
         conn.execute(
-            f"UPDATE exam_sessions SET started_at={session_age_sql}, finished_at={session_age_sql} WHERE candidate_id=? AND mode=?",
+            f"UPDATE exam_sessions SET started_at={session_age_sql}, finished_at={session_age_sql} WHERE candidate_id=? AND mode=? AND datetime(started_at)>=datetime('now','start of month')",
+            (candidate_id, session_mode),
+        ) if exam_type == "full_exam" else conn.execute(
+            f"UPDATE exam_sessions SET started_at={session_age_sql}, finished_at={session_age_sql} WHERE candidate_id=? AND mode=? AND datetime(started_at)>=datetime('now','-7 days')",
             (candidate_id, session_mode),
         )
-        conn.execute(
+        latest = conn.execute(
             """
-            UPDATE exam_entitlement_reservations
-               SET window_key=?
+            SELECT window_key
+              FROM exam_entitlement_reservations
              WHERE candidate_id=? AND exam_type=? AND status='committed'
+             ORDER BY id DESC
+             LIMIT 1
             """,
-            (prior_window_key, candidate_id, exam_type),
-        )
+            (candidate_id, exam_type),
+        ).fetchone()
+        if latest:
+            conn.execute(
+                """
+                UPDATE exam_entitlement_reservations
+                   SET window_key=?
+                 WHERE candidate_id=? AND exam_type=? AND status='committed' AND window_key=?
+                """,
+                (prior_window_key, candidate_id, exam_type, latest["window_key"]),
+            )
 
 
 def main() -> None:
@@ -166,8 +181,6 @@ def main() -> None:
     same_week = free.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "weekly-mock"})
     check(same_week.status_code == 403, "second Free mock is blocked in same weekly window")
 
-    # Simulate crossing the weekly boundary. The allowance reopens and the
-    # prior sitting's questions are hard-excluded when sufficient inventory exists.
     simulate_reset_boundary(
         free_id,
         "weekly_mock",
@@ -184,8 +197,6 @@ def main() -> None:
     check(next_config.get("reset_exclusion_applied") is True and int(next_config.get("prior_questions_avoided") or 0) >= 30, "fresh-set exclusion was actually invoked")
     submit(free, int(next_payload["session_id"]))
 
-    # Premium 100 receives two Full Exams per month. Each same-window sitting
-    # rotates away from already used Full Exam questions while inventory allows.
     premium = TestClient(app)
     premium_id = register(premium, "monthly-reset@example.com")
     apply_membership_plan(premium_id, "premium_20", source="test", reason="tier-reset-test")
@@ -215,7 +226,6 @@ def main() -> None:
     check(p2_ids.isdisjoint(ids(p3.json())), "new monthly window avoids the immediately previous Full Exam set")
     submit(premium, int(p3.json()["session_id"]))
 
-    # Premium 250 and 500 retain their configured monthly/full-exam contracts.
     simulate_reset_boundary(
         premium_id,
         "full_exam",
@@ -230,7 +240,6 @@ def main() -> None:
     membership_500 = premium.get("/api/auth/me").json()["membership"]
     check(membership_500["usage"]["monthly_full_exams"]["limit"] is None, "Premium 500 keeps unlimited Full Exams")
 
-    # Exam Pack is intentionally fixed and is the exception to reset rotation.
     pack = TestClient(app)
     pack_id = register(pack, "fixed-pack@example.com")
     apply_membership_plan(pack_id, "exam_pack_35", source="test", reason="tier-reset-test")
