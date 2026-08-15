@@ -60,6 +60,8 @@ jobs:
         run: python scripts/test_identity_schema_concurrency.py
       - name: Verify private question bank, tiers, and exam allocation
         run: python scripts/test_question_bank_tiers.py
+      - name: Verify immutable question versions and sitting linkage
+        run: python scripts/test_question_version_immutability.py
       - name: Verify tier resets and fresh timed mock rotation
         run: python scripts/test_tier_reset_full_exams.py
       - name: Verify atomic limited-exam entitlement concurrency
