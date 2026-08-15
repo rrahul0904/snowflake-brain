@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import QUESTION_BANK_AUTO_IMPORT
 from .database import run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
+from .learning_intelligence import ensure_learning_intelligence_schema
 from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema
@@ -31,8 +32,8 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.8.0",
-    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, and trusted paid entitlements.",
+    version="0.9.0",
+    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, and candidate learning intelligence.",
 )
 app.add_middleware(SecurityBoundaryMiddleware)
 
@@ -43,6 +44,7 @@ def startup() -> None:
     ensure_identity_billing_schema()
     ensure_question_version_schema()
     ensure_question_bank_release_schema()
+    ensure_learning_intelligence_schema()
     if QUESTION_BANK_AUTO_IMPORT:
         # The source directory is private deployment content, never a frontend
         # asset and never committed to this repository. Imports never replace an
