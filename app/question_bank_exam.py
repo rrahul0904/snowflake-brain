@@ -18,6 +18,12 @@ from .question_bank import (
 from .question_bank_selection import select_certification_questions
 from .routers.certification_practice import CertificationQuizStart
 from .serializers import json_list
+from .tier_exam_policy import (
+    FREE_FULL_CONTENT_MOCK_MINUTES,
+    FREE_FULL_CONTENT_MOCK_QUESTIONS,
+    mock_question_ids_to_avoid,
+    mock_reset_context,
+)
 
 
 def _existing_ids(question_ids: list[str], track_id: str) -> list[str]:
@@ -65,10 +71,15 @@ def create_tier_mock_session(
     else:
         if practice_test_id:
             raise HTTPException(status_code=400, detail="Generated mocks cannot pin a source practice test")
-        question_count = int(setting["question_count"])
-        duration_minutes = int(setting["time_limit_minutes"])
+        if normalized == "weekly-mock":
+            question_count = FREE_FULL_CONTENT_MOCK_QUESTIONS
+            duration_minutes = FREE_FULL_CONTENT_MOCK_MINUTES
+        else:
+            question_count = int(setting["question_count"])
+            duration_minutes = int(setting["time_limit_minutes"])
 
     plan = plan_details(candidate["membership"].get("plan_code"), candidate["membership"].get("tier") or "free")
+    reset = mock_reset_context(candidate, normalized)
     fixed_ids: list[str] = []
     set_kind: str | None = None
     if plan["code"] == "exam_pack_35" and normalized == "lifetime-practice":
@@ -84,6 +95,11 @@ def create_tier_mock_session(
             track_id,
         )
 
+    avoid_ids: set[str] = set()
+    if not set_kind:
+        avoid_ids = mock_question_ids_to_avoid(candidate["id"], track_id, normalized, reset)
+
+    reset_exclusion_applied = False
     if fixed_ids:
         if len(fixed_ids) != question_count:
             raise HTTPException(
@@ -106,9 +122,11 @@ def create_tier_mock_session(
             ),
             candidate,
             trusted_exam_session=True,
+            exclude_question_ids=avoid_ids,
         )
         questions = list(selected.get("questions") or [])
         selection_strategy = str(selected.get("selection_strategy") or "blueprint_weighted_private_bank")
+        reset_exclusion_applied = bool(selected.get("reset_exclusion_applied"))
         if len(questions) != question_count:
             raise HTTPException(
                 status_code=409,
@@ -143,6 +161,12 @@ def create_tier_mock_session(
                         "exam_code": test.get("exam_code") if test else config.get("exam_code"),
                         "candidate_specific_set": bool(set_kind),
                         "set_kind": set_kind,
+                        "reset_cadence": reset.get("cadence"),
+                        "reset_window_key": reset.get("window_key"),
+                        "resets_at": reset.get("resets_at"),
+                        "rotates_questions": bool(reset.get("rotates_questions")),
+                        "prior_questions_avoided": len(avoid_ids),
+                        "reset_exclusion_applied": reset_exclusion_applied,
                     }
                 ),
                 candidate["id"],
@@ -186,6 +210,10 @@ def create_tier_mock_session(
                         "question_count": question_count,
                         "selection_strategy": selection_strategy,
                         "candidate_specific_set": bool(set_kind),
+                        "reset_cadence": reset.get("cadence"),
+                        "reset_window_key": reset.get("window_key"),
+                        "resets_at": reset.get("resets_at"),
+                        "reset_exclusion_applied": reset_exclusion_applied,
                     }
                 ),
                 candidate["id"],

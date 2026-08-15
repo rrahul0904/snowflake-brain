@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from ..auth import require_candidate, require_owned_mock_session
 from ..database import connect
-from ..entitlements import reserve_daily_questions, validate_mock_start
+from ..entitlements import reserve_daily_questions
 from ..mock_exam import (
     active_session,
     history,
@@ -29,6 +29,11 @@ from ..question_bank_exam import create_tier_mock_session
 from ..question_bank_selection import select_certification_questions
 from ..routers.certification_practice import CertificationQuizStart
 from ..serializers import json_list, question_public
+from ..tier_exam_policy import (
+    FREE_FULL_CONTENT_MOCK_MINUTES,
+    FREE_FULL_CONTENT_MOCK_QUESTIONS,
+    validate_tier_mock_start,
+)
 
 router = APIRouter()
 
@@ -107,6 +112,13 @@ def candidate_mock_config(track_id: str = "snowpro-core", candidate: dict[str, A
     del candidate
     payload = dict(public_config(track_id))
     payload.pop("question_bank", None)
+    # Product-level Free entitlement metadata is safe to expose; bank pools,
+    # selection strategies, reset window keys and authoring metadata remain private.
+    payload["free_full_content_mock"] = {
+        "question_count": FREE_FULL_CONTENT_MOCK_QUESTIONS,
+        "time_limit_minutes": FREE_FULL_CONTENT_MOCK_MINUTES,
+        "reset_cadence": "weekly",
+    }
     return payload
 
 
@@ -129,7 +141,7 @@ def start_candidate_practice(payload: CertificationQuizStart, candidate: dict[st
 def start_candidate_mock(payload: TierMockSessionStart, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     if active_session(payload.track_id, candidate["id"]):
         raise HTTPException(status_code=409, detail={"code": "active_mock_must_be_completed", "message": "Resume and complete your active timed mock before starting another."})
-    normalized_mode = validate_mock_start(candidate, payload.mode)
+    normalized_mode = validate_tier_mock_start(candidate, payload.mode)
     if candidate.get("is_premium") and normalized_mode == "quick-mock":
         quick_count = int(public_config(payload.track_id).get("quick_mock", {}).get("question_count") or 30)
         reserve_daily_questions(candidate["id"], candidate["membership"], quick_count)

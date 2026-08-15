@@ -88,9 +88,6 @@ def _enrich_rows(rows: list[dict[str, Any]], candidate_id: int) -> list[dict[str
 def _safe_fallback_rows(rows: list[dict[str, Any]], *, pinned_internal_test: bool) -> list[dict[str, Any]]:
     if pinned_internal_test:
         return rows
-    # Production candidate selection can use the private bank plus the app's
-    # own canonical/curated development fallback. Imported source/legacy banks
-    # are never silently blended into Free/Premium product sessions.
     return [
         row
         for row in rows
@@ -127,6 +124,7 @@ def select_certification_questions(
     candidate: dict[str, Any],
     *,
     trusted_exam_session: bool = False,
+    exclude_question_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     cert = _cert(payload.track_id)
     count = max(1, min(int(payload.count), 500))
@@ -156,6 +154,14 @@ def select_certification_questions(
     rows = _safe_fallback_rows(rows, pinned_internal_test=bool(payload.test_id and trusted_exam_session))
     rows = filter_rows_for_entitlement(rows, candidate["membership"], mode, count)
 
+    excluded = {str(item) for item in (exclude_question_ids or set()) if str(item)}
+    exclusion_applied = False
+    if excluded:
+        fresh_rows = [row for row in rows if str(row.get("id") or "") not in excluded]
+        if len(fresh_rows) >= count:
+            rows = fresh_rows
+            exclusion_applied = True
+
     if not rows:
         return {
             "questions": [],
@@ -177,7 +183,11 @@ def select_certification_questions(
         selected = _select_targeted(rows, count, mode, None, payload.domain_id)
         strategy = "domain_targeted_exposure_aware"
     elif mode in {"diagnostic", "weekly-mock", "quick-mock", "full-mock", "lifetime-practice", "mock", "exam"}:
-        selected = select_blueprint_questions(rows, cert.get("domains") or [], count, mode)
+        # The Free weekly product is a 30-question full-content timed mock. It
+        # deliberately uses the same 30Q blueprint composition as Quick Mock,
+        # while entitlement filtering above still limits Free to the Free pool.
+        blueprint_mode = "quick-mock" if mode == "weekly-mock" and count == 30 else mode
+        selected = select_blueprint_questions(rows, cert.get("domains") or [], count, blueprint_mode)
         strategy = "blueprint_weighted_private_bank"
     elif mode == "drill":
         selected = _select_targeted(rows, count, mode, None, None)
@@ -185,6 +195,9 @@ def select_certification_questions(
     else:
         selected = sorted(rows, key=lambda row: question_exposure_rank(row, mode))[:count]
         strategy = "exposure_aware"
+
+    if exclusion_applied:
+        strategy += "_fresh_reset_set"
 
     domain_counts: dict[str, int] = defaultdict(int)
     skill_ids: set[str] = set()
@@ -221,4 +234,6 @@ def select_certification_questions(
         "heuristic_pool_count": heuristic_count,
         "practice_test_id": payload.test_id,
         "quota": quota,
+        "reset_exclusion_applied": exclusion_applied,
+        "reset_excluded_count": len(excluded),
     }
