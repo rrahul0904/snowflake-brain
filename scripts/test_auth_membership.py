@@ -54,7 +54,7 @@ def main() -> None:
     guest = TestClient(app)
     me = guest.get("/api/auth/me")
     check(me.json() == {"authenticated": False, "candidate": None, "membership": None}, "guest auth/me contract")
-    check(guest.get("/api/skills/map").status_code == 200, "guest curriculum readable")
+    check(guest.get("/api/skills/map").status_code == 401, "guest curriculum denied until account creation")
     check(guest.post("/api/certification-quiz/start", json={"mode": "diagnostic", "count": 10}).status_code == 401, "guest diagnostic denied")
     check(guest.get("/api/labs?track_id=snowpro-core").status_code == 401, "guest exercises denied")
     check(guest.get("/api/skills/task-progress?track_id=snowpro-core").status_code == 401, "guest progress denied")
@@ -89,7 +89,7 @@ def main() -> None:
     free_diag = alice.post("/api/certification-quiz/start", json={"track_id": "snowpro-core", "mode": "diagnostic", "count": 10})
     check(free_diag.status_code == 200 and len(free_diag.json()["questions"]) == 10, "Free diagnostic allowed")
     check(alice.get("/api/skills/task-progress?track_id=snowpro-core").status_code == 200, "Free progress allowed")
-    skill_id = guest.get("/api/skills/map").json()["certifications"][0]["domains"][0]["skills"][0]["id"]
+    skill_id = alice.get("/api/skills/map").json()["certifications"][0]["domains"][0]["skills"][0]["id"]
     question_for_state = free_diag.json()["questions"][0]["id"]
     check(alice.post("/api/skills/task-progress", json={"track_id": "snowpro-core", "skill_id": skill_id, "completed": True}).status_code == 200, "candidate progress write")
     check(alice.post(f"/api/questions/{question_for_state}/bookmark", json={}).json()["bookmarked"], "candidate bookmark write")

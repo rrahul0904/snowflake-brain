@@ -1,5 +1,6 @@
 import {
   getCandidateSession,
+  linkGoogleCandidate,
   loginCandidate,
   logoutCandidate,
   signupCandidate,
@@ -13,7 +14,15 @@ export function candidate() {
   const tier = snapshot.membership?.tier || "free";
   const planCode = snapshot.membership?.plan_code || "free";
   const planName = snapshot.membership?.plan?.name || (tier === "premium" ? "Premium" : "Free");
-  return { ...snapshot.candidate, membership: snapshot.membership, plan: planName, plan_code: planCode, is_premium: tier === "premium" && snapshot.membership?.status === "active" };
+  return {
+    ...snapshot.candidate,
+    membership: snapshot.membership,
+    plan: planName,
+    plan_code: planCode,
+    entitlement_version: snapshot.membership?.entitlement_version ?? 0,
+    sign_in_methods: snapshot.candidate?.sign_in_methods || ["email"],
+    is_premium: tier === "premium" && snapshot.membership?.status === "active",
+  };
 }
 export function membership() { return snapshot.membership; }
 
@@ -37,6 +46,11 @@ export async function signUp(payload) {
 
 export async function logIn(payload) {
   const result = await loginCandidate(payload);
+  return publish(result);
+}
+
+export async function linkGoogle(password) {
+  const result = await linkGoogleCandidate(password);
   return publish(result);
 }
 

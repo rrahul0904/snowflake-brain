@@ -1,0 +1,11 @@
+/* Final deltas from the 2026-08-14 authenticated-page recording review. */
+.v26-brand{font-size:17px;font-weight:600;letter-spacing:-.015em}
+.v26-cert-trigger{min-width:82px;width:82px;height:36px;border:1px solid var(--border-strong);padding:0 10px;grid-template-columns:1fr auto}
+.v26-cert-trigger b{display:none}.v26-cert-trigger span{font-size:9px;color:var(--muted)}
+.v26-account-link.compact{width:34px;height:34px;padding:0;border:1px solid var(--border);border-radius:50%;background:transparent;display:grid;place-items:center}
+.v26-account-link.compact>b,.v26-account-link.compact>em{display:none}.v26-account-link.compact>span{margin:auto;font-size:9px}
+.v26-lesson{max-width:760px}.v26-lesson-head{padding-bottom:30px}.v26-lesson-head h1{font-size:38px;line-height:1.08;letter-spacing:-.025em}.v26-lesson-head>p{font-size:13px;line-height:1.55;margin-top:12px}.v26-breadcrumbs{margin-bottom:22px}.v26-lesson-section{padding:32px 0}.v26-lesson-section h2{font-size:25px;margin-bottom:16px}
+.v26-mock-facts{border:0;margin:34px auto 28px;max-width:620px}.v26-mock-facts div{border-right:0;padding:9px 6px}.v26-mock-center>p{max-width:540px}.v26-mock-resume-note,.v26-mock-access-note{font-size:10px!important;margin:10px auto 16px!important;max-width:480px!important}.v26-start-mock{min-width:158px}
+.replica-article-card small{display:flex!important;justify-content:space-between;align-items:center}.replica-article-card small em{font-style:normal;font-size:13px;color:var(--muted)}
+.v26-theme-toggle{order:4}.v26-mock-cta{order:3}.v26-account-menu,.v26-login-link,.v26-signup-link{order:2}.v26-cert-menu{order:1}
+@media(max-width:760px){.v26-cert-trigger{width:auto;min-width:72px}.v26-lesson-head h1{font-size:34px}}

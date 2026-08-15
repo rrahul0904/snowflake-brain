@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from .database import connect
+from .identity_billing_schema import ensure_identity_billing_schema
 
 
 PLAN_CATALOG: dict[str, dict[str, Any]] = {
@@ -36,6 +37,73 @@ def _iso(value: datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
+def apply_membership_plan(
+    candidate_id: int,
+    plan_code: str,
+    *,
+    source: str,
+    reason: str,
+    provider_event_id: str | None = None,
+    expires_at: str | None = None,
+) -> dict[str, Any]:
+    """Single trusted write path for plan changes.
+
+    Browsers never call this directly. Billing webhooks and explicit local CLI
+    tooling are the only intended callers. Actual changes increment an
+    entitlement version so stale entitlement caches can be invalidated later.
+    """
+    ensure_identity_billing_schema()
+    plan = PLAN_CATALOG.get(plan_code)
+    if not plan:
+        raise ValueError(f"Unknown plan: {plan_code}")
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        current = conn.execute(
+            "SELECT plan_code, entitlement_version, expires_at FROM candidate_memberships "
+            "WHERE candidate_id=? AND status='active' ORDER BY id DESC LIMIT 1",
+            (candidate_id,),
+        ).fetchone()
+        old_plan = current["plan_code"] if current else "free"
+        previous_version = int(current["entitlement_version"] if current else 0)
+        current_expiry = str(current["expires_at"] or "") if current else ""
+        requested_expiry = str(expires_at or "")
+        if current and old_plan == plan_code and current_expiry == requested_expiry:
+            conn.execute(
+                "UPDATE candidate_accounts SET plan=?,updated_at=datetime('now') WHERE id=?",
+                (plan["tier"], candidate_id),
+            )
+            return {"old_plan": old_plan, "new_plan": plan_code, "entitlement_version": previous_version, "changed": False}
+        maximum = conn.execute(
+            "SELECT COALESCE(MAX(entitlement_version), 0) AS v FROM candidate_memberships WHERE candidate_id=?",
+            (candidate_id,),
+        ).fetchone()
+        next_version = max(previous_version, int(maximum["v"] if maximum else 0)) + 1
+        conn.execute(
+            "UPDATE candidate_memberships SET status='cancelled', updated_at=datetime('now') "
+            "WHERE candidate_id=? AND status='active'",
+            (candidate_id,),
+        )
+        conn.execute(
+            "INSERT INTO candidate_memberships(candidate_id,tier,plan_code,status,starts_at,expires_at,source,entitlement_version) "
+            "VALUES (?,?,?,'active',datetime('now'),?,?,?)",
+            (candidate_id, plan["tier"], plan_code, expires_at, source, next_version),
+        )
+        conn.execute(
+            "UPDATE candidate_accounts SET plan=?,updated_at=datetime('now') WHERE id=?",
+            (plan["tier"], candidate_id),
+        )
+        conn.execute(
+            "INSERT INTO membership_audit_log(candidate_id,old_plan,new_plan,reason,source,provider_event_id,entitlement_version) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (candidate_id, old_plan, plan_code, reason, source, provider_event_id, next_version),
+        )
+        conn.execute(
+            "INSERT INTO membership_events(candidate_id,previous_plan,next_plan,source) VALUES (?,?,?,?)",
+            (candidate_id, old_plan, plan_code, source),
+        )
+    return {"old_plan": old_plan, "new_plan": plan_code, "entitlement_version": next_version, "changed": True}
+
+
 def entitlement_usage(candidate_id: int, membership: dict[str, Any]) -> dict[str, Any]:
     periods = _periods()
     plan = plan_details(membership.get("plan_code"), membership.get("tier") or "free")
@@ -50,8 +118,19 @@ def entitlement_usage(candidate_id: int, membership: dict[str, Any]) -> dict[str
     weekly_limit = int(plan["weekly_mock_limit"])
     monthly_limit = plan["monthly_full_exam_limit"]
     exam_pack = plan["code"] == "exam_pack_35"
+    deadline: datetime | None = None
     if exam_pack:
-        started = datetime.fromisoformat(str(membership.get("starts_at") or periods["day"].isoformat()).replace("Z", "+00:00"))
+        # A paid Exam Pack keeps the original purchase timestamp even if a
+        # subscription temporarily becomes the active membership and the pack
+        # later becomes the fallback entitlement. Development CLI packs, which
+        # have no billing purchase, continue to use the membership start time.
+        with connect() as conn:
+            purchase = conn.execute(
+                "SELECT purchased_at FROM billing_purchases WHERE candidate_id=? AND product_type='exam_pack_35' AND status='paid' ORDER BY id DESC LIMIT 1",
+                (candidate_id,),
+            ).fetchone()
+        anchor = purchase["purchased_at"] if purchase else membership.get("starts_at")
+        started = datetime.fromisoformat(str(anchor or periods["day"].isoformat()).replace("Z", "+00:00"))
         started = started.replace(tzinfo=timezone.utc) if started.tzinfo is None else started.astimezone(timezone.utc)
         deadline = started + timedelta(days=int(plan["full_exam_access_days"]))
         with connect() as conn:
@@ -60,7 +139,7 @@ def entitlement_usage(candidate_id: int, membership: dict[str, Any]) -> dict[str
     return {
         "daily_questions": {"used": daily_used, "limit": daily_limit, "remaining": None if daily_limit is None else max(0, int(daily_limit) - daily_used), "resets_at": None if daily_limit is None else _iso(periods["next_day"])},
         "weekly_mocks": {"used": weekly_used, "limit": weekly_limit, "remaining": max(0, weekly_limit - weekly_used), "resets_at": _iso(periods["next_week"])},
-        "monthly_full_exams": {"used": monthly_used, "limit": monthly_limit, "remaining": None if monthly_limit is None else max(0, int(monthly_limit) - monthly_used), "resets_at": _iso(deadline) if exam_pack else _iso(periods["next_month"]), "access_expires_at": _iso(deadline) if exam_pack else None},
+        "monthly_full_exams": {"used": monthly_used, "limit": monthly_limit, "remaining": None if monthly_limit is None else max(0, int(monthly_limit) - monthly_used), "resets_at": _iso(deadline) if deadline else _iso(periods["next_month"]), "access_expires_at": _iso(deadline) if deadline else None},
     }
 
 

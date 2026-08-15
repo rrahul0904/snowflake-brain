@@ -18,9 +18,18 @@ export async function api(path, options = {}) {
 }
 
 export const getCandidateSession = () => api("/api/auth/me");
+export const getAuthProviders = () => api("/api/auth/providers");
 export const signupCandidate = (payload) => api("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
 export const loginCandidate = (payload) => api("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
 export const logoutCandidate = () => api("/api/auth/logout", { method: "POST", body: "{}" });
+export const getPendingGoogleLink = () => api("/api/auth/google/pending-link");
+export const linkGoogleCandidate = (password) => api("/api/auth/google/link", { method: "POST", body: JSON.stringify({ password }) });
+export const getCandidateSessions = () => api("/api/auth/sessions");
+export const revokeCandidateSession = (id) => api(`/api/auth/sessions/${encodeURIComponent(id)}`, { method: "DELETE", body: "{}" });
+export const revokeAllCandidateSessions = () => api("/api/auth/sessions/revoke-all", { method: "POST", body: "{}" });
+export const getBillingConfig = () => api("/api/billing/config");
+export const createBillingCheckout = (planCode) => api("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan_code: planCode }) });
+export const createBillingPortal = () => api("/api/billing/portal", { method: "POST", body: "{}" });
 
 export const getSkillMap = () => api("/api/skills/map");
 export const getCertificationCatalog = () => api("/api/skills/catalog");

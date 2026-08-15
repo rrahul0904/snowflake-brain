@@ -86,6 +86,18 @@ ok(activity_live['mode'] == 'live', 'aggregated activity live mode')
 ok(activity_live['active_total'] == 3, 'only public aggregate counted')
 ok([row['bucket_key'] for row in activity_live['locations']] == ['public-test'], 'sub-threshold bucket hidden')
 
+# Certification content is no longer public. Prove the guest boundary before the
+# smoke candidate is created, then use that authenticated candidate for all study
+# metadata and mock configuration checks below.
+ok(c.get('/api/auth/me').json() == {'authenticated': False, 'candidate': None, 'membership': None}, 'guest membership state')
+ok(c.get('/api/skills/map').status_code == 401, 'guest skill map gate')
+ok(c.get('/api/skills/catalog').status_code == 401, 'guest catalog gate')
+ok(c.get('/api/mock/config?track_id=snowpro-core').status_code == 401, 'guest mock config gate')
+ok(c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'}).status_code == 401, 'guest mock gate')
+
+signup = c.post('/api/auth/register', json={'display_name': 'V26 Smoke Candidate', 'email': 'v26-smoke@example.com', 'password': 'v26-smoke-password'})
+ok(signup.status_code == 201 and signup.json()['membership']['tier'] == 'free', signup.text)
+
 sm = c.get('/api/skills/map').json()
 catalog = c.get('/api/skills/catalog').json()['official_certifications']
 ok([(x['id'], x['exam_code']) for x in catalog] == [('snowpro-core', 'COF-C03'), ('advanced-data-engineer', 'DEA-C02'), ('advanced-architect', 'ARA-C01')], 'exact focused certification catalog')
@@ -103,10 +115,6 @@ ok(cfg['full_mock']['question_count'] == 100, 'full count')
 ok(cfg['full_mock']['time_limit_minutes'] == 120, 'full time')
 ok(cfg['pass_scaled_score'] == 750, 'threshold')
 
-ok(c.get('/api/auth/me').json() == {'authenticated': False, 'candidate': None, 'membership': None}, 'guest membership state')
-ok(c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'}).status_code == 401, 'guest mock gate')
-signup = c.post('/api/auth/register', json={'display_name': 'V26 Smoke Candidate', 'email': 'v26-smoke@example.com', 'password': 'v26-smoke-password'})
-ok(signup.status_code == 201 and signup.json()['membership']['tier'] == 'free', signup.text)
 ok(c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'}).status_code == 403, 'free mock gate')
 with connect() as conn:
     candidate_id = signup.json()['candidate']['id']

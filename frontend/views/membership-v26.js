@@ -1,7 +1,7 @@
 export const VIEW_ID = "v26-membership";
 
 import { candidate, membership, refreshCandidate } from "../auth.js";
-import { escapeHtml } from "../api.js";
+import { escapeHtml, getBillingConfig } from "../api.js";
 
 const plans = [
   { code: "free", name: "Free", price: "$0", cadence: "forever", label: "Build your foundation", copy: "Study materials stay open, with a daily question allowance and a weekly timed check.", features: ["All SnowPro Core study materials", "20 real practice questions every day", "One 20-question timed mock every week", "Weekly mock must be completed and cannot be discarded", "Progress, bookmarks, notes, drills, and exercises"] },
@@ -13,15 +13,24 @@ const plans = [
 
 export default async function mount(container) {
   await refreshCandidate().catch(() => {});
+  const billing = await getBillingConfig().catch(() => ({ enabled: false, available_plans: [] }));
   const account = candidate();
   const current = membership();
-  container.innerHTML = `<main class="v26-page v26-membership-page"><header class="v26-page-intro centered"><p class="v26-kicker">Membership</p><h1>Study freely.<br/>Choose the exam access you need.</h1><p>Every plan keeps the SnowPro Core study materials open. Server-side allowances control daily questions and timed exam starts.</p></header>${accountPanel(account, current)}${usagePanel(account, current)}<section class="v26-plan-grid" aria-label="Membership plans">${plans.map((plan) => planCard(plan, account, current)).join("")}</section><p class="v26-billing-note">All paid prices are in USD plus applicable taxes. Taxes will be calculated by the billing provider at checkout based on location. Checkout is not enabled yet, so no payment, tax charge, or plan change occurs here. Every mock and Full Exam is an independent preparation simulation, not an official Snowflake certification exam.</p><section class="v26-membership-assurance"><div><span>Calendar resets</span><strong>Daily allowances reset at 00:00 UTC, weekly access Monday at 00:00 UTC, and monthly access on the first day at 00:00 UTC.</strong></div><div><span>Server enforcement</span><strong>Question and exam limits come from the private database, not browser state.</strong></div><div><span>Product truthfulness</span><strong>Paid activation remains unavailable until a real billing and tax workflow is connected.</strong></div></section></main>`;
+  const checkoutState = new URLSearchParams((window.location.hash.split("?")[1] || "")).get("checkout");
+  container.innerHTML = `<main class="v26-page v26-membership-page"><header class="v26-page-intro centered"><p class="v26-kicker">Membership</p><h1>Study freely.<br/>Choose the exam access you need.</h1><p>Every plan keeps the SnowPro Core study materials open. Server-side allowances control daily questions and timed exam starts.</p></header>${checkoutNotice(checkoutState)}${accountPanel(account, current)}${usagePanel(account, current)}<section class="v26-plan-grid" aria-label="Membership plans">${plans.map((plan) => planCard(plan, account, current, billing)).join("")}</section><p class="v26-billing-note">All paid prices are in USD plus applicable taxes. ${billing.enabled ? "New purchases use hosted checkout. Existing subscriptions are upgraded, downgraded, or cancelled through hosted account management. Returning from either flow does not grant Premium; access changes only after a verified server-to-server billing event." : "Checkout is not enabled in this environment, so no payment, tax charge, or plan change occurs here."} Every mock and Full Exam is an independent preparation simulation, not an official Snowflake certification exam.</p><section class="v26-membership-assurance"><div><span>Account-bound access</span><strong>Premium belongs to your candidate account whether you sign in with email or a linked Google identity. There is no transferable license key.</strong></div><div><span>Server enforcement</span><strong>Question and exam limits come from the private database, not browser state, URL flags, or editable cookies.</strong></div><div><span>Verified activation</span><strong>A paid plan activates only after a signed billing webhook maps the provider customer back to your candidate ID.</strong></div></section></main>`;
+}
+
+function checkoutNotice(state) {
+  if (state === "success") return `<section class="v26-account-banner"><div><p class="v26-kicker">Checkout returned</p><h2>Confirming your membership…</h2><p>Payment return pages never grant Premium by themselves. Your account updates when the signed billing event is processed.</p></div></section>`;
+  if (state === "cancelled") return `<section class="v26-account-banner"><div><p class="v26-kicker">Checkout cancelled</p><h2>No plan change was made</h2><p>Your current membership remains unchanged.</p></div></section>`;
+  return "";
 }
 
 function accountPanel(account, current) {
   if (!account) return `<section class="v26-account-banner"><div><p class="v26-kicker">Your account</p><h2>Begin with Free membership</h2><p>Create a candidate account for study access, daily practice, and persistent progress.</p></div><div><button class="v26-btn secondary" type="button" data-auth-intent="login">Sign In</button><button class="v26-btn primary" type="button" data-auth-intent="signup">Create Free Account</button></div></section>`;
   const plan = current?.plan || { name: "Free" };
-  return `<section class="v26-account-banner signed-in"><div><p class="v26-kicker">Signed in</p><h2>${escapeHtml(account.display_name)}</h2><p>${escapeHtml(account.email)} · <strong>${escapeHtml(plan.name)} membership</strong></p></div><div><span class="v26-current-plan">${escapeHtml(plan.name)}</span><button class="v26-btn secondary" type="button" data-auth-logout>Sign Out</button></div></section>`;
+  const methods = (account.sign_in_methods || ["email"]).map((item) => item === "google" ? "Google" : "Email").join(" + ");
+  return `<section class="v26-account-banner signed-in"><div><p class="v26-kicker">Signed in</p><h2>${escapeHtml(account.display_name)}</h2><p>${escapeHtml(account.email)} · <strong>${escapeHtml(plan.name)} membership</strong></p><p class="v26-account-methods">Signed in with: ${escapeHtml(methods)} · Entitlement version ${escapeHtml(current?.entitlement_version ?? 0)}</p></div><div><span class="v26-current-plan">${escapeHtml(plan.name)}</span>${current?.plan_code?.startsWith("premium_") ? `<button class="v26-btn secondary" type="button" data-billing-portal>Manage plan</button>` : ""}<button class="v26-btn secondary" type="button" data-auth-logout>Sign Out</button></div></section>`;
 }
 
 function usagePanel(account, current) {
@@ -38,11 +47,22 @@ function usagePanel(account, current) {
   return `<section class="v26-entitlement-usage" aria-label="Current plan usage">${items.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</section>`;
 }
 
-function planCard(plan, account, current) {
+function planCard(plan, account, current, billing) {
   const active = current?.plan_code === plan.code && current?.status === "active";
+  const subscribed = Boolean(current?.plan_code?.startsWith("premium_") && current?.status === "active");
   let action = active ? `<span class="v26-plan-current">Current Plan</span>` : "";
+  if (active && subscribed && billing.enabled) action += `<button class="v26-btn secondary" type="button" data-billing-portal>Manage plan</button>`;
   if (!active && !account && plan.code === "free") action = `<button class="v26-btn secondary" type="button" data-auth-intent="signup">Create Free Account</button>`;
-  if (!active && plan.code !== "free") action = `<button class="v26-btn primary" type="button" data-premium-unavailable>${plan.code === "exam_pack_35" ? "Buy Exam Pack" : `Choose ${plan.name}`}</button>`;
+  if (!active && plan.code !== "free") {
+    const configured = billing.enabled && (billing.available_plans || []).includes(plan.code);
+    if (subscribed) {
+      action = plan.code.startsWith("premium_") && billing.enabled
+        ? `<button class="v26-btn secondary" type="button" data-billing-portal>Change plan</button>`
+        : `<span class="v26-plan-current">Available after subscription</span>`;
+    } else {
+      action = `<button class="v26-btn primary" type="button" data-plan-checkout="${escapeHtml(plan.code)}">${configured ? (plan.code === "exam_pack_35" ? "Buy Exam Pack" : `Choose ${escapeHtml(plan.name)}`) : "Checkout not enabled"}</button>`;
+    }
+  }
   return `<article class="v26-plan-card ${plan.code !== "free" ? "featured" : ""} ${active ? "current" : ""}"><span class="v26-plan-label">${escapeHtml(plan.label)}</span><h2>${escapeHtml(plan.name)}</h2><div class="v26-plan-price"><strong>${escapeHtml(plan.price)}</strong><span>${escapeHtml(plan.cadence)}${plan.code === "free" ? "" : " + tax"}</span></div><p>${escapeHtml(plan.copy)}</p><h3>Included</h3><ul>${plan.features.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>${action}</article>`;
 }
 

@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
 from ..auth import (
     COOKIE_NAME,
-    SESSION_DAYS,
     authenticate_candidate,
     create_candidate,
-    create_session,
     delete_session,
+    list_candidate_sessions,
     optional_candidate,
     public_candidate,
     require_candidate,
+    revoke_all_candidate_sessions,
+    revoke_candidate_session,
+    set_session_cookie,
 )
-from ..config import AUTH_COOKIE_SECURE
+from ..billing.service import billing_public_config
+from ..google_oidc import google_configured
 
 router = APIRouter()
 
@@ -40,16 +43,12 @@ class LoginRequest(BaseModel):
         return str(value).strip().lower()
 
 
-def set_session_cookie(response: Response, candidate_id: int) -> None:
-    response.set_cookie(
-        COOKIE_NAME,
-        create_session(candidate_id),
-        max_age=SESSION_DAYS * 24 * 60 * 60,
-        httponly=True,
-        secure=AUTH_COOKIE_SECURE,
-        samesite="lax",
-        path="/",
-    )
+@router.get("/auth/providers")
+def auth_providers() -> dict:
+    return {
+        "google": {"enabled": google_configured()},
+        "billing": billing_public_config(),
+    }
 
 
 @router.get("/auth/me")
@@ -93,5 +92,26 @@ def auth_login(payload: LoginRequest, response: Response) -> dict:
 @router.post("/auth/logout")
 def auth_logout(request: Request, response: Response) -> dict:
     delete_session(request.cookies.get(COOKIE_NAME))
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"ok": True}
+
+
+@router.get("/auth/sessions")
+def auth_sessions(request: Request, candidate: dict = Depends(require_candidate)) -> dict:
+    return {
+        "sessions": list_candidate_sessions(candidate["id"], request.cookies.get(COOKIE_NAME))
+    }
+
+
+@router.delete("/auth/sessions/{session_id}")
+def auth_revoke_session(session_id: int, candidate: dict = Depends(require_candidate)) -> dict:
+    if not revoke_candidate_session(candidate["id"], session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"ok": True}
+
+
+@router.post("/auth/sessions/revoke-all")
+def auth_revoke_all_sessions(response: Response, candidate: dict = Depends(require_candidate)) -> dict:
+    revoke_all_candidate_sessions(candidate["id"])
     response.delete_cookie(COOKIE_NAME, path="/")
     return {"ok": True}

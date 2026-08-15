@@ -36,6 +36,24 @@ echo "== V26 functional and visual contract =="
 echo "== Candidate authentication and membership =="
 "$PYTHON_BIN" scripts/test_auth_membership.py
 
+echo "== Login-required certification content boundary =="
+"$PYTHON_BIN" scripts/test_authenticated_content_boundary.py
+
+echo "== Google identity and trusted billing authority =="
+"$PYTHON_BIN" scripts/test_google_billing_security.py
+
+echo "== Google OAuth browser transaction binding =="
+"$PYTHON_BIN" scripts/test_google_browser_state.py
+
+echo "== Google identity continuity =="
+"$PYTHON_BIN" scripts/test_google_identity_continuity.py
+
+echo "== Paid tier transition hardening =="
+"$PYTHON_BIN" scripts/test_billing_tier_transitions.py
+
+echo "== Exam Pack expiry reconciliation =="
+"$PYTHON_BIN" scripts/test_exam_pack_expiry_reconciliation.py
+
 echo "== Retired media UI guard =="
 if rg -n -i '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend --glob '!*.map'; then
   echo "Retired course/media runtime identifiers remain in the active frontend." >&2
