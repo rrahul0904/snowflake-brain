@@ -156,7 +156,13 @@ def reserve_daily_questions(candidate_id: int, membership: dict[str, Any], reque
         used = int(row["questions_consumed"] if row else 0)
         if requested > max(0, limit - used):
             raise HTTPException(status_code=403, detail={"code": "daily_question_limit_reached", "message": f"Your {plan['name']} daily question allowance has been reached. It resets at 00:00 UTC.", "limit": limit, "used": used, "remaining": max(0, limit - used)})
-        conn.execute("INSERT INTO candidate_daily_question_usage(candidate_id, usage_date, questions_consumed) VALUES (?, ?, ?) ON CONFLICT(candidate_id, usage_date) DO UPDATE SET questions_consumed = questions_consumed + excluded.questions_consumed, updated_at = datetime('now')", (candidate_id, usage_date, requested))
+        conn.execute(
+            "INSERT INTO candidate_daily_question_usage(candidate_id, usage_date, questions_consumed) VALUES (?, ?, ?) "
+            "ON CONFLICT(candidate_id, usage_date) DO UPDATE SET "
+            "questions_consumed = candidate_daily_question_usage.questions_consumed + excluded.questions_consumed, "
+            "updated_at = datetime('now')",
+            (candidate_id, usage_date, requested),
+        )
     return {"used": used + requested, "limit": limit, "remaining": max(0, limit - used - requested)}
 
 
