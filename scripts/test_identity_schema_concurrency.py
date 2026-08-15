@@ -13,6 +13,7 @@ TEMP = tempfile.TemporaryDirectory(prefix="snowflake-schema-concurrency-")
 DB_PATH = Path(TEMP.name) / "schema.sqlite"
 os.environ["BRAIN_DB"] = str(DB_PATH)
 
+from app.config import DATABASE_BACKEND  # noqa: E402
 from app.database import connect, run_migrations  # noqa: E402
 from app.identity_billing_schema import SCHEMA_VERSION, ensure_identity_billing_schema  # noqa: E402
 
@@ -32,15 +33,35 @@ def main() -> None:
             raise AssertionError(f"Concurrent schema bootstrap failed: {failures[:3]}")
 
         with connect() as conn:
-            trigger_count = conn.execute(
-                "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name='trg_restore_exam_pack_after_membership_expiry'"
-            ).fetchone()["n"]
+            if DATABASE_BACKEND == "postgresql":
+                trigger_count = conn.execute(
+                    """
+                    SELECT COUNT(*) AS n
+                    FROM pg_trigger t
+                    JOIN pg_class c ON c.oid=t.tgrelid
+                    JOIN pg_namespace ns ON ns.oid=c.relnamespace
+                    WHERE NOT t.tgisinternal
+                      AND ns.nspname=current_schema()
+                      AND t.tgname='trg_restore_exam_pack_after_membership_expiry'
+                    """
+                ).fetchone()["n"]
+                identity_table = conn.execute(
+                    """
+                    SELECT COUNT(*) AS n
+                    FROM information_schema.tables
+                    WHERE table_schema=current_schema() AND table_name='candidate_identities'
+                    """
+                ).fetchone()["n"]
+            else:
+                trigger_count = conn.execute(
+                    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='trigger' AND name='trg_restore_exam_pack_after_membership_expiry'"
+                ).fetchone()["n"]
+                identity_table = conn.execute(
+                    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='candidate_identities'"
+                ).fetchone()["n"]
             migration_count = conn.execute(
                 "SELECT COUNT(*) AS n FROM schema_migrations WHERE version=?",
                 (SCHEMA_VERSION,),
-            ).fetchone()["n"]
-            identity_table = conn.execute(
-                "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='candidate_identities'"
             ).fetchone()["n"]
 
         if int(trigger_count) != 1:
