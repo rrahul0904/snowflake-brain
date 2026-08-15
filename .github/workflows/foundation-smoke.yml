@@ -70,6 +70,8 @@ jobs:
         run: python scripts/test_tier_reset_full_exams.py
       - name: Verify atomic limited-exam entitlement concurrency
         run: python scripts/test_exam_entitlement_concurrency.py
+      - name: Verify candidate learning intelligence loop
+        run: python scripts/test_candidate_learning_intelligence.py
       - name: Verify affiliate disclosure and no-ad-network policy
         run: python scripts/test_affiliate_no_ads.py
       - name: Verify active frontend syntax
@@ -119,6 +121,8 @@ jobs:
           grep -q 'styles/recording-parity-final.css' frontend/index-v26.html
           grep -q 'v26-domain-card-grid' frontend/views/curriculum-v26.js
           grep -q 'v26-readiness-panel' frontend/views/progress-v26.js
+          grep -q 'v26-learning-command' frontend/views/progress-v26.js
+          grep -q 'v26-confidence-scale' frontend/views/practice-v26.js
           grep -q 'v26-drill-stats' frontend/views/practice-v26.js
           grep -q 'v26-diagnostic-card' frontend/views/practice-v26.js
           grep -q 'v26-lookup-card-grid' frontend/views/lookup-v26.js
