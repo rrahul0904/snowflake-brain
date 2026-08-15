@@ -290,7 +290,22 @@ def record_candidate_attempt(question_id: str, payload: AttemptRequest, candidat
             raise HTTPException(status_code=404, detail="Question not found")
         correct_options = sorted(int(item) for item in json_list(question["correct_json"]) if isinstance(item, int) or str(item).isdigit())
         is_correct = selected == correct_options
-        conn.execute("INSERT INTO question_attempts(question_id, selected, correct, mode, candidate_id) VALUES (?, ?, ?, ?, ?)", (question_id, json.dumps(selected), int(is_correct), payload.mode, candidate["id"]))
+        conn.execute(
+            """
+            INSERT INTO question_attempts(
+              question_id,selected,correct,mode,candidate_id,response_time_ms,confidence
+            ) VALUES (?,?,?,?,?,?,?)
+            """,
+            (
+                question_id,
+                json.dumps(selected),
+                int(is_correct),
+                payload.mode,
+                candidate["id"],
+                payload.response_time_ms,
+                payload.confidence,
+            ),
+        )
         conn.execute(
             "INSERT INTO learning_events(event_type, track_id, practice_test_id, question_id, metadata_json, candidate_id) VALUES ('question_answered', ?, ?, ?, ?, ?)",
             (question["track_id"], question["test_id"] or None, question_id, json.dumps({"mode": payload.mode, "correct": is_correct}), candidate["id"]),
