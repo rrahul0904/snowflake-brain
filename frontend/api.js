@@ -46,6 +46,13 @@ export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/
 export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
 export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);
 export const getEvidenceAudit = (params = {}) => api(`/api/intelligence/evidence-audit?${new URLSearchParams(params)}`);
+export const getDueToday = (params = {}) => api(`/api/intelligence/due-today?${new URLSearchParams(params)}`);
+export const getMistakeNotebook = (params = {}) => api(`/api/intelligence/mistake-notebook?${new URLSearchParams(params)}`);
+export const updateMistakeNotebook = (questionId, payload) => api(`/api/intelligence/mistake-notebook/${encodeURIComponent(questionId)}`, { method: "PATCH", body: JSON.stringify(payload) });
+export const getConfidenceCalibration = (params = {}) => api(`/api/intelligence/confidence-calibration?${new URLSearchParams(params)}`);
+export const getStudyPlan = (params = {}) => api(`/api/intelligence/study-plan?${new URLSearchParams(params)}`);
+export const saveStudyPreferences = (payload) => api("/api/intelligence/study-plan/preferences", { method: "PUT", body: JSON.stringify(payload) });
+export const getMockRemediation = (sessionId) => api(`/api/intelligence/mock-remediation/${encodeURIComponent(sessionId)}`);
 export const reindexSkillMap = (trackId = "") => api(`/api/intelligence/reindex-skill-map?${new URLSearchParams({ track_id: trackId })}`, { method: "POST", body: "{}" });
 
 export const getPracticeTests = (params = {}) => api(`/api/practice-tests?${new URLSearchParams(params)}`);
