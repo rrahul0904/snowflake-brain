@@ -1,17 +1,18 @@
 export const VIEW_ID = "v26-practice";
 
-import { escapeHtml, getMockConfig, getPracticeTests, getSkillMap, getSkillSummary, gradeQuiz, recordAttempt, startMockSession, startQuiz } from "../api.js";
+import { escapeHtml, getDueToday, getMockConfig, getPracticeTests, getSkillMap, getSkillSummary, gradeQuiz, recordAttempt, startMockSession, startQuiz } from "../api.js";
 import { activeTrack } from "../ui.js";
 import { candidate, refreshCandidate } from "../auth.js";
 import { DOMAIN_COLORS, studyLayout } from "../components/study-shell.js";
 
-const state = { questions: [], answers: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", submitted: false, result: null, account: null };
+const state = { questions: [], answers: new Map(), confidences: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", submitted: false, result: null, account: null };
 
 export default async function mount(container, params = {}) {
   state.trackId = params.track_id || activeTrack();
   await refreshCandidate().catch(() => {});
   state.account = candidate();
   if (!state.account) throw new Error("Candidate session required");
+  if (params.mode === "srs") return launchSrs(container, params);
   if (params.mode === "drill" && params.start !== "1") return drillSetup(container, params);
   if (params.mode === "diagnostic" && params.start !== "1") return diagnosticSetup(container, params);
   if (["diagnostic", "drill"].includes(params.mode || "")) return launch(container, params);
@@ -19,14 +20,16 @@ export default async function mount(container, params = {}) {
 }
 
 async function landing(container) {
-  const [config, current, legacy] = await Promise.all([
+  const [config, current, legacy, due] = await Promise.all([
     getMockConfig({ track_id: state.trackId }),
     getPracticeTests({ track_id: state.trackId, source_kind: "source" }).catch(() => ({ tests: [] })),
     getPracticeTests({ track_id: state.trackId, include_legacy: true, source_kind: "legacy" }).catch(() => ({ tests: [] })),
+    getDueToday({ track_id: state.trackId, limit: 1 }).catch(() => ({ due_count: 0 })),
   ]);
   const quick = config.quick_mock || {};
   const full = config.full_mock || {};
-  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Find your gaps, repair a task, or rehearse the timed exam experience.</p></section><section class="v26-section"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", `#/practice?track_id=${state.trackId}&mode=diagnostic`, true)}${card("Targeted Drill", "Repair weak tasks", "Focused practice by domain or across your current weak areas.", "15 questions", `#/practice?track_id=${state.trackId}&mode=drill`)}${card("Quick Mock", "Timed readiness check", "A focused timed sitting using the persisted exam player.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, `#/mock/start?track_id=${state.trackId}&type=quick-mock`)}${card("Full Mock", "Complete simulation", "Flags, navigation, autosave, refresh/resume, timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
+  const dueCount = Number(due.due_count || 0);
+  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Find your gaps, repair a task, or rehearse the timed exam experience.</p></section><section class="v26-section"><div class="v26-practice-grid">${card("Due Today", "Spaced Review", "Revisit questions exactly when your review schedule says they are due.", `${dueCount} question${dueCount === 1 ? "" : "s"} due`, `#/practice?track_id=${state.trackId}&mode=srs`, dueCount > 0)}${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", `#/practice?track_id=${state.trackId}&mode=diagnostic`, dueCount === 0)}${card("Targeted Drill", "Repair weak tasks", "Focused practice by domain or across your current weak areas.", "15 questions", `#/practice?track_id=${state.trackId}&mode=drill`)}${card("Quick Mock", "Timed readiness check", "A focused timed sitting using the persisted exam player.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, `#/mock/start?track_id=${state.trackId}&type=quick-mock`)}${card("Full Mock", "Complete simulation", "Flags, navigation, autosave, refresh/resume, timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
   bindSource(container);
 }
 
@@ -73,15 +76,33 @@ function sourceSection(current, legacy) {
 function sourceCard(test, legacy) { return `<article><span>${legacy ? "Legacy" : "COF-C03"}</span><h3>${escapeHtml(test.title || "Practice Exam")}</h3><p>${test.actual_question_count || test.question_count || 0} questions</p><button type="button" data-source-test="${escapeHtml(test.id)}">Start Exam →</button></article>`; }
 function bindSource(container) { container.querySelectorAll("[data-source-test]").forEach((button) => button.addEventListener("click", async () => { button.disabled = true; try { const session = await startMockSession({ track_id: state.trackId, mode: "source-exam", practice_test_id: button.dataset.sourceTest, randomize_options: true }); window.location.hash = `#/mock/session?session_id=${session.session_id}`; } catch (error) { button.disabled = false; button.textContent = error.message || "Unable to start"; } })); }
 
-async function launch(container, params) {
-  const mode = params.mode || "drill";
+function resetSession(mode) {
   state.mode = mode;
-  state.skillId = params.skill_id || "";
-  state.domainId = params.domain_id || "";
   state.index = 0;
   state.answers = new Map();
+  state.confidences = new Map();
   state.submitted = false;
   state.result = null;
+}
+
+async function launchSrs(container, params) {
+  resetSession("srs");
+  const limit = Number(params.count || 20);
+  container.innerHTML = `<main class="v26-page"><div class="v26-loading">Preparing due reviews…</div></main>`;
+  const data = await getDueToday({ track_id: state.trackId, limit });
+  state.questions = (data.questions || []).map((row) => ({ ...row, id: row.question_id }));
+  if (!state.questions.length) {
+    container.innerHTML = `<main class="v26-page"><section class="v26-no-progress"><strong>Nothing due right now</strong><p>Your spaced-review queue is clear. New misses will appear here immediately; correct answers return when their interval matures.</p><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=drill">Start a targeted drill</a></section></main>`;
+    return;
+  }
+  drawSession(container);
+}
+
+async function launch(container, params) {
+  const mode = params.mode || "drill";
+  resetSession(mode);
+  state.skillId = params.skill_id || "";
+  state.domainId = params.domain_id || "";
   const count = Number(params.count || (mode === "diagnostic" ? 20 : 15));
   container.innerHTML = `<main class="v26-page"><div class="v26-loading">Preparing ${mode === "diagnostic" ? "diagnostic" : "drill"}…</div></main>`;
   const data = await startQuiz({ track_id: state.trackId, count, mode, skill_id: state.skillId || null, domain_id: state.domainId || null });
@@ -90,11 +111,18 @@ async function launch(container, params) {
   drawSession(container);
 }
 
+function modeLabel() {
+  if (state.mode === "diagnostic") return "Diagnostic Test";
+  if (state.mode === "srs") return "Due Today";
+  return "Targeted Drill";
+}
+
 function drawSession(container) {
   const q = state.questions[state.index];
   const selected = state.answers.get(q.id) || [];
+  const confidence = Number(state.confidences.get(q.id) || 0);
   const answered = state.answers.size;
-  container.innerHTML = `<main class="v26-practice-session"><header><a href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${encodeURIComponent(state.mode)}">← Practice</a><div><span>${state.mode === "diagnostic" ? "Diagnostic Test" : "Targeted Drill"}</span><strong>${answered}/${state.questions.length} answered</strong></div><button type="button" data-submit>Finish</button></header><div class="v26-practice-session-body"><aside><p>${state.mode === "diagnostic" ? "Diagnostic" : "Drill"}</p><div>${state.questions.map((item, index) => `<button class="${index === state.index ? "current" : ""} ${state.answers.has(item.id) ? "done" : ""}" data-jump="${index}">${index + 1}</button>`).join("")}</div></aside><section><p class="v26-kicker">Question ${state.index + 1} of ${state.questions.length}</p><h1>${escapeHtml(q.question)}</h1><fieldset>${(q.options || []).map((option, index) => answer(q, option, index, selected)).join("")}</fieldset><footer><button type="button" data-prev ${state.index === 0 ? "disabled" : ""}>← Previous</button><button type="button" data-next ${state.index === state.questions.length - 1 ? "disabled" : ""}>Next →</button></footer></section></div></main>`;
+  container.innerHTML = `<main class="v26-practice-session"><header><a href="#/practice?track_id=${encodeURIComponent(state.trackId)}">← Practice</a><div><span>${modeLabel()}</span><strong>${answered}/${state.questions.length} answered</strong></div><button type="button" data-submit>Finish</button></header><div class="v26-practice-session-body"><aside><p>${state.mode === "srs" ? "Due" : state.mode === "diagnostic" ? "Diagnostic" : "Drill"}</p><div>${state.questions.map((item, index) => `<button class="${index === state.index ? "current" : ""} ${state.answers.has(item.id) ? "done" : ""}" data-jump="${index}">${index + 1}</button>`).join("")}</div></aside><section><p class="v26-kicker">Question ${state.index + 1} of ${state.questions.length}</p><h1>${escapeHtml(q.question)}</h1><fieldset>${(q.options || []).map((option, index) => answer(q, option, index, selected)).join("")}</fieldset><div class="v26-confidence-scale"><span>How confident are you?</span><div>${[1,2,3,4,5].map((level) => `<button type="button" class="${confidence === level ? "active" : ""}" data-confidence="${level}" aria-pressed="${confidence === level}">${level}</button>`).join("")}</div><small>1 = guessing · 5 = certain</small></div><footer><button type="button" data-prev ${state.index === 0 ? "disabled" : ""}>← Previous</button><button type="button" data-next ${state.index === state.questions.length - 1 ? "disabled" : ""}>Next →</button></footer></section></div></main>`;
   bindSession(container);
 }
 
@@ -102,6 +130,7 @@ function answer(q, option, index, selected) { const type = q.multiple ? "checkbo
 function bindSession(container) {
   container.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => { capture(container); state.index = Number(button.dataset.jump); drawSession(container); }));
   container.querySelectorAll("input[name='practice-answer']").forEach((input) => input.addEventListener("change", () => { capture(container); drawSession(container); }));
+  container.querySelectorAll("[data-confidence]").forEach((button) => button.addEventListener("click", () => { state.confidences.set(state.questions[state.index].id, Number(button.dataset.confidence)); drawSession(container); }));
   container.querySelector("[data-prev]")?.addEventListener("click", () => { capture(container); state.index = Math.max(0, state.index - 1); drawSession(container); });
   container.querySelector("[data-next]")?.addEventListener("click", () => { capture(container); state.index = Math.min(state.questions.length - 1, state.index + 1); drawSession(container); });
   container.querySelector("[data-submit]")?.addEventListener("click", () => submit(container));
@@ -115,7 +144,14 @@ async function submit(container) {
   const payload = state.questions.map((q) => ({ question_id: q.id, selected: state.answers.get(q.id) || [] }));
   const result = await gradeQuiz({ answers: payload });
   state.result = result;
-  for (const row of result.results || []) { await recordAttempt(row.id || row.question_id, { selected: row.selected || [], correct: Boolean(row.is_correct), mode: state.mode }).catch(() => {}); }
+  for (const row of result.results || []) {
+    await recordAttempt(row.id || row.question_id, {
+      selected: row.selected || [],
+      correct: Boolean(row.is_correct),
+      mode: state.mode,
+      confidence: state.confidences.get(row.id || row.question_id) || null,
+    }).catch(() => {});
+  }
   renderResult(container, result);
 }
 
@@ -123,6 +159,7 @@ function renderResult(container, result) {
   const total = Math.max(1, result.total || state.questions.length);
   const score = result.score || 0;
   const percent = Math.round(score / total * 100);
-  container.innerHTML = `<main class="v26-page v26-practice-result"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${encodeURIComponent(state.mode)}">← Practice</a><header class="v26-page-intro centered"><p class="v26-kicker">${state.mode === "diagnostic" ? "Diagnostic Result" : "Drill Result"}</p><h1>${percent}%</h1><p>${score}/${total} correct. Review the explanations below, then continue with the task lessons that need another pass.</p></header><section class="v26-review-list">${(result.results || []).map((row, index) => review(row, index)).join("")}</section><div class="v26-result-actions"><a class="v26-btn primary" href="#/progress?track_id=${encodeURIComponent(state.trackId)}">Open Progress</a><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${state.mode}">Try another set</a></div></main>`;
+  const kicker = state.mode === "srs" ? "Spaced Review Result" : state.mode === "diagnostic" ? "Diagnostic Result" : "Drill Result";
+  container.innerHTML = `<main class="v26-page v26-practice-result"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(state.trackId)}">← Practice</a><header class="v26-page-intro centered"><p class="v26-kicker">${kicker}</p><h1>${percent}%</h1><p>${score}/${total} correct. Your answer history now updates the spaced-review queue, mistake notebook, and confidence calibration.</p></header><section class="v26-review-list">${(result.results || []).map((row, index) => review(row, index)).join("")}</section><div class="v26-result-actions"><a class="v26-btn primary" href="#/progress?track_id=${encodeURIComponent(state.trackId)}">Open Progress</a><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${state.mode}">Continue</a></div></main>`;
 }
 function review(row, index) { const options = row.options || []; const selected = (row.selected || []).map((i) => options[i]).filter(Boolean).join("; ") || "No answer"; const correct = (row.correct || []).map((i) => options[i]).filter(Boolean).join("; ") || "Answer unavailable"; return `<details class="v26-review-card ${row.is_correct ? "correct" : "incorrect"}"><summary><span>${row.is_correct ? "✓" : "×"}</span><div><small>Question ${index + 1}</small><strong>${escapeHtml(row.question || "")}</strong></div></summary><div class="v26-review-body"><p><b>Your answer</b>${escapeHtml(selected)}</p><p><b>Correct answer</b>${escapeHtml(correct)}</p>${row.explanation ? `<p><b>Explanation</b>${escapeHtml(row.explanation)}</p>` : ""}</div></details>`; }
