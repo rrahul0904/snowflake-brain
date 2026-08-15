@@ -50,3 +50,17 @@ STABLE
 AS $$
   SELECT sqlite_datetime_impl(value, modifiers)
 $$;
+
+-- PostgreSQL already has one-argument date casts/functions. This overload starts
+-- at two arguments, matching the SQLite date(value, modifier, ...) form used by
+-- entitlement/reset simulations without interfering with native date(value).
+CREATE OR REPLACE FUNCTION date(value text, first_modifier text, VARIADIC modifiers text[])
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT substring(
+    sqlite_datetime_impl(value, array_prepend(first_modifier, COALESCE(modifiers, ARRAY[]::text[])))
+    FROM 1 FOR 10
+  )
+$$;
