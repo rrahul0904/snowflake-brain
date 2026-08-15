@@ -12,6 +12,7 @@ from .question_bank import (
     record_questions_served,
     select_blueprint_questions,
 )
+from .question_bank_releases import filter_rows_to_active_release
 from .routers.certification_practice import (
     CertificationQuizStart,
     _adaptive_drill,
@@ -151,6 +152,10 @@ def select_certification_questions(
         persisted = _best_reliable_edges(conn, payload.track_id)
     rows, reliable_count, heuristic_count = _assign_edges(rows, payload.track_id, persisted)
     rows = _enrich_rows(rows, candidate["id"])
+    # Managed private-bank questions are candidate-visible only when they are
+    # members of the currently active release snapshot. Fresh imports therefore
+    # remain staging/admin content until explicit release activation.
+    rows = filter_rows_to_active_release(rows, payload.track_id)
     rows = _safe_fallback_rows(rows, pinned_internal_test=bool(payload.test_id and trusted_exam_session))
     rows = filter_rows_for_entitlement(rows, candidate["membership"], mode, count)
 
