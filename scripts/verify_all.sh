@@ -21,6 +21,9 @@ fi
 echo "== Python compile =="
 "$PYTHON_BIN" -m compileall app scripts
 
+echo "== Candidate API route uniqueness =="
+"$PYTHON_BIN" scripts/test_unique_api_routes.py
+
 echo "== COF-C03 blueprint/content contract =="
 "$PYTHON_BIN" scripts/smoke_core_guide.py
 
