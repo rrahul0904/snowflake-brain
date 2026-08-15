@@ -10,6 +10,11 @@ from pydantic import BaseModel, Field
 from ..auth import require_candidate, require_owned_mock_session
 from ..database import connect
 from ..entitlements import reserve_daily_questions
+from ..exam_entitlement_reservations import (
+    commit_exam_attempt_reservation,
+    release_exam_attempt_reservation,
+    reserve_exam_attempt,
+)
 from ..mock_exam import (
     active_session,
     history,
@@ -32,6 +37,7 @@ from ..serializers import json_list, question_public
 from ..tier_exam_policy import (
     FREE_FULL_CONTENT_MOCK_MINUTES,
     FREE_FULL_CONTENT_MOCK_QUESTIONS,
+    mock_reset_context,
     validate_tier_mock_start,
 )
 
@@ -145,15 +151,25 @@ def start_candidate_mock(payload: TierMockSessionStart, candidate: dict[str, Any
     if candidate.get("is_premium") and normalized_mode == "quick-mock":
         quick_count = int(public_config(payload.track_id).get("quick_mock", {}).get("question_count") or 30)
         reserve_daily_questions(candidate["id"], candidate["membership"], quick_count)
-    return _candidate_mock(
-        create_tier_mock_session(
+
+    # Limited timed-exam starts use a DB-backed reservation before any question
+    # selection/session creation. This closes the race where concurrent requests
+    # could all observe the same remaining weekly/monthly allowance.
+    reset = mock_reset_context(candidate, normalized_mode)
+    reservation_id = reserve_exam_attempt(candidate, payload.track_id, normalized_mode, reset)
+    try:
+        created = create_tier_mock_session(
             candidate,
             payload.track_id,
             normalized_mode,
             practice_test_id=None,
             randomize_options=payload.randomize_options,
         )
-    ) or {}
+        commit_exam_attempt_reservation(reservation_id, int(created["session_id"]))
+        return _candidate_mock(created) or {}
+    except Exception:
+        release_exam_attempt_reservation(reservation_id)
+        raise
 
 
 @router.get("/mock/sessions/active")
