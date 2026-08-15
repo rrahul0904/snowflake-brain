@@ -283,6 +283,18 @@ class PostgresConnectionAdapter:
     def raw_connection(self) -> Any:
         return self._raw
 
+    @property
+    def total_changes(self) -> int:
+        # SQLite exposes cumulative changed-row accounting on each connection.
+        # PostgreSQL's transaction statistics provide the same before/after
+        # signal needed by legacy canonical-seeding code without weakening the
+        # production transaction boundary.
+        row = self._raw.execute(
+            "SELECT COALESCE(SUM(n_tup_ins + n_tup_upd + n_tup_del),0) AS n "
+            "FROM pg_stat_xact_user_tables"
+        ).fetchone()
+        return int((row or {}).get("n", 0))
+
     def execute(self, statement: str, params: Iterable[Any] | None = None):
         compact = statement.strip()
         lowered = compact.lower()
