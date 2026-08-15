@@ -54,8 +54,14 @@ echo "== Paid tier transition hardening =="
 echo "== Exam Pack expiry reconciliation =="
 "$PYTHON_BIN" scripts/test_exam_pack_expiry_reconciliation.py
 
+echo "== Concurrent identity/billing schema bootstrap =="
+"$PYTHON_BIN" scripts/test_identity_schema_concurrency.py
+
 echo "== Private question bank tiers and exam allocation =="
 "$PYTHON_BIN" scripts/test_question_bank_tiers.py
+
+echo "== Tier resets and fresh timed mock rotation =="
+"$PYTHON_BIN" scripts/test_tier_reset_full_exams.py
 
 echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
