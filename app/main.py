@@ -13,16 +13,13 @@ from .routers import (
     affiliate,
     auth,
     billing,
-    certification_practice,
     experience,
     feedback,
     google_auth,
     intelligence,
     labs,
-    mock_exam,
     question_bank_candidate_state,
     question_bank_runtime,
-    questions,
     skills,
 )
 from .security import SecurityBoundaryMiddleware
@@ -59,14 +56,14 @@ def health() -> dict[str, str]:
 
 
 app.include_router(skills.router, prefix="/api")
-# Candidate-facing question and mock routes are registered before the legacy
-# compatibility routers so the private-bank boundary is the authoritative path.
+# Candidate question/practice/mock ownership is intentionally singular. The
+# legacy questions, certification_practice and mock_exam routers remain as
+# implementation modules for shared helpers where needed, but are not mounted
+# into the public application. This prevents registration-order security from
+# becoming part of the candidate boundary.
 app.include_router(question_bank_runtime.router, prefix="/api")
 app.include_router(question_bank_candidate_state.router, prefix="/api")
 app.include_router(affiliate.router, prefix="/api")
-app.include_router(questions.router, prefix="/api")
-app.include_router(certification_practice.router, prefix="/api")
-app.include_router(mock_exam.router, prefix="/api")
 app.include_router(intelligence.router, prefix="/api")
 app.include_router(experience.router, prefix="/api")
 app.include_router(labs.router, prefix="/api")
