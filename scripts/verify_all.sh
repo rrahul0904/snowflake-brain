@@ -54,6 +54,12 @@ echo "== Paid tier transition hardening =="
 echo "== Exam Pack expiry reconciliation =="
 "$PYTHON_BIN" scripts/test_exam_pack_expiry_reconciliation.py
 
+echo "== Private question bank tiers and exam allocation =="
+"$PYTHON_BIN" scripts/test_question_bank_tiers.py
+
+echo "== Affiliate disclosure and permanent no-ad-network policy =="
+"$PYTHON_BIN" scripts/test_affiliate_no_ads.py
+
 echo "== Retired media UI guard =="
 if rg -n -i '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend --glob '!*.map'; then
   echo "Retired course/media runtime identifiers remain in the active frontend." >&2
@@ -65,4 +71,4 @@ while IFS= read -r -d '' file; do
   "$NODE_BIN" --check "$file"
 done < <(find frontend -type f -name '*.js' -print0)
 
-echo "All V26 Snowflake Certification Guide checks passed."
+echo "All Snowflake Certification Guide checks passed."
