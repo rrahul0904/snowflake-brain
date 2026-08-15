@@ -23,6 +23,7 @@ os.environ["OBSERVABILITY_ALERT_WEBHOOK_URL"] = ""
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.config import DATABASE_BACKEND  # noqa: E402
 from app.database import connect  # noqa: E402
 from app.main import app  # noqa: E402
 from app.observability import (  # noqa: E402
@@ -126,7 +127,7 @@ def check_live_middleware_and_metrics() -> None:
         assert snapshot["recent_failures"]["auth_failures"] == 2
         assert snapshot["counters"]["db.operations.total"] > 0
         assert any(key.startswith("http.route.GET /api/health") for key in snapshot["latency"])
-        assert any(key.startswith("db.operation.sqlite.SELECT") for key in snapshot["latency"])
+        assert any(key.startswith(f"db.operation.{DATABASE_BACKEND}.SELECT") for key in snapshot["latency"])
 
 
 def check_alert_and_operational_signals() -> None:
@@ -163,7 +164,9 @@ def main() -> None:
         check_request_id_helpers()
         check_live_middleware_and_metrics()
         check_alert_and_operational_signals()
-        print("Production observability: PASS (request IDs, safe JSON logs, metrics, DB timing, alerts, feature signals)")
+        print(
+            f"Production observability: PASS (backend={DATABASE_BACKEND}, request IDs, safe JSON logs, metrics, DB timing, alerts, feature signals)"
+        )
     finally:
         TEMP.cleanup()
 
