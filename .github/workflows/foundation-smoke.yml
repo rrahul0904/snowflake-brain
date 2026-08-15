@@ -16,7 +16,7 @@ permissions:
 jobs:
   certification-guide-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,6 +32,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Compile runtime
         run: python -m compileall app scripts
+      - name: Verify candidate API route uniqueness
+        run: python scripts/test_unique_api_routes.py
       - name: Verify COF-C03 written guide
         run: python scripts/smoke_core_guide.py
       - name: Verify certification-native architecture
@@ -50,8 +52,26 @@ jobs:
         run: python scripts/test_google_identity_continuity.py
       - name: Verify paid tier transition hardening
         run: python scripts/test_billing_tier_transitions.py
+      - name: Verify Stripe unknown-price fail closed
+        run: python scripts/test_billing_unknown_price_fail_closed.py
       - name: Verify Exam Pack expiry reconciliation
         run: python scripts/test_exam_pack_expiry_reconciliation.py
+      - name: Verify concurrent identity/billing schema bootstrap
+        run: python scripts/test_identity_schema_concurrency.py
+      - name: Verify private question bank, tiers, and exam allocation
+        run: python scripts/test_question_bank_tiers.py
+      - name: Verify immutable question versions and sitting linkage
+        run: python scripts/test_question_version_immutability.py
+      - name: Verify question-bank release activation and rollback
+        run: python scripts/test_question_bank_releases.py
+      - name: Verify blueprint-aware fresh reset fallback
+        run: python scripts/test_blueprint_fresh_fallback.py
+      - name: Verify tier resets and fresh timed mock rotation
+        run: python scripts/test_tier_reset_full_exams.py
+      - name: Verify atomic limited-exam entitlement concurrency
+        run: python scripts/test_exam_entitlement_concurrency.py
+      - name: Verify affiliate disclosure and no-ad-network policy
+        run: python scripts/test_affiliate_no_ads.py
       - name: Verify active frontend syntax
         shell: bash
         run: |
@@ -62,6 +82,7 @@ jobs:
             frontend/api.js
             frontend/auth.js
             frontend/ui.js
+            frontend/affiliate-resources.js
             frontend/components/nav.js
             frontend/components/candidate-access.js
             frontend/components/feedback.js
@@ -102,6 +123,20 @@ jobs:
           grep -q 'v26-diagnostic-card' frontend/views/practice-v26.js
           grep -q 'v26-lookup-card-grid' frontend/views/lookup-v26.js
           grep -q 'v26-exercise-domain-list' frontend/views/exercises-v26.js
+      - name: Verify private bank remains outside tracked/static content
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^private_content/' .gitignore
+          grep -q '^private_content$' .dockerignore
+          if git ls-files frontend config | grep -Ei '(question[_-]?bank|private[_-]?question).*\.json$'; then
+            echo 'Commercial question-bank data is tracked in a public/static path'
+            exit 1
+          fi
+          if grep -RniE 'googlesyndication|doubleclick\.net|googleadservices|adsbygoogle|prebid|taboola|outbrain|adroll|fbevents\.js' frontend; then
+            echo 'Advertising network/SDK identifier found in active frontend'
+            exit 1
+          fi
       - name: Verify legacy runtime remains inactive
         shell: bash
         run: |

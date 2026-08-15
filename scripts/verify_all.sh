@@ -21,6 +21,9 @@ fi
 echo "== Python compile =="
 "$PYTHON_BIN" -m compileall app scripts
 
+echo "== Candidate API route uniqueness =="
+"$PYTHON_BIN" scripts/test_unique_api_routes.py
+
 echo "== COF-C03 blueprint/content contract =="
 "$PYTHON_BIN" scripts/smoke_core_guide.py
 
@@ -51,8 +54,35 @@ echo "== Google identity continuity =="
 echo "== Paid tier transition hardening =="
 "$PYTHON_BIN" scripts/test_billing_tier_transitions.py
 
+echo "== Stripe unknown-price fail closed =="
+"$PYTHON_BIN" scripts/test_billing_unknown_price_fail_closed.py
+
 echo "== Exam Pack expiry reconciliation =="
 "$PYTHON_BIN" scripts/test_exam_pack_expiry_reconciliation.py
+
+echo "== Concurrent identity/billing schema bootstrap =="
+"$PYTHON_BIN" scripts/test_identity_schema_concurrency.py
+
+echo "== Private question bank tiers and exam allocation =="
+"$PYTHON_BIN" scripts/test_question_bank_tiers.py
+
+echo "== Immutable question versions and sitting linkage =="
+"$PYTHON_BIN" scripts/test_question_version_immutability.py
+
+echo "== Question-bank release activation and rollback =="
+"$PYTHON_BIN" scripts/test_question_bank_releases.py
+
+echo "== Blueprint-aware fresh reset fallback =="
+"$PYTHON_BIN" scripts/test_blueprint_fresh_fallback.py
+
+echo "== Tier resets and fresh timed mock rotation =="
+"$PYTHON_BIN" scripts/test_tier_reset_full_exams.py
+
+echo "== Atomic limited-exam entitlement concurrency =="
+"$PYTHON_BIN" scripts/test_exam_entitlement_concurrency.py
+
+echo "== Affiliate disclosure and permanent no-ad-network policy =="
+"$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 
 echo "== Retired media UI guard =="
 if rg -n -i '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend --glob '!*.map'; then
@@ -65,4 +95,4 @@ while IFS= read -r -d '' file; do
   "$NODE_BIN" --check "$file"
 done < <(find frontend -type f -name '*.js' -print0)
 
-echo "All V26 Snowflake Certification Guide checks passed."
+echo "All Snowflake Certification Guide checks passed."

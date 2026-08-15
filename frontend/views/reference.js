@@ -1,5 +1,7 @@
 export const VIEW_ID = "v26-reference";
 
+import { affiliateBookSection, getAffiliateResources } from "../affiliate-resources.js";
+
 const sections = [
   ["Official Documentation", [
     ["Snowflake Documentation", "Product documentation for Snowflake features, SQL, administration, security, and platform behavior.", "https://docs.snowflake.com/"],
@@ -18,7 +20,8 @@ const sections = [
 ];
 
 export default async function mount(container) {
-  container.innerHTML = `<main class="v26-page v26-reference-page"><section class="v26-page-intro"><p class="v26-kicker">Reference</p><h1>Resources</h1><p>Official Snowflake references and learning resources to verify platform behavior while you prepare.</p></section>${sections.map(section).join("")}</main>`;
+  const affiliate = await getAffiliateResources().catch(() => ({ enabled: false, books: [] }));
+  container.innerHTML = `<main class="v26-page v26-reference-page"><section class="v26-page-intro"><p class="v26-kicker">Reference</p><h1>Resources</h1><p>Official Snowflake references and carefully selected learning resources to verify platform behavior while you prepare.</p></section>${sections.map(section).join("")}${affiliateBookSection(affiliate)}</main>`;
 }
 
 function section([title, items]) {
