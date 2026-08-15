@@ -108,6 +108,29 @@ def submit(client: TestClient, session_id: int) -> None:
     check(response.status_code == 200, response.text)
 
 
+def simulate_reset_boundary(candidate_id: int, exam_type: str, *, session_mode: str, session_age_sql: str, prior_window_key: str) -> None:
+    """Move both durable usage and its reservation ledger into a prior window.
+
+    Production reset windows advance with wall-clock time. This test cannot
+    change the process clock, so a synthetic reset must update both persisted
+    pieces of the entitlement state; backdating only exam_sessions would leave
+    the atomic reservation's current window key intentionally occupied.
+    """
+    with connect() as conn:
+        conn.execute(
+            f"UPDATE exam_sessions SET started_at={session_age_sql}, finished_at={session_age_sql} WHERE candidate_id=? AND mode=?",
+            (candidate_id, session_mode),
+        )
+        conn.execute(
+            """
+            UPDATE exam_entitlement_reservations
+               SET window_key=?
+             WHERE candidate_id=? AND exam_type=? AND status='committed'
+            """,
+            (prior_window_key, candidate_id, exam_type),
+        )
+
+
 def main() -> None:
     run_migrations()
     imported = import_question_bank_payload(bank(), source_name="tier-reset-test.json")
@@ -145,8 +168,13 @@ def main() -> None:
 
     # Simulate crossing the weekly boundary. The allowance reopens and the
     # prior sitting's questions are hard-excluded when sufficient inventory exists.
-    with connect() as conn:
-        conn.execute("UPDATE exam_sessions SET started_at=datetime('now','-8 days'), finished_at=datetime('now','-8 days') WHERE id=?", (int(first_payload["session_id"]),))
+    simulate_reset_boundary(
+        free_id,
+        "weekly_mock",
+        session_mode="exam_weekly_mock",
+        session_age_sql="datetime('now','-8 days')",
+        prior_window_key="test-previous-week",
+    )
     next_week = free.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "weekly-mock"})
     check(next_week.status_code == 200, next_week.text)
     next_payload = next_week.json()
@@ -175,16 +203,26 @@ def main() -> None:
     p3_blocked = premium.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "full-mock"})
     check(p3_blocked.status_code == 403, "Premium 100 blocks a third Full Exam in same month")
 
-    with connect() as conn:
-        conn.execute("UPDATE exam_sessions SET started_at=datetime('now','start of month','-2 days'), finished_at=datetime('now','start of month','-2 days') WHERE candidate_id=? AND mode='exam_full_mock'", (premium_id,))
+    simulate_reset_boundary(
+        premium_id,
+        "full_exam",
+        session_mode="exam_full_mock",
+        session_age_sql="datetime('now','start of month','-2 days')",
+        prior_window_key="test-previous-month",
+    )
     p3 = premium.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "full-mock"})
     check(p3.status_code == 200 and len(p3.json()["questions"]) == 100, "monthly reset restores Premium Full Exam allowance")
     check(p2_ids.isdisjoint(ids(p3.json())), "new monthly window avoids the immediately previous Full Exam set")
     submit(premium, int(p3.json()["session_id"]))
 
     # Premium 250 and 500 retain their configured monthly/full-exam contracts.
-    with connect() as conn:
-        conn.execute("UPDATE exam_sessions SET started_at=datetime('now','start of month','-2 days'), finished_at=datetime('now','start of month','-2 days') WHERE candidate_id=? AND mode='exam_full_mock'", (premium_id,))
+    simulate_reset_boundary(
+        premium_id,
+        "full_exam",
+        session_mode="exam_full_mock",
+        session_age_sql="datetime('now','start of month','-2 days')",
+        prior_window_key="test-previous-month-after-p3",
+    )
     apply_membership_plan(premium_id, "premium_40", source="test", reason="tier-reset-test")
     membership_250 = premium.get("/api/auth/me").json()["membership"]
     check(membership_250["usage"]["monthly_full_exams"]["limit"] == 4, "Premium 250 keeps four Full Exams per month")
