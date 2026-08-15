@@ -10,6 +10,23 @@ BRAIN_DB = Path(
     os.getenv("BRAIN_DB", str(ROOT_DIR / "data" / "snowflake_certification.sqlite"))
 ).expanduser()
 
+# Production persistence. Local development and tests remain SQLite by default;
+# setting DATABASE_URL to PostgreSQL switches the shared database API to the
+# pooled PostgreSQL adapter. POSTGRES_TEST_ISOLATION is CI-only and gives each
+# test process a private schema while exercising the same PostgreSQL server.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DATABASE_BACKEND = (
+    "postgresql"
+    if DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
+    else "sqlite"
+)
+DATABASE_SCHEMA = os.getenv("DATABASE_SCHEMA", "public").strip() or "public"
+DB_POOL_MIN_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "2")))
+DB_POOL_MAX_SIZE = max(DB_POOL_MIN_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "12")))
+DB_POOL_TIMEOUT_SECONDS = max(1, int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "10")))
+POSTGRES_TEST_ISOLATION = os.getenv("POSTGRES_TEST_ISOLATION", "false").lower() in {"1", "true", "yes", "on"}
+POSTGRES_TEST_SCHEMA_PREFIX = os.getenv("POSTGRES_TEST_SCHEMA_PREFIX", "snowflake_ci").strip() or "snowflake_ci"
+
 SKILL_MAP_CONFIG = Path(
     os.getenv("SKILL_MAP_CONFIG", str(ROOT_DIR / "config" / "certification_skill_map.json"))
 ).expanduser()
