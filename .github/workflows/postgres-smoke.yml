@@ -1,0 +1,123 @@
+name: PostgreSQL Production Smoke
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "migrations/postgres/**"
+      - "scripts/**"
+      - "requirements.txt"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/postgres-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: postgres-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: snowflake_ci
+          POSTGRES_USER: snowflake
+          POSTGRES_PASSWORD: snowflake
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U snowflake -d snowflake_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://snowflake:snowflake@127.0.0.1:5432/snowflake_ci
+      DATABASE_SCHEMA: foundation_ci
+      DB_POOL_MIN_SIZE: "2"
+      DB_POOL_MAX_SIZE: "20"
+      DB_POOL_TIMEOUT_SECONDS: "10"
+      AFFILIATE_RESOURCES_ENABLED: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+
+      - name: Compile database and migration runtime
+        run: python -m compileall -q app scripts
+
+      - name: Verify native PostgreSQL production foundation
+        run: python scripts/test_postgres_production_foundation.py
+
+      - name: Verify readiness endpoint on PostgreSQL
+        shell: bash
+        env:
+          DATABASE_SCHEMA: readiness_ci
+        run: |
+          set -euo pipefail
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/postgres-server.log 2>&1 &
+          echo $! > /tmp/postgres-server.pid
+          trap 'kill $(cat /tmp/postgres-server.pid) 2>/dev/null || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/ready >/tmp/postgres-ready.json; then
+              cat /tmp/postgres-ready.json
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/postgres-server.log
+          exit 1
+
+      - name: Run existing regression suite against PostgreSQL
+        env:
+          POSTGRES_TEST_ISOLATION: "true"
+          POSTGRES_TEST_SCHEMA_PREFIX: full_suite_ci
+        run: bash scripts/verify_all.sh
+
+      - name: Exercise logical backup and restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pg-backup
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            -v /tmp/pg-backup:/backup \
+            postgres:17-alpine \
+            pg_dump --format=custom --no-owner --no-acl \
+              --host=127.0.0.1 --username=snowflake --dbname=snowflake_ci \
+              --file=/backup/guide.dump
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            postgres:17-alpine \
+            psql --host=127.0.0.1 --username=snowflake --dbname=postgres \
+              --command='CREATE DATABASE snowflake_restore;'
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            -v /tmp/pg-backup:/backup \
+            postgres:17-alpine \
+            pg_restore --no-owner --no-acl --exit-on-error \
+              --host=127.0.0.1 --username=snowflake --dbname=snowflake_restore \
+              /backup/guide.dump
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            postgres:17-alpine \
+            psql --host=127.0.0.1 --username=snowflake --dbname=snowflake_restore \
+              --tuples-only --command="SELECT COUNT(*) FROM foundation_ci.candidate_accounts;"
+
+      - name: Show PostgreSQL app log on failure
+        if: failure()
+        run: cat /tmp/postgres-server.log || true
