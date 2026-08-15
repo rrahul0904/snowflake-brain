@@ -9,6 +9,7 @@ AS $$
 DECLARE
   ts timestamptz;
   modifier text;
+  normalized_modifier text;
 BEGIN
   IF value IS NULL THEN
     RETURN NULL;
@@ -26,7 +27,16 @@ BEGIN
 
   FOREACH modifier IN ARRAY COALESCE(modifiers, ARRAY[]::text[])
   LOOP
-    IF trim(modifier) <> '' THEN
+    normalized_modifier := lower(trim(modifier));
+    IF normalized_modifier = '' THEN
+      CONTINUE;
+    ELSIF normalized_modifier = 'start of day' THEN
+      ts := date_trunc('day', ts);
+    ELSIF normalized_modifier = 'start of month' THEN
+      ts := date_trunc('month', ts);
+    ELSIF normalized_modifier = 'start of year' THEN
+      ts := date_trunc('year', ts);
+    ELSE
       ts := ts + trim(modifier)::interval;
     END IF;
   END LOOP;
