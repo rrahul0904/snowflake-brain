@@ -1,13 +1,21 @@
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import DATABASE_BACKEND, QUESTION_BANK_AUTO_IMPORT
+from .config import DATABASE_BACKEND, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
+from .observability import (
+    ObservabilityMiddleware,
+    log_event,
+    metrics_snapshot,
+    metrics_token_matches,
+    record_background_failure,
+    record_readiness_failure,
+)
 from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema
@@ -32,31 +40,41 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.10.0",
-    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, and production-ready persistence boundaries.",
+    version="0.11.0",
+    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, PostgreSQL production persistence, and production observability.",
 )
 app.add_middleware(SecurityBoundaryMiddleware)
+# Added after SecurityBoundaryMiddleware so observability is the outer request
+# boundary and records authentication/rate-limit denials as well as application
+# responses and unhandled exceptions.
+app.add_middleware(ObservabilityMiddleware)
 
 
 @app.on_event("startup")
 def startup() -> None:
-    run_migrations()
-    ensure_identity_billing_schema()
-    ensure_question_version_schema()
-    ensure_question_bank_release_schema()
-    ensure_learning_intelligence_schema()
-    if QUESTION_BANK_AUTO_IMPORT:
-        # The source directory is private deployment content, never a frontend
-        # asset and never committed to this repository. Imports never replace an
-        # already active release; they remain admin/staging content until an
-        # explicit release activation.
-        import_question_bank_directory()
-    ensure_active_release_baseline("snowpro-core")
+    try:
+        run_migrations()
+        ensure_identity_billing_schema()
+        ensure_question_version_schema()
+        ensure_question_bank_release_schema()
+        ensure_learning_intelligence_schema()
+        if QUESTION_BANK_AUTO_IMPORT:
+            # The source directory is private deployment content, never a frontend
+            # asset and never committed to this repository. Imports never replace an
+            # already active release; they remain admin/staging content until an
+            # explicit release activation.
+            import_question_bank_directory()
+        ensure_active_release_baseline("snowpro-core")
+    except Exception as exc:
+        record_background_failure("application_startup", exc)
+        raise
+    log_event("application_started", backend=DATABASE_BACKEND, version=app.version)
 
 
 @app.on_event("shutdown")
 def shutdown() -> None:
     close_database()
+    log_event("application_stopped", backend=DATABASE_BACKEND)
 
 
 @app.get("/api/health")
@@ -68,6 +86,7 @@ def health() -> dict[str, str]:
         "architecture": "certification-native-v26",
         "question_bank": "private-v1",
         "database_backend": DATABASE_BACKEND,
+        "observability": "structured-v1",
     }
 
 
@@ -77,16 +96,28 @@ def ready() -> dict:
     try:
         database = database_health()
     except Exception as exc:
+        record_readiness_failure("database", error_type=type(exc).__name__)
         raise HTTPException(
             status_code=503,
             detail={"status": "not_ready", "dependency": "database", "backend": DATABASE_BACKEND},
         ) from exc
     if database.get("status") != "ok":
+        record_readiness_failure("database", error_type="health_check_failed")
         raise HTTPException(
             status_code=503,
             detail={"status": "not_ready", "dependency": "database", "backend": DATABASE_BACKEND},
         )
-    return {"status": "ready", "database": database}
+    return {"status": "ready", "database": database, "observability": "ready"}
+
+
+@app.get("/api/metrics")
+def metrics(request: Request) -> dict:
+    """Low-cardinality operational metrics protected by an infrastructure token."""
+    if not OBSERVABILITY_METRICS_TOKEN:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not metrics_token_matches(request.headers.get("authorization"), OBSERVABILITY_METRICS_TOKEN):
+        raise HTTPException(status_code=401, detail="Metrics authorization required")
+    return metrics_snapshot()
 
 
 app.include_router(skills.router, prefix="/api")

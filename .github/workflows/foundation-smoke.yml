@@ -72,6 +72,8 @@ jobs:
         run: python scripts/test_exam_entitlement_concurrency.py
       - name: Verify candidate learning intelligence loop
         run: python scripts/test_candidate_learning_intelligence.py
+      - name: Verify production observability and operational reliability
+        run: python scripts/test_production_observability.py
       - name: Verify affiliate disclosure and no-ad-network policy
         run: python scripts/test_affiliate_no_ads.py
       - name: Verify active frontend syntax

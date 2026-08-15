@@ -84,6 +84,9 @@ echo "== Atomic limited-exam entitlement concurrency =="
 echo "== Candidate learning intelligence loop =="
 "$PYTHON_BIN" scripts/test_candidate_learning_intelligence.py
 
+echo "== Production observability and operational reliability =="
+"$PYTHON_BIN" scripts/test_production_observability.py
+
 echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 

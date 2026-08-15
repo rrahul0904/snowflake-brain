@@ -5,11 +5,13 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.database import run_migrations  # noqa: E402
+from app.observability import record_background_failure, record_release_event  # noqa: E402
 from app.question_bank import (  # noqa: E402
     bank_status,
     import_question_bank_directory,
@@ -43,6 +45,16 @@ def _release_question_ids_from_source(path: Path) -> tuple[str, list[str]]:
     return str(payload["track_id"]), ids
 
 
+def _observed_release(action: str, release_key: str, operation: Callable[[], dict]) -> dict:
+    try:
+        result = operation()
+    except Exception:
+        record_release_event(action, "failure", release_key=release_key)
+        raise
+    record_release_event(action, "success", release_key=release_key)
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Backend-only Snowflake question-bank administration")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -50,7 +62,7 @@ def main() -> int:
     validate = sub.add_parser("validate", help="Validate one private bank JSON file without importing it")
     validate.add_argument("path", type=Path)
 
-    imp = sub.add_parser("import", help="Validate and import one private bank JSON file into SQLite")
+    imp = sub.add_parser("import", help="Validate and import one private bank JSON file into the configured database")
     imp.add_argument("path", type=Path)
 
     directory = sub.add_parser("import-dir", help="Import all JSON files from a private bank directory")
@@ -95,9 +107,13 @@ def main() -> int:
     release_compare.add_argument("right_release")
 
     args = parser.parse_args()
-    run_migrations()
-    ensure_question_version_schema()
-    ensure_question_bank_release_schema()
+    try:
+        run_migrations()
+        ensure_question_version_schema()
+        ensure_question_bank_release_schema()
+    except Exception as exc:
+        record_background_failure("question_bank_admin_bootstrap", exc)
+        raise
 
     if args.command == "validate":
         payload = json.loads(args.path.read_text(encoding="utf-8"))
@@ -105,10 +121,20 @@ def main() -> int:
         print(json.dumps({k: v for k, v in result.items() if k != "questions"}, indent=2))
         return 0 if result["valid"] else 2
     if args.command == "import":
-        print(json.dumps(import_question_bank_file(args.path), indent=2))
+        try:
+            result = import_question_bank_file(args.path)
+        except Exception as exc:
+            record_background_failure("question_bank_import", exc)
+            raise
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "import-dir":
-        print(json.dumps(import_question_bank_directory(args.path, dry_run=args.dry_run), indent=2))
+        try:
+            result = import_question_bank_directory(args.path, dry_run=args.dry_run)
+        except Exception as exc:
+            record_background_failure("question_bank_import_dir", exc)
+            raise
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "status":
         print(json.dumps(bank_status(args.track_id), indent=2))
@@ -118,30 +144,50 @@ def main() -> int:
         question_ids = None
         if args.source:
             track_id, question_ids = _release_question_ids_from_source(args.source)
-        print(
-            json.dumps(
-                create_release(
-                    args.release_key,
-                    track_id,
-                    question_ids=question_ids,
-                    actor=args.actor,
-                    notes=args.notes,
-                ),
-                indent=2,
-            )
+        result = _observed_release(
+            "create",
+            args.release_key,
+            lambda: create_release(
+                args.release_key,
+                track_id,
+                question_ids=question_ids,
+                actor=args.actor,
+                notes=args.notes,
+            ),
         )
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "release-promote":
-        print(json.dumps(promote_release(args.release_key, args.target_status, actor=args.actor), indent=2))
+        result = _observed_release(
+            "promote",
+            args.release_key,
+            lambda: promote_release(args.release_key, args.target_status, actor=args.actor),
+        )
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "release-activate":
-        print(json.dumps(activate_release(args.release_key, actor=args.actor), indent=2))
+        result = _observed_release(
+            "activate",
+            args.release_key,
+            lambda: activate_release(args.release_key, actor=args.actor),
+        )
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "release-rollback":
-        print(json.dumps(rollback_release(args.release_key, actor=args.actor), indent=2))
+        result = _observed_release(
+            "rollback",
+            args.release_key,
+            lambda: rollback_release(args.release_key, actor=args.actor),
+        )
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "release-retire":
-        print(json.dumps(retire_release(args.release_key, actor=args.actor), indent=2))
+        result = _observed_release(
+            "retire",
+            args.release_key,
+            lambda: retire_release(args.release_key, actor=args.actor),
+        )
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "release-show":
         print(json.dumps(get_release(args.release_key), indent=2))
