@@ -272,10 +272,37 @@ def _subscription_plan_from_object(subscription: dict[str, Any]) -> str | None:
     return None
 
 
+def _subscription_price_state(subscription: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Return whether Stripe supplied item data and the provider price IDs it named.
+
+    An existing stored price may only be reused when Stripe genuinely omitted
+    item data. If item data is present, every price must be recognized by this
+    deployment before an entitlement can be changed or preserved.
+    """
+    items = subscription.get("items")
+    if not isinstance(items, dict):
+        return False, []
+    data = items.get("data")
+    if not isinstance(data, list) or not data:
+        return False, []
+    price_ids: list[str] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        price = item.get("price")
+        if not isinstance(price, dict):
+            continue
+        price_id = str(price.get("id") or "").strip()
+        if price_id:
+            price_ids.append(price_id)
+    return True, price_ids
+
+
 def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str, Any], event_created: int) -> dict[str, Any]:
     customer_id = str(subscription.get("customer") or "")
     subscription_id = str(subscription.get("id") or "")
     plan_code = _subscription_plan_from_object(subscription)
+    item_data_present, event_price_ids = _subscription_price_state(subscription)
     if not customer_id or not subscription_id:
         raise ValueError("Subscription event is missing customer or subscription ID")
     with connect() as conn:
@@ -286,13 +313,32 @@ def _store_subscription(candidate_id: int, event_id: str, subscription: dict[str
     if existing and int(existing["last_provider_event_created"] or 0) > event_created:
         effective = _sync_candidate_entitlement(candidate_id, event_id, "stale_subscription_event_ignored")
         return {"candidate_id": candidate_id, "status": "stale_ignored", "effective": effective}
-    if not plan_code:
+
+    if item_data_present:
+        mapping = reverse_price_map()
+        if not event_price_ids:
+            raise ValueError("Subscription item data is present but no provider price ID was supplied")
+        unknown_prices = [
+            price_id
+            for price_id in event_price_ids
+            if price_id not in mapping or mapping[price_id] not in SUBSCRIPTION_PLANS
+        ]
+        mapped_plans = {
+            mapping[price_id]
+            for price_id in event_price_ids
+            if price_id in mapping and mapping[price_id] in SUBSCRIPTION_PLANS
+        }
+        if unknown_prices or len(mapped_plans) != 1 or not plan_code:
+            raise ValueError("Subscription contains a provider price that is not mapped to one internal subscription plan")
+        price_id = price_map()[plan_code]
+    else:
+        # Some Stripe lifecycle payloads can omit expanded item data. Only in
+        # that case may an already-stored provider price/plan be reused.
         if not existing:
             raise ValueError("Subscription price is not mapped to an internal plan")
         plan_code = str(existing["internal_plan"])
         price_id = str(existing["provider_price_id"])
-    else:
-        price_id = price_map()[plan_code]
+
     status = str(subscription.get("status") or "unknown")
     period_start = _stripe_time(subscription.get("current_period_start"))
     period_end = _stripe_time(subscription.get("current_period_end"))
