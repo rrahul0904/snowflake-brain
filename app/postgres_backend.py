@@ -141,6 +141,12 @@ def _qmark_to_postgres(statement: str) -> str:
             output.append(char)
         elif char == "?" and not single and not double:
             output.append("%s")
+        elif char == "%":
+            # psycopg interprets every percent sign through its pyformat
+            # protocol even when the percent appears inside a SQL string such as
+            # LIKE 'exam_%'. Doubling it preserves one literal percent on the
+            # PostgreSQL server while qmark placeholders become %s below.
+            output.append("%%")
         else:
             output.append(char)
         index += 1
