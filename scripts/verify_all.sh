@@ -54,6 +54,9 @@ echo "== Google identity continuity =="
 echo "== Paid tier transition hardening =="
 "$PYTHON_BIN" scripts/test_billing_tier_transitions.py
 
+echo "== Stripe unknown-price fail closed =="
+"$PYTHON_BIN" scripts/test_billing_unknown_price_fail_closed.py
+
 echo "== Exam Pack expiry reconciliation =="
 "$PYTHON_BIN" scripts/test_exam_pack_expiry_reconciliation.py
 
