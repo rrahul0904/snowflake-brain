@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import QUESTION_BANK_AUTO_IMPORT
-from .database import run_migrations
+from .config import DATABASE_BACKEND, QUESTION_BANK_AUTO_IMPORT
+from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
 from .question_bank import import_question_bank_directory
@@ -32,8 +32,8 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.9.0",
-    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, and candidate learning intelligence.",
+    version="0.10.0",
+    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, and production-ready persistence boundaries.",
 )
 app.add_middleware(SecurityBoundaryMiddleware)
 
@@ -54,14 +54,39 @@ def startup() -> None:
     ensure_active_release_baseline("snowpro-core")
 
 
+@app.on_event("shutdown")
+def shutdown() -> None:
+    close_database()
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
+    """Process liveness only; dependency readiness is exposed separately."""
     return {
         "status": "ok",
         "product": "snowflake-certification-guide",
         "architecture": "certification-native-v26",
         "question_bank": "private-v1",
+        "database_backend": DATABASE_BACKEND,
     }
+
+
+@app.get("/api/ready")
+def ready() -> dict:
+    """Production readiness probe including the configured database."""
+    try:
+        database = database_health()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "not_ready", "dependency": "database", "backend": DATABASE_BACKEND},
+        ) from exc
+    if database.get("status") != "ok":
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "not_ready", "dependency": "database", "backend": DATABASE_BACKEND},
+        )
+    return {"status": "ready", "database": database}
 
 
 app.include_router(skills.router, prefix="/api")

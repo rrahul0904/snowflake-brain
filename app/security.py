@@ -15,8 +15,11 @@ from .auth import COOKIE_NAME, candidate_for_token
 from .config import FORCE_HTTPS, SECURITY_RATE_LIMIT_ENABLED
 
 
-PUBLIC_API_EXACT = {
+SYSTEM_PROBE_API_EXACT = {
     "/api/health",
+    "/api/ready",
+}
+PUBLIC_API_EXACT = SYSTEM_PROBE_API_EXACT | {
     "/api/activity/globe",
     "/api/feedback",
 }
@@ -41,7 +44,10 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
         self._lock = threading.Lock()
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if FORCE_HTTPS and request.url.scheme != "https" and request.url.path != "/api/health":
+        # Infrastructure liveness/readiness probes need to remain callable from
+        # the local container/network even when public application traffic is
+        # forced to HTTPS at the edge. They expose no candidate data.
+        if FORCE_HTTPS and request.url.scheme != "https" and request.url.path not in SYSTEM_PROBE_API_EXACT:
             return RedirectResponse(str(request.url.replace(scheme="https")), status_code=307)
 
         if self._cross_site_mutation(request):
