@@ -80,8 +80,11 @@ def _safe_identifier(value: str) -> str:
 
 def current_schema_name() -> str:
     if POSTGRES_TEST_ISOLATION:
-        seed = f"{BRAIN_DB}:{os.getpid()}".encode("utf-8")
-        suffix = hashlib.sha1(seed).hexdigest()[:12]
+        # BRAIN_DB is already a per-test temporary path throughout the existing
+        # regression suite. Hashing that stable identity keeps each test isolated
+        # while allowing child CLI processes to reconnect to the same PostgreSQL
+        # schema as their parent process.
+        suffix = hashlib.sha1(str(BRAIN_DB).encode("utf-8")).hexdigest()[:12]
         return _safe_identifier(f"{POSTGRES_TEST_SCHEMA_PREFIX}_{suffix}")
     return _safe_identifier(DATABASE_SCHEMA)
 
