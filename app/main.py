@@ -8,6 +8,7 @@ from .config import QUESTION_BANK_AUTO_IMPORT
 from .database import run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .question_bank import import_question_bank_directory
+from .question_versions import ensure_question_version_schema
 from .routers import (
     activity,
     affiliate,
@@ -39,6 +40,7 @@ app.add_middleware(SecurityBoundaryMiddleware)
 def startup() -> None:
     run_migrations()
     ensure_identity_billing_schema()
+    ensure_question_version_schema()
     if QUESTION_BANK_AUTO_IMPORT:
         # The source directory is private deployment content, never a frontend
         # asset and never committed to this repository.
