@@ -1,0 +1,13 @@
+services:
+  snowflake-certification-guide:
+    environment:
+      # Production must use a transactional email delivery webhook. The
+      # development outbox stores bearer action URLs and is intentionally not a
+      # production transport.
+      ACCOUNT_EMAIL_DELIVERY_MODE: "${ACCOUNT_EMAIL_DELIVERY_MODE:-webhook}"
+      ACCOUNT_EMAIL_WEBHOOK_URL: "${ACCOUNT_EMAIL_WEBHOOK_URL:-}"
+      ACCOUNT_EMAIL_WEBHOOK_TOKEN: "${ACCOUNT_EMAIL_WEBHOOK_TOKEN:-}"
+      ACCOUNT_EMAIL_ACTION_BASE_URL: "${ACCOUNT_EMAIL_ACTION_BASE_URL:-http://localhost:8010/static/account-action.html}"
+      ACCOUNT_EMAIL_VERIFY_HOURS: "${ACCOUNT_EMAIL_VERIFY_HOURS:-24}"
+      ACCOUNT_PASSWORD_RESET_MINUTES: "${ACCOUNT_PASSWORD_RESET_MINUTES:-30}"
+      ACCOUNT_CHANGE_EMAIL_HOURS: "${ACCOUNT_CHANGE_EMAIL_HOURS:-2}"
