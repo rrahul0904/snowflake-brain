@@ -112,6 +112,22 @@ def ensure_question_version_schema() -> None:
 
             conn.executescript(
                 """
+                DROP TRIGGER IF EXISTS trg_question_version_after_insert;
+                CREATE TRIGGER trg_question_version_after_insert
+                AFTER INSERT ON questions
+                BEGIN
+                  INSERT INTO question_versions(
+                    question_id, version_number, question, options_json, correct_json,
+                    explanation, source_path, source_kind, assessment_type,
+                    difficulty, multiple, test_title
+                  )
+                  VALUES (
+                    NEW.id, 1, NEW.question, NEW.options_json, NEW.correct_json,
+                    NEW.explanation, NEW.source_path, NEW.source_kind,
+                    NEW.assessment_type, NEW.difficulty, NEW.multiple, NEW.test_title
+                  );
+                END;
+
                 DROP TRIGGER IF EXISTS trg_question_version_after_content_update;
                 CREATE TRIGGER trg_question_version_after_content_update
                 AFTER UPDATE OF
