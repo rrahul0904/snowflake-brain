@@ -10,12 +10,37 @@ from .config import DATABASE_BACKEND
 from .database_sqlite import SCHEMA_VERSION
 
 if DATABASE_BACKEND == "postgresql":
-    from .postgres_backend import connect, get_conn, run_postgres_migrations as run_migrations
+    from .postgres_backend import (
+        close_pool as close_database,
+        connect,
+        database_health,
+        get_conn,
+        run_postgres_migrations as run_migrations,
+    )
 
     def row_to_dict(row: Any | None) -> dict[str, Any] | None:
         return dict(row) if row else None
 else:
     from .database_sqlite import connect, get_conn, row_to_dict, run_migrations
 
+    def database_health() -> dict[str, Any]:
+        with connect() as conn:
+            row = conn.execute("SELECT 1 AS ok").fetchone()
+        return {
+            "status": "ok" if row and int(row["ok"]) == 1 else "error",
+            "backend": "sqlite",
+        }
 
-__all__ = ["SCHEMA_VERSION", "connect", "get_conn", "row_to_dict", "run_migrations"]
+    def close_database() -> None:
+        return None
+
+
+__all__ = [
+    "SCHEMA_VERSION",
+    "close_database",
+    "connect",
+    "database_health",
+    "get_conn",
+    "row_to_dict",
+    "run_migrations",
+]
