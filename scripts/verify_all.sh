@@ -81,6 +81,9 @@ echo "== Tier resets and fresh timed mock rotation =="
 echo "== Atomic limited-exam entitlement concurrency =="
 "$PYTHON_BIN" scripts/test_exam_entitlement_concurrency.py
 
+echo "== Candidate learning intelligence loop =="
+"$PYTHON_BIN" scripts/test_candidate_learning_intelligence.py
+
 echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 
