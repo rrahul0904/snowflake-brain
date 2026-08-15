@@ -28,16 +28,17 @@ def _ensure_column(conn: sqlite3.Connection, table: str, column: str, declaratio
 
 
 def ensure_question_version_schema() -> None:
-    """Install the immutable question/version boundary.
+    """Install the immutable candidate-visible question/version boundary.
 
     `questions.id` remains the logical identity used by the existing runtime.
-    `question_versions` records immutable physical content revisions and every
-    timed sitting points at the revision current when the question was added.
+    `question_versions` records immutable physical revisions and every timed
+    sitting points at the revision current when the question was added.
 
-    Until all read paths are migrated to join the version table directly, a
-    served question's content columns are also protected from mutation. This
-    guarantees that historical results cannot become a hybrid of an old score
-    and newly overwritten wording/options/explanations.
+    Until all result reads are migrated to render directly from version rows,
+    candidate-visible/scoring fields are frozen once a question is served. This
+    prevents historical results from becoming a hybrid of old scoring and new
+    wording while still allowing internal provenance/authoring metadata to be
+    refreshed independently.
     """
     with _SCHEMA_LOCK:
         with connect() as conn:
@@ -130,20 +131,14 @@ def ensure_question_version_schema() -> None:
 
                 DROP TRIGGER IF EXISTS trg_question_version_after_content_update;
                 CREATE TRIGGER trg_question_version_after_content_update
-                AFTER UPDATE OF
-                  question, options_json, correct_json, explanation, source_path,
-                  source_kind, assessment_type, difficulty, multiple, test_title
+                AFTER UPDATE OF question, options_json, correct_json, explanation, difficulty, multiple
                 ON questions
                 WHEN OLD.question IS NOT NEW.question
                   OR OLD.options_json IS NOT NEW.options_json
                   OR OLD.correct_json IS NOT NEW.correct_json
                   OR OLD.explanation IS NOT NEW.explanation
-                  OR OLD.source_path IS NOT NEW.source_path
-                  OR OLD.source_kind IS NOT NEW.source_kind
-                  OR OLD.assessment_type IS NOT NEW.assessment_type
                   OR OLD.difficulty IS NOT NEW.difficulty
                   OR OLD.multiple IS NOT NEW.multiple
-                  OR OLD.test_title IS NOT NEW.test_title
                 BEGIN
                   INSERT INTO question_versions(
                     question_id, version_number, question, options_json, correct_json,
@@ -161,21 +156,15 @@ def ensure_question_version_schema() -> None:
 
                 DROP TRIGGER IF EXISTS trg_served_question_content_immutable;
                 CREATE TRIGGER trg_served_question_content_immutable
-                BEFORE UPDATE OF
-                  question, options_json, correct_json, explanation, source_path,
-                  source_kind, assessment_type, difficulty, multiple, test_title
+                BEFORE UPDATE OF question, options_json, correct_json, explanation, difficulty, multiple
                 ON questions
                 WHEN (
                     OLD.question IS NOT NEW.question
                     OR OLD.options_json IS NOT NEW.options_json
                     OR OLD.correct_json IS NOT NEW.correct_json
                     OR OLD.explanation IS NOT NEW.explanation
-                    OR OLD.source_path IS NOT NEW.source_path
-                    OR OLD.source_kind IS NOT NEW.source_kind
-                    OR OLD.assessment_type IS NOT NEW.assessment_type
                     OR OLD.difficulty IS NOT NEW.difficulty
                     OR OLD.multiple IS NOT NEW.multiple
-                    OR OLD.test_title IS NOT NEW.test_title
                   )
                   AND (
                     EXISTS (SELECT 1 FROM exam_session_questions sq WHERE sq.question_id=OLD.id)
@@ -221,7 +210,7 @@ def ensure_question_version_schema() -> None:
                     "INSERT INTO schema_migrations(version,name) VALUES (?,?)",
                     (
                         SCHEMA_VERSION,
-                        "Immutable question versions, timed-sitting revision links, and served-content mutation guard",
+                        "Immutable candidate-visible question versions, timed-sitting revision links, and served-content mutation guard",
                     ),
                 )
 
