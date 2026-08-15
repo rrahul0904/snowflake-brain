@@ -69,6 +69,9 @@ echo "== Private question bank tiers and exam allocation =="
 echo "== Immutable question versions and sitting linkage =="
 "$PYTHON_BIN" scripts/test_question_version_immutability.py
 
+echo "== Question-bank release activation and rollback =="
+"$PYTHON_BIN" scripts/test_question_bank_releases.py
+
 echo "== Tier resets and fresh timed mock rotation =="
 "$PYTHON_BIN" scripts/test_tier_reset_full_exams.py
 
