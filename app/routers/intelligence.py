@@ -26,6 +26,7 @@ from ..learning_intelligence import (
     study_plan,
     update_mistake,
 )
+from ..learning_sync import sync_candidate_learning_state
 
 router = APIRouter()
 
@@ -50,6 +51,10 @@ class MistakeUpdateRequest(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
     root_cause: str | None = Field(default=None, max_length=500)
     status: str | None = None
+
+
+def _sync(conn: Any, candidate_id: int, track_id: str) -> None:
+    sync_candidate_learning_state(conn, candidate_id, track_id)
 
 
 @router.get("/intelligence/portfolio")
@@ -89,6 +94,7 @@ def certification_due_today(
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
     with connect() as conn:
+        _sync(conn, candidate["id"], track_id)
         return due_today(conn, candidate["id"], track_id, limit=limit)
 
 
@@ -100,6 +106,7 @@ def certification_mistake_notebook(
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
     with connect() as conn:
+        _sync(conn, candidate["id"], track_id)
         return mistake_notebook(conn, candidate["id"], track_id, status=status, limit=limit)
 
 
@@ -138,6 +145,7 @@ def certification_study_plan(
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
     with connect() as conn:
+        _sync(conn, candidate["id"], track_id)
         return study_plan(conn, candidate["id"], track_id)
 
 
@@ -167,6 +175,10 @@ def certification_mock_remediation(
 ) -> dict[str, Any]:
     try:
         with connect() as conn:
+            session = conn.execute("SELECT track_id FROM exam_sessions WHERE id=? AND candidate_id=?", (session_id, candidate["id"])).fetchone()
+            if not session:
+                raise ValueError("Mock session not found")
+            _sync(conn, candidate["id"], str(session["track_id"] or "snowpro-core"))
             return mock_remediation(conn, candidate["id"], session_id)
     except ValueError as exc:
         raise HTTPException(status_code=404 if "not found" in str(exc).lower() else 409, detail=str(exc)) from exc
