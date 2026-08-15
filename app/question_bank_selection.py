@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from .database import connect
 from .question_bank import (
+    domain_targets,
     filter_rows_for_entitlement,
     question_exposure_rank,
     record_questions_served,
@@ -34,6 +35,7 @@ TIMED_MOCK_MODES = {
     "mock",
     "exam",
 }
+BLUEPRINT_MODES = {"diagnostic", "weekly-mock", "quick-mock", "full-mock", "lifetime-practice", "mock", "exam"}
 
 
 def _enrich_rows(rows: list[dict[str, Any]], candidate_id: int) -> list[dict[str, Any]]:
@@ -120,6 +122,100 @@ def _select_targeted(rows: list[dict[str, Any]], count: int, mode: str, skill_id
     return ranked[:count]
 
 
+def _domain_id(row: dict[str, Any]) -> str:
+    return str(row.get("mapped_domain_id") or row.get("domain_id") or "")
+
+
+def _select_blueprint_with_fresh_fallback(
+    rows: list[dict[str, Any]],
+    domains: list[dict[str, Any]],
+    count: int,
+    mode: str,
+    excluded_question_ids: set[str],
+) -> tuple[list[dict[str, Any]], int]:
+    """Preserve blueprint targets while minimizing reset-window repeats.
+
+    Freshness is evaluated inside every domain bucket. A domain with enough
+    fresh inventory contributes only fresh questions. If one domain is short,
+    only that domain fills its deficit from excluded questions, using the
+    existing exposure rank so the least-seen / least-recent repeats win.
+    """
+    if not excluded_question_ids:
+        return select_blueprint_questions(rows, domains, count, mode), 0
+
+    targets = domain_targets(domains, count, mode)
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        domain_id = _domain_id(row)
+        if domain_id:
+            buckets[domain_id].append(row)
+
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    repeated_count = 0
+
+    for domain in domains:
+        domain_id = str(domain.get("id") or "")
+        target = int(targets.get(domain_id, 0))
+        if target <= 0:
+            continue
+        bucket = buckets.get(domain_id, [])
+        fresh = [row for row in bucket if str(row.get("id") or "") not in excluded_question_ids]
+        repeats = [row for row in bucket if str(row.get("id") or "") in excluded_question_ids]
+
+        fresh_count = min(target, len(fresh))
+        if fresh_count:
+            for row in select_blueprint_questions(fresh, [domain], fresh_count, mode):
+                if row["id"] not in seen:
+                    selected.append(row)
+                    seen.add(row["id"])
+
+        need = target - sum(1 for row in selected if _domain_id(row) == domain_id)
+        if need > 0 and repeats:
+            repeat_rows = select_blueprint_questions(repeats, [domain], min(need, len(repeats)), mode)
+            for row in repeat_rows:
+                if row["id"] not in seen:
+                    selected.append(row)
+                    seen.add(row["id"])
+                    repeated_count += 1
+
+    # A malformed/temporarily sparse bank may not have enough inventory inside
+    # one blueprint bucket. Preserve prior behavior by filling the total count,
+    # but still consume any remaining fresh questions before repeats.
+    if len(selected) < count:
+        remaining_fresh = sorted(
+            [
+                row
+                for row in rows
+                if row["id"] not in seen and str(row.get("id") or "") not in excluded_question_ids
+            ],
+            key=lambda row: question_exposure_rank(row, mode),
+        )
+        for row in remaining_fresh:
+            if len(selected) >= count:
+                break
+            selected.append(row)
+            seen.add(row["id"])
+
+    if len(selected) < count:
+        remaining_repeats = sorted(
+            [
+                row
+                for row in rows
+                if row["id"] not in seen and str(row.get("id") or "") in excluded_question_ids
+            ],
+            key=lambda row: question_exposure_rank(row, mode),
+        )
+        for row in remaining_repeats:
+            if len(selected) >= count:
+                break
+            selected.append(row)
+            seen.add(row["id"])
+            repeated_count += 1
+
+    return selected[:count], repeated_count
+
+
 def select_certification_questions(
     payload: CertificationQuizStart,
     candidate: dict[str, Any],
@@ -160,8 +256,10 @@ def select_certification_questions(
     rows = filter_rows_for_entitlement(rows, candidate["membership"], mode, count)
 
     excluded = {str(item) for item in (exclude_question_ids or set()) if str(item)}
+    is_blueprint_selection = not payload.test_id and not payload.skill_id and not payload.domain_id and mode in BLUEPRINT_MODES
     exclusion_applied = False
-    if excluded:
+    reset_repeat_count = 0
+    if excluded and not is_blueprint_selection:
         fresh_rows = [row for row in rows if str(row.get("id") or "") not in excluded]
         if len(fresh_rows) >= count:
             rows = fresh_rows
@@ -176,6 +274,7 @@ def select_certification_questions(
             "mapped_count": 0,
             "heuristic_count": 0,
             "quota": None,
+            "reset_repeat_count": 0,
         }
 
     if payload.test_id:
@@ -187,12 +286,19 @@ def select_certification_questions(
     elif payload.domain_id and mode != "diagnostic":
         selected = _select_targeted(rows, count, mode, None, payload.domain_id)
         strategy = "domain_targeted_exposure_aware"
-    elif mode in {"diagnostic", "weekly-mock", "quick-mock", "full-mock", "lifetime-practice", "mock", "exam"}:
+    elif mode in BLUEPRINT_MODES:
         # The Free weekly product is a 30-question full-content timed mock. It
         # deliberately uses the same 30Q blueprint composition as Quick Mock,
         # while entitlement filtering above still limits Free to the Free pool.
         blueprint_mode = "quick-mock" if mode == "weekly-mock" and count == 30 else mode
-        selected = select_blueprint_questions(rows, cert.get("domains") or [], count, blueprint_mode)
+        selected, reset_repeat_count = _select_blueprint_with_fresh_fallback(
+            rows,
+            cert.get("domains") or [],
+            count,
+            blueprint_mode,
+            excluded,
+        )
+        exclusion_applied = bool(excluded)
         strategy = "blueprint_weighted_private_bank"
     elif mode == "drill":
         selected = _select_targeted(rows, count, mode, None, None)
@@ -202,7 +308,7 @@ def select_certification_questions(
         strategy = "exposure_aware"
 
     if exclusion_applied:
-        strategy += "_fresh_reset_set"
+        strategy += "_fresh_reset_set" if reset_repeat_count == 0 else "_fresh_reset_bucket_fallback"
 
     domain_counts: dict[str, int] = defaultdict(int)
     skill_ids: set[str] = set()
@@ -241,4 +347,5 @@ def select_certification_questions(
         "quota": quota,
         "reset_exclusion_applied": exclusion_applied,
         "reset_excluded_count": len(excluded),
+        "reset_repeat_count": reset_repeat_count,
     }
