@@ -16,6 +16,7 @@ from app.question_bank import (  # noqa: E402
     import_question_bank_file,
     validate_question_bank_payload,
 )
+from app.question_versions import ensure_question_version_schema  # noqa: E402
 
 
 def main() -> int:
@@ -37,6 +38,7 @@ def main() -> int:
 
     args = parser.parse_args()
     run_migrations()
+    ensure_question_version_schema()
 
     if args.command == "validate":
         payload = json.loads(args.path.read_text(encoding="utf-8"))
