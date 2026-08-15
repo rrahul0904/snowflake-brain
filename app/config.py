@@ -27,6 +27,21 @@ DB_POOL_TIMEOUT_SECONDS = max(1, int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "10"))
 POSTGRES_TEST_ISOLATION = os.getenv("POSTGRES_TEST_ISOLATION", "false").lower() in {"1", "true", "yes", "on"}
 POSTGRES_TEST_SCHEMA_PREFIX = os.getenv("POSTGRES_TEST_SCHEMA_PREFIX", "snowflake_ci").strip() or "snowflake_ci"
 
+# Vendor-neutral production observability. JSON stdout remains the default
+# centralized-log integration surface; optional error/alert webhooks can forward
+# sanitized operational events to Sentry-style gateways, incident systems, or a
+# deployment-owned telemetry collector without introducing provider lock-in.
+OBSERVABILITY_ENABLED = os.getenv("OBSERVABILITY_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+OBSERVABILITY_LOG_LEVEL = os.getenv("OBSERVABILITY_LOG_LEVEL", "INFO").strip().upper() or "INFO"
+OBSERVABILITY_METRICS_TOKEN = os.getenv("OBSERVABILITY_METRICS_TOKEN", "").strip()
+OBSERVABILITY_ERROR_WEBHOOK_URL = os.getenv("OBSERVABILITY_ERROR_WEBHOOK_URL", "").strip()
+OBSERVABILITY_ALERT_WEBHOOK_URL = os.getenv("OBSERVABILITY_ALERT_WEBHOOK_URL", "").strip()
+OBSERVABILITY_WINDOW_SECONDS = max(60, int(os.getenv("OBSERVABILITY_WINDOW_SECONDS", "300")))
+OBSERVABILITY_5XX_ALERT_THRESHOLD = max(1, int(os.getenv("OBSERVABILITY_5XX_ALERT_THRESHOLD", "5")))
+OBSERVABILITY_AUTH_FAILURE_ALERT_THRESHOLD = max(1, int(os.getenv("OBSERVABILITY_AUTH_FAILURE_ALERT_THRESHOLD", "10")))
+OBSERVABILITY_ALERT_COOLDOWN_SECONDS = max(30, int(os.getenv("OBSERVABILITY_ALERT_COOLDOWN_SECONDS", "300")))
+OBSERVABILITY_MAX_LATENCY_SAMPLES = max(100, int(os.getenv("OBSERVABILITY_MAX_LATENCY_SAMPLES", "2000")))
+
 SKILL_MAP_CONFIG = Path(
     os.getenv("SKILL_MAP_CONFIG", str(ROOT_DIR / "config" / "certification_skill_map.json"))
 ).expanduser()
