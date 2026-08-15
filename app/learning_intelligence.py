@@ -9,7 +9,7 @@ from typing import Any
 from .database import connect
 from .serializers import json_list
 
-SCHEMA_VERSION = "20260815_030_candidate_learning_intelligence_v1"
+SCHEMA_VERSION = "20260815_032_candidate_learning_intelligence_hardening"
 _SCHEMA_LOCK = threading.RLock()
 _READY_DATABASES: set[str] = set()
 
@@ -98,9 +98,14 @@ def ensure_learning_intelligence_schema() -> None:
             )
             _ensure_column(conn, "exam_session_answers", "confidence", "INTEGER")
             _ensure_column(conn, "exam_session_answers", "response_time_ms", "INTEGER")
+            _ensure_column(conn, "question_attempts", "confidence", "INTEGER")
+            _ensure_column(conn, "question_attempts", "response_time_ms", "INTEGER")
             conn.execute(
                 "INSERT OR IGNORE INTO schema_migrations(version,name) VALUES (?,?)",
-                (SCHEMA_VERSION, "Candidate SRS, mistake notebook, study preferences, confidence calibration and remediation"),
+                (
+                    SCHEMA_VERSION,
+                    "Candidate learning intelligence with attempt-bound confidence and release-aware queues",
+                ),
             )
             _READY_DATABASES.add(database_key)
 
@@ -115,6 +120,29 @@ def _sql_time(value: datetime) -> str:
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
+
+
+def _active_release_filter(question_alias: str = "q") -> str:
+    return f"""
+      AND (
+        {question_alias}.source_kind <> 'private_bank'
+        OR EXISTS (
+          SELECT 1
+          FROM question_bank_releases r
+          JOIN question_bank_release_questions rq ON rq.release_id=r.id
+          WHERE r.track_id={question_alias}.track_id
+            AND r.status='active'
+            AND rq.question_id={question_alias}.id
+        )
+      )
+    """
+
+
+def _eligibility_filter(question_alias: str = "q", metadata_alias: str = "m") -> str:
+    return f"""
+      AND COALESCE({metadata_alias}.authoring_status,'active') <> 'retired'
+      {_active_release_filter(question_alias)}
+    """
 
 
 def _question_context(conn: Any, question_id: str) -> dict[str, str]:
@@ -195,7 +223,11 @@ def record_learning_review(
         repetitions = 0
         interval_days = 0
         lapses += 1
-        ease = _clamp(ease - (0.18 if confidence_value is None else 0.12 + confidence_value * 0.025), 1.3, 2.8)
+        ease = _clamp(
+            ease - (0.18 if confidence_value is None else 0.12 + confidence_value * 0.025),
+            1.3,
+            2.8,
+        )
         due_at = now
 
     conn.execute(
@@ -252,7 +284,13 @@ def record_learning_review(
               mastered_at=NULL,
               updated_at=datetime('now')
             """,
-            (candidate_id, question_id, context["track_id"], context["domain_id"], context["skill_id"]),
+            (
+                candidate_id,
+                question_id,
+                context["track_id"],
+                context["domain_id"],
+                context["skill_id"],
+            ),
         )
     else:
         mistake = conn.execute(
@@ -288,7 +326,13 @@ def record_learning_review(
                 SET answered_at=datetime('now'),selected_json=?,correct=?,response_time_ms=?,confidence=?
                 WHERE id=?
                 """,
-                (json.dumps(sorted(set(selected or []))), int(correct), response_time_ms, confidence_value, history["id"]),
+                (
+                    json.dumps(sorted(set(selected or []))),
+                    int(correct),
+                    response_time_ms,
+                    confidence_value,
+                    history["id"],
+                ),
             )
 
     conn.execute(
@@ -305,6 +349,7 @@ def record_learning_review(
                     "mode": mode,
                     "correct": bool(correct),
                     "confidence": confidence_value,
+                    "response_time_ms": response_time_ms,
                     "interval_days": interval_days,
                     "repetitions": repetitions,
                     "lapses": lapses,
@@ -326,23 +371,15 @@ def record_learning_review(
     }
 
 
-def _active_release_filter() -> str:
-    return """
-      AND (
-        q.source_kind <> 'private_bank'
-        OR EXISTS (
-          SELECT 1
-          FROM question_bank_releases r
-          JOIN question_bank_release_questions rq ON rq.release_id=r.id
-          WHERE r.track_id=q.track_id AND r.status='active' AND rq.question_id=q.id
-        )
-      )
-    """
-
-
-def due_today(conn: Any, candidate_id: int, track_id: str = "snowpro-core", limit: int = 20) -> dict[str, Any]:
+def due_today(
+    conn: Any,
+    candidate_id: int,
+    track_id: str = "snowpro-core",
+    limit: int = 20,
+) -> dict[str, Any]:
     ensure_learning_intelligence_schema()
     safe_limit = max(1, min(int(limit), 100))
+    eligible = _eligibility_filter()
     rows = [
         dict(row)
         for row in conn.execute(
@@ -355,40 +392,51 @@ def due_today(conn: Any, candidate_id: int, track_id: str = "snowpro-core", limi
             LEFT JOIN question_bank_metadata m ON m.question_id=q.id
             WHERE s.candidate_id=? AND s.track_id=?
               AND datetime(s.due_at) <= datetime('now')
-              AND COALESCE(m.authoring_status,'active') <> 'retired'
-              {_active_release_filter()}
+              {eligible}
             ORDER BY datetime(s.due_at),s.lapses DESC,s.question_id
             LIMIT ?
             """,
             (candidate_id, track_id, safe_limit),
         )
     ]
-    queue = []
-    for row in rows:
-        queue.append(
-            {
-                "question_id": row["question_id"],
-                "question": row["question"],
-                "options": json_list(row["options_json"]),
-                "multiple": bool(row["multiple"]),
-                "difficulty": row["difficulty"],
-                "domain_id": row["domain_id"],
-                "skill_id": row["skill_id"],
-                "repetitions": int(row["repetitions"] or 0),
-                "interval_days": int(row["interval_days"] or 0),
-                "lapses": int(row["lapses"] or 0),
-                "due_at": row["due_at"],
-                "last_confidence": row["last_confidence"],
-            }
-        )
+    queue = [
+        {
+            "question_id": row["question_id"],
+            "question": row["question"],
+            "options": json_list(row["options_json"]),
+            "multiple": bool(row["multiple"]),
+            "difficulty": row["difficulty"],
+            "domain_id": row["domain_id"],
+            "skill_id": row["skill_id"],
+            "repetitions": int(row["repetitions"] or 0),
+            "interval_days": int(row["interval_days"] or 0),
+            "lapses": int(row["lapses"] or 0),
+            "due_at": row["due_at"],
+            "last_confidence": row["last_confidence"],
+        }
+        for row in rows
+    ]
     total_due = int(
         conn.execute(
-            "SELECT COUNT(*) AS count FROM candidate_srs_state WHERE candidate_id=? AND track_id=? AND datetime(due_at)<=datetime('now')",
+            f"""
+            SELECT COUNT(*) AS count
+            FROM candidate_srs_state s
+            JOIN questions q ON q.id=s.question_id
+            LEFT JOIN question_bank_metadata m ON m.question_id=q.id
+            WHERE s.candidate_id=? AND s.track_id=?
+              AND datetime(s.due_at)<=datetime('now')
+              {eligible}
+            """,
             (candidate_id, track_id),
         ).fetchone()["count"]
         or 0
     )
-    return {"track_id": track_id, "due_count": total_due, "returned": len(queue), "questions": queue}
+    return {
+        "track_id": track_id,
+        "due_count": total_due,
+        "returned": len(queue),
+        "questions": queue,
+    }
 
 
 def mistake_notebook(
@@ -401,24 +449,28 @@ def mistake_notebook(
 ) -> dict[str, Any]:
     ensure_learning_intelligence_schema()
     safe_limit = max(1, min(int(limit), 200))
-    where_status = "m.status IN ('open','reviewing')" if status == "active" else "m.status=?"
+    normalized_status = status
+    if normalized_status != "active" and normalized_status not in {"open", "reviewing", "mastered"}:
+        normalized_status = "open"
+    where_status = "n.status IN ('open','reviewing')" if normalized_status == "active" else "n.status=?"
     params: list[Any] = [candidate_id, track_id]
-    if status != "active":
-        if status not in {"open", "reviewing", "mastered"}:
-            status = "open"
-        params.append(status)
+    if normalized_status != "active":
+        params.append(normalized_status)
     params.append(safe_limit)
+    eligible = _eligibility_filter()
     rows = [
         dict(row)
         for row in conn.execute(
             f"""
-            SELECT m.*,q.question,q.difficulty,s.due_at,s.repetitions,s.lapses
-            FROM candidate_mistake_notebook m
-            JOIN questions q ON q.id=m.question_id
+            SELECT n.*,q.question,q.difficulty,s.due_at,s.repetitions,s.lapses
+            FROM candidate_mistake_notebook n
+            JOIN questions q ON q.id=n.question_id
+            LEFT JOIN question_bank_metadata m ON m.question_id=q.id
             LEFT JOIN candidate_srs_state s
-              ON s.candidate_id=m.candidate_id AND s.question_id=m.question_id
-            WHERE m.candidate_id=? AND m.track_id=? AND {where_status}
-            ORDER BY m.miss_count DESC,datetime(m.last_missed_at) DESC
+              ON s.candidate_id=n.candidate_id AND s.question_id=n.question_id
+            WHERE n.candidate_id=? AND n.track_id=? AND {where_status}
+              {eligible}
+            ORDER BY n.miss_count DESC,datetime(n.last_missed_at) DESC
             LIMIT ?
             """,
             params,
@@ -427,7 +479,15 @@ def mistake_notebook(
     counts = {
         row["status"]: int(row["count"] or 0)
         for row in conn.execute(
-            "SELECT status,COUNT(*) AS count FROM candidate_mistake_notebook WHERE candidate_id=? AND track_id=? GROUP BY status",
+            f"""
+            SELECT n.status,COUNT(*) AS count
+            FROM candidate_mistake_notebook n
+            JOIN questions q ON q.id=n.question_id
+            LEFT JOIN question_bank_metadata m ON m.question_id=q.id
+            WHERE n.candidate_id=? AND n.track_id=?
+              {eligible}
+            GROUP BY n.status
+            """,
             (candidate_id, track_id),
         )
     }
@@ -453,7 +513,11 @@ def mistake_notebook(
     ]
     return {
         "track_id": track_id,
-        "counts": {"open": counts.get("open", 0), "reviewing": counts.get("reviewing", 0), "mastered": counts.get("mastered", 0)},
+        "counts": {
+            "open": counts.get("open", 0),
+            "reviewing": counts.get("reviewing", 0),
+            "mastered": counts.get("mastered", 0),
+        },
         "items": items,
     }
 
@@ -487,12 +551,28 @@ def update_mistake(
             updated_at=datetime('now')
         WHERE candidate_id=? AND question_id=?
         """,
-        (next_note, next_root, next_status, next_status, candidate_id, question_id),
+        (
+            next_note,
+            next_root,
+            next_status,
+            next_status,
+            candidate_id,
+            question_id,
+        ),
     )
-    return {"question_id": question_id, "note": next_note, "root_cause": next_root, "status": next_status}
+    return {
+        "question_id": question_id,
+        "note": next_note,
+        "root_cause": next_root,
+        "status": next_status,
+    }
 
 
-def confidence_calibration(conn: Any, candidate_id: int, track_id: str = "snowpro-core") -> dict[str, Any]:
+def confidence_calibration(
+    conn: Any,
+    candidate_id: int,
+    track_id: str = "snowpro-core",
+) -> dict[str, Any]:
     ensure_learning_intelligence_schema()
     samples: list[tuple[int, int, str]] = []
     for row in conn.execute(
@@ -504,7 +584,13 @@ def confidence_calibration(conn: Any, candidate_id: int, track_id: str = "snowpr
         """,
         (candidate_id, track_id),
     ):
-        samples.append((int(row["confidence"]), int(row["correct"]), str(row["mode"] or "practice")))
+        samples.append(
+            (
+                int(row["confidence"]),
+                int(row["correct"]),
+                str(row["mode"] or "practice"),
+            )
+        )
     for row in conn.execute(
         """
         SELECT a.confidence,a.correct,s.mode
@@ -515,9 +601,18 @@ def confidence_calibration(conn: Any, candidate_id: int, track_id: str = "snowpr
         """,
         (candidate_id, track_id),
     ):
-        samples.append((int(row["confidence"]), int(row["correct"]), str(row["mode"] or "mock")))
+        samples.append(
+            (
+                int(row["confidence"]),
+                int(row["correct"]),
+                str(row["mode"] or "mock"),
+            )
+        )
 
-    buckets = {level: {"confidence": level, "attempts": 0, "correct": 0} for level in range(1, 6)}
+    buckets = {
+        level: {"confidence": level, "attempts": 0, "correct": 0}
+        for level in range(1, 6)
+    }
     overconfident = 0
     underconfident = 0
     for confidence, correct, _mode in samples:
@@ -539,7 +634,14 @@ def confidence_calibration(conn: Any, candidate_id: int, track_id: str = "snowpr
         if attempts:
             weighted_gap += abs(gap) * attempts
             usable += attempts
-        per_level.append({**item, "accuracy_pct": accuracy, "expected_pct": expected, "calibration_gap": gap})
+        per_level.append(
+            {
+                **item,
+                "accuracy_pct": accuracy,
+                "expected_pct": expected,
+                "calibration_gap": gap,
+            }
+        )
     calibration_score = max(0, round(100 - weighted_gap / usable, 1)) if usable else 0
     if usable < 5:
         status = "insufficient_data"
@@ -590,10 +692,19 @@ def set_study_preferences(
         """,
         (candidate_id, track_id, normalized_exam_date, minutes, days),
     )
-    return {"track_id": track_id, "exam_date": normalized_exam_date, "daily_minutes": minutes, "days_per_week": days}
+    return {
+        "track_id": track_id,
+        "exam_date": normalized_exam_date,
+        "daily_minutes": minutes,
+        "days_per_week": days,
+    }
 
 
-def study_plan(conn: Any, candidate_id: int, track_id: str = "snowpro-core") -> dict[str, Any]:
+def study_plan(
+    conn: Any,
+    candidate_id: int,
+    track_id: str = "snowpro-core",
+) -> dict[str, Any]:
     ensure_learning_intelligence_schema()
     from .intelligence import readiness_model, skill_mastery
 
@@ -607,17 +718,48 @@ def study_plan(conn: Any, candidate_id: int, track_id: str = "snowpro-core") -> 
         "days_per_week": int(pref["days_per_week"] or 6) if pref else 6,
     }
     mastery = skill_mastery(conn, track_id, candidate_id=candidate_id)
-    readiness = readiness_model(conn, track_id, mastery=mastery, candidate_id=candidate_id)
+    readiness = readiness_model(
+        conn,
+        track_id,
+        mastery=mastery,
+        candidate_id=candidate_id,
+    )
+    eligible = _eligibility_filter()
     due_rows = conn.execute(
-        "SELECT skill_id,COUNT(*) AS count FROM candidate_srs_state WHERE candidate_id=? AND track_id=? AND datetime(due_at)<=datetime('now') GROUP BY skill_id",
+        f"""
+        SELECT s.skill_id,COUNT(*) AS count
+        FROM candidate_srs_state s
+        JOIN questions q ON q.id=s.question_id
+        LEFT JOIN question_bank_metadata m ON m.question_id=q.id
+        WHERE s.candidate_id=? AND s.track_id=? AND datetime(s.due_at)<=datetime('now')
+          {eligible}
+        GROUP BY s.skill_id
+        """,
         (candidate_id, track_id),
     ).fetchall()
-    due_by_skill = {str(row["skill_id"] or ""): int(row["count"] or 0) for row in due_rows}
+    due_by_skill = {
+        str(row["skill_id"] or ""): int(row["count"] or 0)
+        for row in due_rows
+    }
     mistake_rows = conn.execute(
-        "SELECT skill_id,SUM(miss_count) AS misses,COUNT(*) AS questions FROM candidate_mistake_notebook WHERE candidate_id=? AND track_id=? AND status IN ('open','reviewing') GROUP BY skill_id",
+        f"""
+        SELECT n.skill_id,SUM(n.miss_count) AS misses,COUNT(*) AS questions
+        FROM candidate_mistake_notebook n
+        JOIN questions q ON q.id=n.question_id
+        LEFT JOIN question_bank_metadata m ON m.question_id=q.id
+        WHERE n.candidate_id=? AND n.track_id=? AND n.status IN ('open','reviewing')
+          {eligible}
+        GROUP BY n.skill_id
+        """,
         (candidate_id, track_id),
     ).fetchall()
-    mistakes_by_skill = {str(row["skill_id"] or ""): {"misses": int(row["misses"] or 0), "questions": int(row["questions"] or 0)} for row in mistake_rows}
+    mistakes_by_skill = {
+        str(row["skill_id"] or ""): {
+            "misses": int(row["misses"] or 0),
+            "questions": int(row["questions"] or 0),
+        }
+        for row in mistake_rows
+    }
 
     priority = []
     for item in mastery.get("skills") or []:
@@ -627,7 +769,13 @@ def study_plan(conn: Any, candidate_id: int, track_id: str = "snowpro-core") -> 
         attempts = int(item.get("attempts") or 0)
         misses = int((mistakes_by_skill.get(skill_id) or {}).get("misses") or 0)
         due = int(due_by_skill.get(skill_id) or 0)
-        gap_score = (7 - mastery_level) * 12 + max(0, 80 - accuracy) * 0.45 + misses * 5 + due * 3 + (8 if attempts == 0 else 0)
+        gap_score = (
+            (7 - mastery_level) * 12
+            + max(0, 80 - accuracy) * 0.45
+            + misses * 5
+            + due * 3
+            + (8 if attempts == 0 else 0)
+        )
         priority.append(
             {
                 "skill_id": skill_id,
@@ -651,20 +799,69 @@ def study_plan(conn: Any, candidate_id: int, track_id: str = "snowpro-core") -> 
     drill_minutes = max(10, daily_minutes - review_minutes - lesson_minutes)
     today = date.today()
     days = []
+    active_index = 0
     for offset in range(7):
-        target = top[offset % len(top)] if top else None
-        active_day = offset < preferences["days_per_week"]
+        target_date = today + timedelta(days=offset)
+        # Use stable Monday-first weekdays instead of a rolling "first N days"
+        # rule. A five-day preference therefore remains Mon-Fri tomorrow too.
+        active_day = target_date.weekday() < preferences["days_per_week"]
+        target = top[active_index % len(top)] if top and active_day else None
         sessions = []
         if active_day:
-            sessions.append({"type": "srs", "minutes": review_minutes, "title": "Due Today", "href": f"#/practice?track_id={track_id}&mode=srs"})
+            active_index += 1
+            sessions.append(
+                {
+                    "type": "srs",
+                    "minutes": review_minutes,
+                    "title": "Due Today",
+                    "href": f"#/practice?track_id={track_id}&mode=srs",
+                }
+            )
             if target:
-                sessions.append({"type": "lesson", "minutes": lesson_minutes, "title": f"Review {target['skill']}", "skill_id": target["skill_id"], "href": target["lesson_url"]})
-                sessions.append({"type": "drill", "minutes": drill_minutes, "title": f"Drill {target['skill']}", "skill_id": target["skill_id"], "href": target["drill_url"]})
+                sessions.append(
+                    {
+                        "type": "lesson",
+                        "minutes": lesson_minutes,
+                        "title": f"Review {target['skill']}",
+                        "skill_id": target["skill_id"],
+                        "href": target["lesson_url"],
+                    }
+                )
+                sessions.append(
+                    {
+                        "type": "drill",
+                        "minutes": drill_minutes,
+                        "title": f"Drill {target['skill']}",
+                        "skill_id": target["skill_id"],
+                        "href": target["drill_url"],
+                    }
+                )
             else:
-                sessions.append({"type": "foundation", "minutes": daily_minutes - review_minutes, "title": "Complete the next blueprint task", "href": f"#/curriculum?track_id={track_id}"})
+                sessions.append(
+                    {
+                        "type": "foundation",
+                        "minutes": daily_minutes - review_minutes,
+                        "title": "Complete the next blueprint task",
+                        "href": f"#/curriculum?track_id={track_id}",
+                    }
+                )
         else:
-            sessions.append({"type": "rest", "minutes": 0, "title": "Recovery / catch-up day", "href": f"#/progress?track_id={track_id}"})
-        days.append({"date": (today + timedelta(days=offset)).isoformat(), "active": active_day, "sessions": sessions, "total_minutes": sum(int(item["minutes"]) for item in sessions)})
+            sessions.append(
+                {
+                    "type": "rest",
+                    "minutes": 0,
+                    "title": "Recovery / catch-up day",
+                    "href": f"#/progress?track_id={track_id}",
+                }
+            )
+        days.append(
+            {
+                "date": target_date.isoformat(),
+                "active": active_day,
+                "sessions": sessions,
+                "total_minutes": sum(int(item["minutes"]) for item in sessions),
+            }
+        )
 
     days_until_exam = None
     if preferences["exam_date"]:
@@ -680,11 +877,15 @@ def study_plan(conn: Any, candidate_id: int, track_id: str = "snowpro-core") -> 
         "priority_skills": top,
         "days": days,
         "generated_at": _sql_time(_utc_now()),
-        "strategy_version": "candidate-learning-v1",
+        "strategy_version": "candidate-learning-v1.1",
     }
 
 
-def mock_remediation(conn: Any, candidate_id: int, session_id: int) -> dict[str, Any]:
+def mock_remediation(
+    conn: Any,
+    candidate_id: int,
+    session_id: int,
+) -> dict[str, Any]:
     ensure_learning_intelligence_schema()
     session = conn.execute(
         "SELECT * FROM exam_sessions WHERE id=? AND candidate_id=?",
@@ -705,7 +906,8 @@ def mock_remediation(conn: Any, candidate_id: int, session_id: int) -> dict[str,
                    COALESCE(m.task_id,'') AS metadata_skill_id
             FROM exam_session_questions sq
             JOIN questions q ON q.id=sq.question_id
-            LEFT JOIN exam_session_answers a ON a.session_id=sq.session_id AND a.question_id=sq.question_id
+            LEFT JOIN exam_session_answers a
+              ON a.session_id=sq.session_id AND a.question_id=sq.question_id
             LEFT JOIN question_bank_metadata m ON m.question_id=sq.question_id
             WHERE sq.session_id=?
             ORDER BY sq.position
@@ -713,7 +915,9 @@ def mock_remediation(conn: Any, candidate_id: int, session_id: int) -> dict[str,
             (session_id,),
         )
     ]
-    skill_stats: dict[str, dict[str, Any]] = defaultdict(lambda: {"total": 0, "misses": 0, "questions": []})
+    skill_stats: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"total": 0, "misses": 0, "questions": []}
+    )
     mistakes = []
     for row in rows:
         context = _question_context(conn, row["question_id"])
@@ -738,7 +942,11 @@ def mock_remediation(conn: Any, candidate_id: int, session_id: int) -> dict[str,
     for skill_id, item in skill_stats.items():
         if not item["misses"]:
             continue
-        accuracy = round((item["total"] - item["misses"]) / item["total"] * 100, 1) if item["total"] else 0
+        accuracy = (
+            round((item["total"] - item["misses"]) / item["total"] * 100, 1)
+            if item["total"]
+            else 0
+        )
         prioritized.append(
             {
                 "skill_id": skill_id,
@@ -750,7 +958,9 @@ def mock_remediation(conn: Any, candidate_id: int, session_id: int) -> dict[str,
                 "drill_url": f"#/practice?track_id={session['track_id']}&mode=drill&skill_id={skill_id}",
             }
         )
-    prioritized.sort(key=lambda item: (-item["misses"], item["accuracy_pct"], item["skill_id"]))
+    prioritized.sort(
+        key=lambda item: (-item["misses"], item["accuracy_pct"], item["skill_id"])
+    )
     return {
         "session_id": session_id,
         "track_id": session["track_id"],
@@ -759,10 +969,23 @@ def mock_remediation(conn: Any, candidate_id: int, session_id: int) -> dict[str,
         "priority_tasks": prioritized,
         "mistakes": mistakes,
         "actions": [
-            {"type": "srs", "title": "Review failed questions while they are due", "href": f"#/practice?track_id={session['track_id']}&mode=srs"},
-            {"type": "mistakes", "title": "Write the rule you missed in the Mistake Notebook", "href": f"#/progress?track_id={session['track_id']}#mistakes"},
-        ] + [
-            {"type": "drill", "title": f"Drill {item['skill_id']}", "href": item["drill_url"]}
+            {
+                "type": "srs",
+                "title": "Review failed questions while they are due",
+                "href": f"#/practice?track_id={session['track_id']}&mode=srs",
+            },
+            {
+                "type": "mistakes",
+                "title": "Write the rule you missed in the Mistake Notebook",
+                "href": f"#/progress?track_id={session['track_id']}&section=mistakes",
+            },
+        ]
+        + [
+            {
+                "type": "drill",
+                "title": f"Drill {item['skill_id']}",
+                "href": item["drill_url"],
+            }
             for item in prioritized[:3]
         ],
     }
