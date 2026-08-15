@@ -19,9 +19,12 @@ SYSTEM_PROBE_API_EXACT = {
     "/api/health",
     "/api/ready",
 }
+# Metrics has its own bearer-token authorization and deliberately is not a
+# SYSTEM_PROBE endpoint: when HTTPS is forced, metrics scraping must use HTTPS.
 PUBLIC_API_EXACT = SYSTEM_PROBE_API_EXACT | {
     "/api/activity/globe",
     "/api/feedback",
+    "/api/metrics",
 }
 PUBLIC_API_PREFIXES = (
     "/api/auth/",
@@ -90,7 +93,7 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        if protected or request.url.path.startswith(("/api/auth", "/api/billing", "/api/mock")):
+        if protected or request.url.path.startswith(("/api/auth", "/api/billing", "/api/mock", "/api/metrics")):
             response.headers["Cache-Control"] = "private, no-store"
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -139,6 +142,8 @@ class SecurityBoundaryMiddleware(BaseHTTPMiddleware):
             return "billing_checkout", 20, 300
         if path == "/api/billing/webhook":
             return "billing_webhook", 1200, 60
+        if path == "/api/metrics":
+            return "metrics", 120, 60
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
             return "mutation", 300, 60
         if path.startswith("/api/mock/sessions/") or path == "/api/mock/history":
