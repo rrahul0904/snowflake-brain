@@ -186,10 +186,10 @@ def main() -> None:
     with connect() as conn:
         conn.execute("UPDATE exam_sessions SET started_at=datetime('now','start of month','-2 days'), finished_at=datetime('now','start of month','-2 days') WHERE candidate_id=? AND mode='exam_full_mock'", (premium_id,))
     apply_membership_plan(premium_id, "premium_40", source="test", reason="tier-reset-test")
-    membership_250 = premium.get("/api/auth/me").json()["candidate"]["membership"]
+    membership_250 = premium.get("/api/auth/me").json()["membership"]
     check(membership_250["usage"]["monthly_full_exams"]["limit"] == 4, "Premium 250 keeps four Full Exams per month")
     apply_membership_plan(premium_id, "premium_100", source="test", reason="tier-reset-test")
-    membership_500 = premium.get("/api/auth/me").json()["candidate"]["membership"]
+    membership_500 = premium.get("/api/auth/me").json()["membership"]
     check(membership_500["usage"]["monthly_full_exams"]["limit"] is None, "Premium 500 keeps unlimited Full Exams")
 
     # Exam Pack is intentionally fixed and is the exception to reset rotation.
