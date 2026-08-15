@@ -64,6 +64,8 @@ jobs:
         run: python scripts/test_question_version_immutability.py
       - name: Verify question-bank release activation and rollback
         run: python scripts/test_question_bank_releases.py
+      - name: Verify blueprint-aware fresh reset fallback
+        run: python scripts/test_blueprint_fresh_fallback.py
       - name: Verify tier resets and fresh timed mock rotation
         run: python scripts/test_tier_reset_full_exams.py
       - name: Verify atomic limited-exam entitlement concurrency
