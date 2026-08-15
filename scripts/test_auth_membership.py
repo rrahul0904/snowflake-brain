@@ -101,7 +101,8 @@ def main() -> None:
     wrong_free_mode = alice.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "quick-mock"})
     check(wrong_free_mode.status_code == 403 and wrong_free_mode.json()["detail"]["code"] == "premium_required", "Free limited to weekly mock")
     free_mock = alice.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "weekly-mock"})
-    check(free_mock.status_code == 200 and len(free_mock.json()["questions"]) == 20, "Free weekly 20-question mock")
+    check(free_mock.status_code == 200 and len(free_mock.json()["questions"]) == 30, "Free weekly 30-question full-content mock")
+    check(int(free_mock.json()["duration_seconds"]) == 45 * 60, "Free weekly mock is timed for 45 minutes")
     free_session_id = free_mock.json()["session_id"]
     free_cancel = alice.post(f"/api/mock/session-control/{free_session_id}/cancel", json={})
     check(free_cancel.status_code == 403 and free_cancel.json()["detail"]["code"] == "free_mock_must_be_completed", "Free mock cannot be reversed")
@@ -225,7 +226,7 @@ def main() -> None:
     check(expired_client.get("/api/auth/me").json()["authenticated"] is False, "expired session rejected")
 
     print("V26 candidate authentication, membership, entitlement, and ownership tests: PASS")
-    print("scrypt=pass free_daily=20 weekly_mock=1 premium=100/250/500 monthly=2/4/unlimited exam_pack=35 ownership=pass expiry=pass")
+    print("scrypt=pass free_daily=20 weekly_mock=30q/45m premium=100/250/500 monthly=2/4/unlimited exam_pack=35 ownership=pass expiry=pass")
 
 
 if __name__ == "__main__":
