@@ -184,6 +184,23 @@ def _rewrite_sql(statement: str) -> str:
     )
     rewritten = re.sub(r"\bAUTOINCREMENT\b", "", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bIFNULL\s*\(", "COALESCE(", rewritten, flags=re.IGNORECASE)
+    # SQLite permits MAX/MIN as scalar two-argument functions; PostgreSQL uses
+    # GREATEST/LEAST for the same simple value-selection semantics. Restrict the
+    # translation to simple identifiers/literals so aggregate MAX(expr) remains
+    # untouched.
+    scalar_atom = r"[A-Za-z0-9_.+-]+"
+    rewritten = re.sub(
+        rf"\bMAX\s*\(\s*({scalar_atom})\s*,\s*({scalar_atom})\s*\)",
+        r"GREATEST(\1, \2)",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
+        rf"\bMIN\s*\(\s*({scalar_atom})\s*,\s*({scalar_atom})\s*\)",
+        r"LEAST(\1, \2)",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
     if ignore and " on conflict " not in f" {rewritten.lower()} ":
         rewritten = rewritten.rstrip(";") + " ON CONFLICT DO NOTHING"
     return _qmark_to_postgres(rewritten)
