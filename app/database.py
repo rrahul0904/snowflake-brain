@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 from typing import Any
 
 from .config import DATABASE_BACKEND
@@ -20,6 +21,8 @@ if DATABASE_BACKEND == "postgresql":
 
     def row_to_dict(row: Any | None) -> dict[str, Any] | None:
         return dict(row) if row else None
+
+    atexit.register(close_database)
 else:
     from .database_sqlite import connect, get_conn, row_to_dict, run_migrations
 
