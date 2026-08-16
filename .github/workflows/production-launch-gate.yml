@@ -13,6 +13,9 @@ on:
       - "docker-compose.yml"
       - "requirements.txt"
       - ".github/workflows/production-launch-gate.yml"
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -188,3 +191,50 @@ jobs:
           path: artifacts/browser-matrix-report.json
           if-no-files-found: warn
           retention-days: 30
+
+  release-decision:
+    name: Production GO decision
+    needs:
+      - sqlite-security-convergence
+      - postgres-convergence
+      - browser-mobile-accessibility
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce zero blocking launch jobs
+        env:
+          SQLITE_RESULT: ${{ needs.sqlite-security-convergence.result }}
+          POSTGRES_RESULT: ${{ needs.postgres-convergence.result }}
+          BROWSER_RESULT: ${{ needs.browser-mobile-accessibility.result }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          results = {
+              "sqlite_security_convergence": os.environ["SQLITE_RESULT"],
+              "postgres_convergence_restore": os.environ["POSTGRES_RESULT"],
+              "browser_mobile_accessibility": os.environ["BROWSER_RESULT"],
+          }
+          blockers = [name for name, result in results.items() if result != "success"]
+          payload = {
+              "status": "pass" if not blockers else "fail",
+              "blocking_items": len(blockers),
+              "blocking_jobs": blockers,
+              "jobs": results,
+          }
+          Path("artifacts").mkdir(exist_ok=True)
+          Path("artifacts/production-go.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+          print(json.dumps(payload, indent=2))
+          if blockers:
+              raise SystemExit(1)
+          PY
+      - name: Upload production GO decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-go-${{ github.sha }}
+          path: artifacts/production-go.json
+          if-no-files-found: error
+          retention-days: 90
