@@ -22,7 +22,8 @@ SCHEMA_VERSION = "20260815_040_account_lifecycle_v1"
 PASSWORD_N = 2**14
 PASSWORD_R = 8
 PASSWORD_P = 1
-PASSWORD_DKLEN = 64
+# Keep lifecycle credential writes byte-for-byte compatible with app.auth.
+PASSWORD_DKLEN = 32
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing", "past_due", "unpaid", "incomplete"}
 
@@ -302,7 +303,6 @@ def request_password_reset(email: str) -> dict[str, Any]:
             ttl=timedelta(minutes=PASSWORD_RESET_MINUTES),
         )
         _deliver_action(candidate_id, str(row["email"]), "password_reset", token)
-    # Always generic to prevent account enumeration.
     return {"accepted": True}
 
 
@@ -596,9 +596,6 @@ def delete_account(candidate_id: int, *, confirmation: str, password: str | None
     receipt_id = uuid.uuid4().hex
     with connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        # Explicitly remove candidate-linked records whose historical FKs use
-        # SET NULL so privacy deletion cannot leave an anonymized-but-recoverable
-        # candidate activity trail in the application database.
         conn.execute("DELETE FROM question_attempts WHERE candidate_id=?", (candidate_id,))
         conn.execute("DELETE FROM exam_sessions WHERE candidate_id=?", (candidate_id,))
         conn.execute("DELETE FROM learning_events WHERE candidate_id=?", (candidate_id,))
