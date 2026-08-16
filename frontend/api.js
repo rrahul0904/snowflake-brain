@@ -54,6 +54,9 @@ export const getStudyPlan = (params = {}) => api(`/api/intelligence/study-plan?$
 export const saveStudyPreferences = (payload) => api("/api/intelligence/study-plan/preferences", { method: "PUT", body: JSON.stringify(payload) });
 export const getMockRemediation = (sessionId) => api(`/api/intelligence/mock-remediation/${encodeURIComponent(sessionId)}`);
 export const reindexSkillMap = (trackId = "") => api(`/api/intelligence/reindex-skill-map?${new URLSearchParams({ track_id: trackId })}`, { method: "POST", body: "{}" });
+export const getAdaptiveReadiness = (params = {}) => api(`/api/intelligence/adaptive/readiness?${new URLSearchParams(params)}`);
+export const getAdaptiveRecommendations = (params = {}) => api(`/api/intelligence/adaptive/recommendations?${new URLSearchParams(params)}`);
+export const getAdaptiveQuestionIds = (params = {}) => api(`/api/intelligence/adaptive/question-ids?${new URLSearchParams(params)}`);
 
 export const getPracticeTests = (params = {}) => api(`/api/practice-tests?${new URLSearchParams(params)}`);
 export const getPracticeTestQuestions = (id, params = {}) => api(`/api/practice-tests/${encodeURIComponent(id)}/questions?${new URLSearchParams(params)}`);
