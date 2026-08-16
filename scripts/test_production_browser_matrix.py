@@ -42,7 +42,7 @@ def wait_for_route(page: Page, route: str) -> None:
           const state = window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__;
           return Boolean(state && state.status === 'ok' && state.route === expected);
         }""",
-        route,
+        arg=route,
         timeout=10_000,
     )
 
