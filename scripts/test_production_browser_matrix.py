@@ -36,6 +36,17 @@ def write_report(payload: dict) -> None:
     REPORT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def wait_for_route(page: Page, route: str) -> None:
+    page.wait_for_function(
+        """expected => {
+          const state = window.__SNOWFLAKE_BRAIN_ROUTE_STATUS__;
+          return Boolean(state && state.status === 'ok' && state.route === expected);
+        }""",
+        route,
+        timeout=10_000,
+    )
+
+
 def assert_accessible_baseline(page: Page, label: str) -> None:
     issues = page.evaluate(
         """() => {
@@ -100,6 +111,7 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
     try:
         started = time.perf_counter()
         page.goto(f"{BASE_URL}/#/home", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/home")
         load_ms = (time.perf_counter() - started) * 1000
         if load_ms > 8_000:
             raise AssertionError(f"{profile.name} public-home network-idle load exceeded 8s: {load_ms:.1f} ms")
@@ -108,12 +120,16 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_client_clean(page, f"{profile.name} home")
 
         page.goto(f"{BASE_URL}/#/privacy", wait_until="networkidle", timeout=20_000)
-        if "Privacy" not in page.locator("body").inner_text():
-            raise AssertionError(f"{profile.name} privacy route did not render")
+        wait_for_route(page, "#/privacy")
+        page.get_by_role("heading", name="Your certification data stays under your control.").wait_for(
+            state="visible", timeout=10_000
+        )
         assert_accessible_baseline(page, f"{profile.name} privacy")
+        assert_client_clean(page, f"{profile.name} privacy")
 
         register_candidate(page, profile.name.replace("-", ""))
         page.goto(f"{BASE_URL}/#/adaptive?track_id=snowpro-core", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/adaptive")
         page.get_by_role("heading", name="What should you study next?").wait_for(state="visible", timeout=10_000)
         body = page.locator("body").inner_text().lower()
         if "not a probability" not in body:
