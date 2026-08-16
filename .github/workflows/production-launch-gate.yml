@@ -1,0 +1,190 @@
+name: Production Launch Gate
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "frontend/**"
+      - "migrations/postgres/**"
+      - "scripts/**"
+      - "deploy/**"
+      - "docs/production-readiness-checklist.md"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "requirements.txt"
+      - ".github/workflows/production-launch-gate.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: production-launch-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite-security-convergence:
+    name: SQLite security and convergence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BRAIN_DB: /tmp/snowflake-launch.sqlite
+      ACCOUNT_EMAIL_DELIVERY_MODE: outbox
+      BILLING_ENABLED: "false"
+      GOOGLE_AUTH_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Run all release gates on SQLite
+        run: bash scripts/run_production_release_gates.sh
+      - name: Validate secure production Compose profile
+        run: docker compose --env-file deploy/production.env.example config --quiet
+      - name: Build production image
+        run: docker build -t snowflake-certification-guide:launch .
+      - name: Upload readiness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-readiness-sqlite-${{ github.sha }}
+          path: artifacts/production-readiness-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  postgres-convergence:
+    name: PostgreSQL convergence and restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: launch_ci
+          POSTGRES_USER: snowflake
+          POSTGRES_PASSWORD: snowflake
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U snowflake -d launch_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://snowflake:snowflake@127.0.0.1:5432/launch_ci
+      DATABASE_SCHEMA: launch_main
+      DB_POOL_MIN_SIZE: "2"
+      DB_POOL_MAX_SIZE: "20"
+      DB_POOL_TIMEOUT_SECONDS: "10"
+      POSTGRES_TEST_ISOLATION: "true"
+      POSTGRES_TEST_SCHEMA_PREFIX: launch_suite
+      BRAIN_DB: /tmp/snowflake-launch-postgres.sqlite
+      ACCOUNT_EMAIL_DELIVERY_MODE: outbox
+      BILLING_ENABLED: "false"
+      GOOGLE_AUTH_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Run all release gates on PostgreSQL
+        run: bash scripts/run_production_release_gates.sh
+      - name: Materialize canonical launch schema for backup
+        env:
+          POSTGRES_TEST_ISOLATION: "false"
+        run: python scripts/test_postgres_production_foundation.py
+      - name: Exercise logical backup and restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pg-launch-backup
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            -v /tmp/pg-launch-backup:/backup \
+            postgres:17-alpine \
+            pg_dump --format=custom --no-owner --no-acl \
+              --host=127.0.0.1 --username=snowflake --dbname=launch_ci \
+              --file=/backup/launch.dump
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            postgres:17-alpine \
+            psql --host=127.0.0.1 --username=snowflake --dbname=postgres \
+              --command='CREATE DATABASE launch_restore;'
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            -v /tmp/pg-launch-backup:/backup \
+            postgres:17-alpine \
+            pg_restore --no-owner --no-acl --exit-on-error \
+              --host=127.0.0.1 --username=snowflake --dbname=launch_restore \
+              /backup/launch.dump
+          docker run --rm --network host \
+            -e PGPASSWORD=snowflake \
+            postgres:17-alpine \
+            psql --host=127.0.0.1 --username=snowflake --dbname=launch_restore \
+              --tuples-only --command="SELECT COUNT(*) FROM launch_main.schema_migrations;"
+      - name: Upload readiness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-readiness-postgres-${{ github.sha }}
+          path: artifacts/production-readiness-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  browser-mobile-accessibility:
+    name: Browser mobile accessibility rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BRAIN_DB: /tmp/snowflake-browser-launch.sqlite
+      ACCOUNT_EMAIL_DELIVERY_MODE: outbox
+      AUTH_COOKIE_SECURE: "false"
+      FORCE_HTTPS: "false"
+      BILLING_ENABLED: "false"
+      GOOGLE_AUTH_ENABLED: "false"
+      LAUNCH_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application and Playwright dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium firefox
+      - name: Start certification guide
+        shell: bash
+        run: |
+          set -euo pipefail
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/launch-browser-server.log 2>&1 &
+          echo $! > /tmp/launch-browser-server.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/ready >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/launch-browser-server.log
+          exit 1
+      - name: Run Chromium Firefox and mobile rehearsal
+        run: python scripts/test_production_browser_matrix.py
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/launch-browser-server.log || true
+      - name: Upload browser matrix evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-browser-matrix-${{ github.sha }}
+          path: artifacts/browser-matrix-report.json
+          if-no-files-found: warn
+          retention-days: 30
