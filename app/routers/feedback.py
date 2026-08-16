@@ -3,8 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..database import connect
 from ..auth import optional_candidate, require_candidate, require_owned_mock_session
+from ..config import DATABASE_BACKEND
+from ..database import connect
 
 router = APIRouter()
 
@@ -18,8 +19,16 @@ class FeedbackSubmission(BaseModel):
     track_id: str = Field(default="snowpro-core", max_length=120)
 
 
-@router.post("/feedback")
-def submit_feedback(payload: FeedbackSubmission, candidate: dict | None = Depends(optional_candidate)) -> dict:
+def ensure_feedback_schema() -> None:
+    """Keep the optional feedback table available for privacy export/deletion.
+
+    PostgreSQL owns this table through the versioned production migrations.
+    SQLite historically created it lazily on first feedback submission, which
+    meant a candidate with no prior feedback could hit a missing-table error
+    during account deletion. Bootstrap it explicitly instead.
+    """
+    if DATABASE_BACKEND == "postgresql":
+        return
     with connect() as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS feedback_submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', contact TEXT DEFAULT '', route TEXT NOT NULL DEFAULT '#/home', track_id TEXT NOT NULL DEFAULT 'snowpro-core', candidate_id INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL, created_at TEXT DEFAULT (datetime('now')))"
@@ -27,6 +36,12 @@ def submit_feedback(payload: FeedbackSubmission, candidate: dict | None = Depend
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(feedback_submissions)")}
         if "candidate_id" not in columns:
             conn.execute("ALTER TABLE feedback_submissions ADD COLUMN candidate_id INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL")
+
+
+@router.post("/feedback")
+def submit_feedback(payload: FeedbackSubmission, candidate: dict | None = Depends(optional_candidate)) -> dict:
+    ensure_feedback_schema()
+    with connect() as conn:
         cursor = conn.execute(
             "INSERT INTO feedback_submissions(title, category, description, contact, route, track_id, candidate_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (payload.title.strip(), payload.category, payload.description.strip(), payload.contact.strip(), payload.route, payload.track_id, candidate["id"] if candidate else None),

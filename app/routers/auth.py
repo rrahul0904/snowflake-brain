@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
+from ..account_lifecycle import mark_registration_unverified
 from ..auth import (
     COOKIE_NAME,
     authenticate_candidate,
@@ -65,11 +66,13 @@ def auth_me(candidate: dict | None = Depends(optional_candidate)) -> dict:
 @router.post("/auth/register", status_code=201)
 def auth_register(payload: SignupRequest, response: Response) -> dict:
     candidate = create_candidate(payload.display_name, payload.email, payload.password)
+    lifecycle = mark_registration_unverified(candidate["id"])
     set_session_cookie(response, candidate["id"])
     return {
         "authenticated": True,
         "candidate": public_candidate(candidate),
         "membership": candidate["membership"],
+        **lifecycle,
     }
 
 

@@ -1,0 +1,57 @@
+name: Account Lifecycle UI Smoke
+
+on:
+  pull_request:
+    paths:
+      - "frontend/account-action.html"
+      - "frontend/account-action.js"
+      - "frontend/account-management.html"
+      - "frontend/account-management.js"
+      - "frontend/recover-account.html"
+      - "frontend/recover-account.js"
+      - ".github/workflows/account-lifecycle-ui-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: account-lifecycle-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check frontend/account-action.js
+          node --check frontend/account-management.js
+          node --check frontend/recover-account.js
+      - name: Verify static lifecycle entry points and CSP-safe external scripts
+        run: |
+          set -euo pipefail
+          grep -q '/static/account-action.js' frontend/account-action.html
+          grep -q '/static/account-management.js' frontend/account-management.html
+          grep -q '/static/recover-account.js' frontend/recover-account.html
+          if grep -nE '<script[^>]*>[^<]+' frontend/account-action.html frontend/account-management.html frontend/recover-account.html; then
+            echo 'Inline lifecycle script would violate the production CSP'
+            exit 1
+          fi
+      - name: Verify lifecycle API contracts used by browser surfaces
+        run: |
+          set -euo pipefail
+          grep -q '/api/auth/email-verification/confirm' frontend/account-action.js
+          grep -q '/api/auth/password-reset/confirm' frontend/account-action.js
+          grep -q '/api/auth/change-email/confirm' frontend/account-action.js
+          grep -q '/api/auth/password-reset/request' frontend/recover-account.js
+          grep -q '/api/account/status' frontend/account-management.js
+          grep -q '/api/account/export' frontend/account-management.js
+          grep -q '/api/account/identities/' frontend/account-management.js
+          grep -q 'DELETE' frontend/account-management.js

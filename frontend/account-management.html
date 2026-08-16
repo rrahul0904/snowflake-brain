@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Account management · Snowflake Certification Guide</title>
+  <style>
+    :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: Canvas; color: CanvasText; }
+    main { width: min(94vw, 980px); margin: 0 auto; padding: 28px 0 60px; }
+    header { display: flex; justify-content: space-between; gap: 20px; align-items: start; margin-bottom: 22px; }
+    h1, h2 { margin-top: 0; }
+    h2 { font-size: 1.1rem; }
+    .muted { opacity: .7; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    section { border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+    label { display: block; margin: 12px 0 6px; font-weight: 650; }
+    input { width: 100%; box-sizing: border-box; border: 1px solid color-mix(in srgb, CanvasText 26%, transparent); border-radius: 9px; padding: 10px 11px; font: inherit; background: Canvas; color: CanvasText; }
+    button, a.button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 9px; padding: 10px 13px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; background: CanvasText; color: Canvas; }
+    button.secondary, a.secondary { background: color-mix(in srgb, CanvasText 9%, transparent); color: CanvasText; border: 1px solid color-mix(in srgb, CanvasText 22%, transparent); }
+    button.danger { background: #b42318; color: white; }
+    button[disabled] { opacity: .55; cursor: not-allowed; }
+    .actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 14px; }
+    .status { margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, CanvasText 7%, transparent); }
+    .row { display: flex; justify-content: space-between; gap: 14px; align-items: center; padding: 10px 0; border-top: 1px solid color-mix(in srgb, CanvasText 12%, transparent); }
+    .row:first-child { border-top: 0; }
+    .badge { display: inline-block; border-radius: 999px; padding: 4px 9px; font-size: .82rem; font-weight: 750; background: color-mix(in srgb, CanvasText 9%, transparent); }
+    .hidden { display: none !important; }
+    .danger-zone { border-color: color-mix(in srgb, #b42318 55%, transparent); }
+    code { overflow-wrap: anywhere; }
+    @media (max-width: 620px) { header { display: block; } header .actions { margin-top: 12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="muted">Snowflake Certification Guide</div>
+        <h1>Account management</h1>
+        <p class="muted">Manage sign-in methods, recovery, your portable data, and account privacy controls.</p>
+      </div>
+      <div class="actions">
+        <a class="button secondary" href="/#/account">Back to account</a>
+        <a class="button secondary" href="/#/home">Guide home</a>
+      </div>
+    </header>
+
+    <div id="page-status" class="status" role="status" aria-live="polite">Loading your account…</div>
+    <div id="content" class="hidden">
+      <div class="grid">
+        <section>
+          <h2>Email & verification</h2>
+          <div id="email-summary"></div>
+          <div id="verification-actions" class="actions"></div>
+          <form id="change-email-form">
+            <label for="new-email">Change account email</label>
+            <input id="new-email" type="email" autocomplete="email" required />
+            <div class="actions"><button type="submit">Send confirmation to new email</button></div>
+          </form>
+        </section>
+
+        <section>
+          <h2>Password</h2>
+          <p id="password-summary" class="muted"></p>
+          <form id="change-password-form">
+            <div id="current-password-wrap">
+              <label for="current-password">Current password</label>
+              <input id="current-password" type="password" autocomplete="current-password" />
+            </div>
+            <label for="new-password">New password</label>
+            <input id="new-password" type="password" autocomplete="new-password" minlength="8" required />
+            <div class="actions"><button type="submit">Update password</button></div>
+          </form>
+        </section>
+      </div>
+
+      <section>
+        <h2>Linked sign-in methods</h2>
+        <div id="identities"></div>
+      </section>
+
+      <section>
+        <h2>Active sessions</h2>
+        <p class="muted">Review browser sessions and revoke anything you no longer recognize.</p>
+        <div id="sessions"></div>
+        <div class="actions"><button id="revoke-all" class="secondary" type="button">Sign out all devices</button></div>
+      </section>
+
+      <section>
+        <h2>Your data</h2>
+        <p>Export a portable JSON copy of your profile, exam history, practice attempts, study progress, SRS state, mistake notebook, study preferences, notes and account activity.</p>
+        <div class="actions"><button id="export-data" type="button">Export my data</button></div>
+      </section>
+
+      <section>
+        <h2>Recent account activity</h2>
+        <div id="audit"></div>
+      </section>
+
+      <section class="danger-zone">
+        <h2>Delete account</h2>
+        <div id="deletion-blocker" class="status hidden"></div>
+        <p>Deletion permanently removes candidate-owned practice, exam, SRS, notebook, preference, session and profile data from the application database. A non-identifying deletion receipt remains for operational proof.</p>
+        <form id="delete-form">
+          <label for="delete-confirmation">Type DELETE to confirm</label>
+          <input id="delete-confirmation" autocomplete="off" required />
+          <div id="delete-password-wrap">
+            <label for="delete-password">Current password</label>
+            <input id="delete-password" type="password" autocomplete="current-password" />
+          </div>
+          <div class="actions"><button id="delete-button" class="danger" type="submit">Permanently delete account</button></div>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/static/account-management.js"></script>
+</body>
+</html>
