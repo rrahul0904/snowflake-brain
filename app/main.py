@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .account_lifecycle import ensure_account_lifecycle_schema
 from .config import DATABASE_BACKEND, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
@@ -20,6 +21,7 @@ from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema
 from .routers import (
+    account,
     activity,
     affiliate,
     auth,
@@ -40,8 +42,8 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.11.0",
-    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, PostgreSQL production persistence, and production observability.",
+    version="0.12.0",
+    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, PostgreSQL production persistence, production observability, and self-service account lifecycle controls.",
 )
 app.add_middleware(SecurityBoundaryMiddleware)
 # Added after SecurityBoundaryMiddleware so observability is the outer request
@@ -58,6 +60,7 @@ def startup() -> None:
         ensure_question_version_schema()
         ensure_question_bank_release_schema()
         ensure_learning_intelligence_schema()
+        ensure_account_lifecycle_schema()
         if QUESTION_BANK_AUTO_IMPORT:
             # The source directory is private deployment content, never a frontend
             # asset and never committed to this repository. Imports never replace an
@@ -135,6 +138,7 @@ app.include_router(labs.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(account.router, prefix="/api")
 app.include_router(google_auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 
