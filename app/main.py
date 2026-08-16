@@ -61,6 +61,10 @@ def startup() -> None:
         ensure_question_bank_release_schema()
         ensure_learning_intelligence_schema()
         ensure_account_lifecycle_schema()
+        # SQLite historically created feedback lazily. Account export/deletion
+        # needs that candidate-linked table to exist even for candidates who have
+        # never submitted feedback, so bootstrap its lightweight local schema.
+        feedback.ensure_feedback_schema()
         if QUESTION_BANK_AUTO_IMPORT:
             # The source directory is private deployment content, never a frontend
             # asset and never committed to this repository. Imports never replace an
