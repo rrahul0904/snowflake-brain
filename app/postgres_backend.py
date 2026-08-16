@@ -56,6 +56,9 @@ _SERIAL_ID_TABLES = {
     "question_bank_release_events",
     "exam_entitlement_reservations",
     "feedback_submissions",
+    "editorial_qa_runs",
+    "editorial_findings",
+    "editorial_review_events",
 }
 _REPLACE_CONFLICT_TARGETS: dict[str, tuple[str, ...]] = {
     "pending_identity_links": ("token_hash",),
@@ -80,10 +83,6 @@ def _safe_identifier(value: str) -> str:
 
 def current_schema_name() -> str:
     if POSTGRES_TEST_ISOLATION:
-        # BRAIN_DB is already a per-test temporary path throughout the existing
-        # regression suite. Hashing that stable identity keeps each test isolated
-        # while allowing child CLI processes to reconnect to the same PostgreSQL
-        # schema as their parent process.
         suffix = hashlib.sha1(str(BRAIN_DB).encode("utf-8")).hexdigest()[:12]
         return _safe_identifier(f"{POSTGRES_TEST_SCHEMA_PREFIX}_{suffix}")
     return _safe_identifier(DATABASE_SCHEMA)
@@ -145,10 +144,6 @@ def _qmark_to_postgres(statement: str) -> str:
         elif char == "?" and not single and not double:
             output.append("%s")
         elif char == "%":
-            # psycopg interprets every percent sign through its pyformat
-            # protocol even when the percent appears inside a SQL string such as
-            # LIKE 'exam_%'. Doubling it preserves one literal percent on the
-            # PostgreSQL server while qmark placeholders become %s below.
             output.append("%%")
         else:
             output.append(char)
@@ -193,10 +188,6 @@ def _rewrite_sql(statement: str) -> str:
     )
     rewritten = re.sub(r"\bAUTOINCREMENT\b", "", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bIFNULL\s*\(", "COALESCE(", rewritten, flags=re.IGNORECASE)
-    # SQLite permits MAX/MIN as scalar two-argument functions; PostgreSQL uses
-    # GREATEST/LEAST for the same simple value-selection semantics. Restrict the
-    # translation to simple identifiers/literals so aggregate MAX(expr) remains
-    # untouched.
     scalar_atom = r"[A-Za-z0-9_.+-]+"
     rewritten = re.sub(
         rf"\bMAX\s*\(\s*({scalar_atom})\s*,\s*({scalar_atom})\s*\)",
@@ -311,10 +302,6 @@ class PostgresConnectionAdapter:
 
     @property
     def total_changes(self) -> int:
-        # SQLite exposes cumulative changed-row accounting on each connection.
-        # PostgreSQL's transaction statistics provide the same before/after
-        # signal needed by legacy canonical-seeding code without weakening the
-        # production transaction boundary.
         row = self._raw.execute(
             "SELECT COALESCE(SUM(n_tup_ins + n_tup_upd + n_tup_del),0) AS n "
             "FROM pg_stat_xact_user_tables"
@@ -369,10 +356,6 @@ class PostgresConnectionAdapter:
         except errors.CheckViolation as exc:
             raise sqlite3.IntegrityError(str(exc)) from exc
         except errors.RaiseException as exc:
-            # PostgreSQL trigger RAISE EXCEPTION is the native equivalent of the
-            # SQLite RAISE(ABORT, ...) invariants used by historical-sitting and
-            # release integrity checks. Preserve the database message so callers
-            # can keep their existing integrity handling contract.
             raise sqlite3.IntegrityError(str(exc)) from exc
 
     def executemany(self, statement: str, params: Iterable[Iterable[Any]]):
@@ -391,10 +374,6 @@ class PostgresConnectionAdapter:
             raise sqlite3.IntegrityError(str(exc)) from exc
 
     def executescript(self, script: str):
-        # PostgreSQL schema ownership is centralized in migrations/postgres.
-        # Legacy ensure_* helpers still call executescript defensively; once the
-        # baseline migration is present, replaying SQLite DDL would be both
-        # redundant and unsafe. Runtime single-statement DDL goes through execute.
         return MemoryCursor([], rowcount=0)
 
     def commit(self) -> None:
