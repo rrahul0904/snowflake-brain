@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .account_lifecycle import ensure_account_lifecycle_schema
+from .adaptive_readiness import ensure_adaptive_readiness_schema
 from .config import DATABASE_BACKEND, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
@@ -23,6 +24,7 @@ from .question_versions import ensure_question_version_schema
 from .routers import (
     account,
     activity,
+    adaptive,
     affiliate,
     auth,
     billing,
@@ -42,8 +44,8 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.12.0",
-    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, PostgreSQL production persistence, production observability, and self-service account lifecycle controls.",
+    version="0.13.0",
+    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, adaptive readiness, PostgreSQL production persistence, production observability, and self-service account lifecycle controls.",
 )
 app.add_middleware(SecurityBoundaryMiddleware)
 # Added after SecurityBoundaryMiddleware so observability is the outer request
@@ -61,6 +63,7 @@ def startup() -> None:
         ensure_question_bank_release_schema()
         ensure_learning_intelligence_schema()
         ensure_account_lifecycle_schema()
+        ensure_adaptive_readiness_schema()
         # SQLite historically created feedback lazily. Account export/deletion
         # needs that candidate-linked table to exist even for candidates who have
         # never submitted feedback, so bootstrap its lightweight local schema.
@@ -137,6 +140,7 @@ app.include_router(question_bank_runtime.router, prefix="/api")
 app.include_router(question_bank_candidate_state.router, prefix="/api")
 app.include_router(affiliate.router, prefix="/api")
 app.include_router(intelligence.router, prefix="/api")
+app.include_router(adaptive.router, prefix="/api")
 app.include_router(experience.router, prefix="/api")
 app.include_router(labs.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
