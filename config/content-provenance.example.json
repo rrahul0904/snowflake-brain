@@ -1,0 +1,28 @@
+{
+  "sources": [
+    {
+      "source_key": "snowflake-warehouses-overview",
+      "source_url": "https://docs.snowflake.com/en/user-guide/warehouses",
+      "source_title": "Virtual warehouses",
+      "source_section": "Overview",
+      "document_version": "",
+      "document_date": "",
+      "links": [
+        {
+          "artifact_type": "lesson",
+          "artifact_key": "warehouse-compute-basics",
+          "track_id": "snowpro-core",
+          "source_section": "Overview",
+          "assertion_kind": "supports"
+        },
+        {
+          "artifact_type": "question",
+          "artifact_key": "replace-with-private-bank-question-id",
+          "track_id": "snowpro-core",
+          "source_section": "Overview",
+          "assertion_kind": "supports"
+        }
+      ]
+    }
+  ]
+}
