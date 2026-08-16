@@ -180,3 +180,11 @@ jobs:
       - name: Show server log on failure
         if: failure()
         run: cat /tmp/launch-browser-server.log || true
+      - name: Upload browser matrix evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-browser-matrix-${{ github.sha }}
+          path: artifacts/browser-matrix-report.json
+          if-no-files-found: warn
+          retention-days: 30
