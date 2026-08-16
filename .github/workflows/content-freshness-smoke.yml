@@ -1,0 +1,68 @@
+name: Content Freshness Smoke
+
+on:
+  pull_request:
+    paths:
+      - "app/content_freshness.py"
+      - "migrations/postgres/006_content_freshness.sql"
+      - "scripts/content_freshness_admin.py"
+      - "scripts/test_content_freshness_pipeline.py"
+      - ".github/workflows/content-freshness-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: content-freshness-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile freshness runtime
+        run: python -m compileall -q app scripts/content_freshness_admin.py scripts/test_content_freshness_pipeline.py
+      - name: Verify provenance and release gate on SQLite
+        run: python scripts/test_content_freshness_pipeline.py
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: freshness_ci
+          POSTGRES_USER: snowflake
+          POSTGRES_PASSWORD: snowflake
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U snowflake -d freshness_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://snowflake:snowflake@127.0.0.1:5432/freshness_ci
+      DATABASE_SCHEMA: freshness_ci
+      DB_POOL_MIN_SIZE: "2"
+      DB_POOL_MAX_SIZE: "12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile freshness runtime
+        run: python -m compileall -q app scripts/content_freshness_admin.py scripts/test_content_freshness_pipeline.py
+      - name: Verify provenance and release gate on PostgreSQL
+        run: python scripts/test_content_freshness_pipeline.py

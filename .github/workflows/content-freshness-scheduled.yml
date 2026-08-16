@@ -1,0 +1,79 @@
+name: Official Snowflake Content Freshness
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: ${{ secrets.CONTENT_FRESHNESS_DATABASE_URL }}
+  DATABASE_SCHEMA: ${{ vars.CONTENT_FRESHNESS_DATABASE_SCHEMA || 'public' }}
+  CONTENT_FRESHNESS_ALLOWED_HOSTS: ${{ vars.CONTENT_FRESHNESS_ALLOWED_HOSTS || 'docs.snowflake.com' }}
+
+jobs:
+  check-official-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Check configuration
+        id: configured
+        shell: bash
+        run: |
+          if [[ -z "${DATABASE_URL:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "CONTENT_FRESHNESS_DATABASE_URL is not configured; scheduled check is inactive." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Fetch and fingerprint registered official sources
+        if: steps.configured.outputs.enabled == 'true'
+        run: python scripts/content_freshness_admin.py check-all > freshness-check.json
+      - name: Export editorial freshness status
+        if: always() && steps.configured.outputs.enabled == 'true'
+        run: python scripts/content_freshness_admin.py status > freshness-status.json
+      - name: Summarize freshness condition
+        if: always() && steps.configured.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          check_path = Path("freshness-check.json")
+          status_path = Path("freshness-status.json")
+          check = json.loads(check_path.read_text()) if check_path.exists() and check_path.stat().st_size else {}
+          status = json.loads(status_path.read_text()) if status_path.exists() and status_path.stat().st_size else {}
+          changed = int(check.get("changed", 0))
+          failed = int(check.get("failed", 0))
+          open_reviews = int(status.get("open_reviews", 0))
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write("## Official Snowflake content freshness\n\n")
+              f.write(f"- Checked sources: {check.get('checked', 0)}\n")
+              f.write(f"- Changed fingerprints: {changed}\n")
+              f.write(f"- Fetch/check failures: {failed}\n")
+              f.write(f"- Open editorial review items: {open_reviews}\n")
+              f.write("\nSource changes never rewrite certification answers automatically.\n")
+          if failed:
+              raise SystemExit("One or more official sources could not be checked")
+          if changed:
+              raise SystemExit("Official Snowflake source changes detected; editorial review queue requires attention")
+          PY
+      - name: Upload freshness evidence
+        if: always() && steps.configured.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-snowflake-content-freshness
+          path: |
+            freshness-check.json
+            freshness-status.json
+          if-no-files-found: ignore
+          retention-days: 14
