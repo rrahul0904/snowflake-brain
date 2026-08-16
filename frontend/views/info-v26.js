@@ -14,15 +14,17 @@ const pages = {
     title: "What changed in the guide.",
     body: [
       "V26 rebuilds the learner experience around a single curriculum, practice, reference, journal, and persisted mock-exam system.",
-      "The current release adds the activity globe, certification chooser, study sidebar, unified practice gateway, interrupted-sitting recovery, dedicated exam navigator, results review, themes, reference library, journal presentation, and feedback flow."
+      "The production roadmap adds PostgreSQL persistence, operational observability, account recovery and data controls, official-source freshness monitoring, version-bound editorial governance, and evidence-based Adaptive Readiness."
     ]
   },
   "#/privacy": {
     kicker: "Privacy",
-    title: "Local-first study data.",
+    title: "Your certification data stays under your control.",
     body: [
-      "This development application stores study progress, practice attempts, mock sessions, notes, and feedback in its configured application database.",
-      "Do not place credentials, secrets, or sensitive personal information in notes or feedback fields."
+      "Your candidate account can store certification progress, practice attempts, mock-exam history, spaced-review state, mistake-notebook entries, study preferences, bookmarks, notes, and account activity in the configured application database.",
+      "Signed-in candidates can export their portable study data and request permanent account deletion. Password material, action and session tokens, OAuth state, and provider payment identifiers are excluded from the candidate export.",
+      "Permanent deletion removes candidate-linked attempts, exams, learning state, notes, feedback, and account records after required subscription checks. A random non-identifying deletion receipt may remain as operational proof that the request completed.",
+      "Do not place credentials, secrets, payment data, or other sensitive information in free-text notes or feedback fields."
     ]
   }
 };
