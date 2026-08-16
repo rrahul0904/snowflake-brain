@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -23,7 +22,7 @@ from ..account_lifecycle import (
     resend_email_verification,
     unlink_identity,
 )
-from ..auth import COOKIE_NAME, get_current_candidate
+from ..auth import COOKIE_NAME, require_candidate
 from ..config import AUTH_COOKIE_SECURE
 
 
@@ -66,7 +65,7 @@ def _lifecycle_error(exc: AccountLifecycleError, status_code: int = 400) -> HTTP
 
 
 @router.get("/account/status")
-def status(candidate: dict[str, Any] = Depends(get_current_candidate)) -> dict[str, Any]:
+def status(candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     try:
         return account_status(_candidate_id(candidate))
     except AccountLifecycleError as exc:
@@ -74,7 +73,7 @@ def status(candidate: dict[str, Any] = Depends(get_current_candidate)) -> dict[s
 
 
 @router.post("/account/email-verification/resend")
-def resend_verification(candidate: dict[str, Any] = Depends(get_current_candidate)) -> dict[str, Any]:
+def resend_verification(candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     try:
         return resend_email_verification(_candidate_id(candidate))
     except AccountLifecycleError as exc:
@@ -110,7 +109,7 @@ def password_reset_confirm(payload: PasswordResetConfirmRequest, response: Respo
 def password_change(
     payload: ChangePasswordRequest,
     response: Response,
-    candidate: dict[str, Any] = Depends(get_current_candidate),
+    candidate: dict[str, Any] = Depends(require_candidate),
 ) -> dict[str, Any]:
     try:
         result = change_password(_candidate_id(candidate), payload.current_password, payload.new_password)
@@ -123,7 +122,7 @@ def password_change(
 @router.post("/account/change-email/request")
 def email_change_request(
     payload: ChangeEmailRequest,
-    candidate: dict[str, Any] = Depends(get_current_candidate),
+    candidate: dict[str, Any] = Depends(require_candidate),
 ) -> dict[str, Any]:
     try:
         return request_email_change(_candidate_id(candidate), payload.new_email)
@@ -142,12 +141,12 @@ def email_change_confirm(payload: TokenRequest, response: Response) -> dict[str,
 
 
 @router.get("/account/identities")
-def identities(candidate: dict[str, Any] = Depends(get_current_candidate)) -> list[dict[str, Any]]:
+def identities(candidate: dict[str, Any] = Depends(require_candidate)) -> list[dict[str, Any]]:
     return list_identities(_candidate_id(candidate))
 
 
 @router.delete("/account/identities/{identity_id}")
-def identity_unlink(identity_id: int, candidate: dict[str, Any] = Depends(get_current_candidate)) -> dict[str, Any]:
+def identity_unlink(identity_id: int, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     try:
         return unlink_identity(_candidate_id(candidate), identity_id)
     except AccountLifecycleError as exc:
@@ -155,7 +154,7 @@ def identity_unlink(identity_id: int, candidate: dict[str, Any] = Depends(get_cu
 
 
 @router.get("/account/export")
-def export_account(candidate: dict[str, Any] = Depends(get_current_candidate)) -> JSONResponse:
+def export_account(candidate: dict[str, Any] = Depends(require_candidate)) -> JSONResponse:
     try:
         payload = account_export_payload(_candidate_id(candidate))
     except AccountLifecycleError as exc:
@@ -169,7 +168,7 @@ def export_account(candidate: dict[str, Any] = Depends(get_current_candidate)) -
 @router.delete("/account")
 def remove_account(
     payload: DeleteAccountRequest,
-    candidate: dict[str, Any] = Depends(get_current_candidate),
+    candidate: dict[str, Any] = Depends(require_candidate),
 ) -> JSONResponse:
     try:
         result = delete_account(
