@@ -29,8 +29,8 @@ const pages = {
   }
 };
 
-export default async function mount(container) {
-  const path = (window.location.hash || "#/about").split("?")[0];
+export default async function mount(container, params = {}) {
+  const path = params.__route || (window.location.hash || "#/about").split("?")[0];
   const page = pages[path] || pages["#/about"];
   container.innerHTML = `<main class="v26-page v26-info-page"><section class="v26-page-intro"><p class="v26-kicker">${page.kicker}</p><h1>${page.title}</h1></section><section class="v26-info-copy">${page.body.map((item) => `<p>${item}</p>`).join("")}</section></main>`;
 }
