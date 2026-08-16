@@ -7,6 +7,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..adaptive_readiness import adaptive_question_ids
 from ..auth import require_candidate, require_owned_mock_session
 from ..database import connect
 from ..entitlements import reserve_daily_questions
@@ -73,15 +74,13 @@ class QuizGradeRequest(BaseModel):
 
 class AttemptRequest(BaseModel):
     selected: list[int] = Field(default_factory=list)
-    correct: bool | None = None  # legacy client field; ignored
+    correct: bool | None = None
     mode: str = "practice"
     response_time_ms: int | None = Field(default=None, ge=0, le=3_600_000)
     confidence: int | None = Field(default=None, ge=1, le=5)
 
 
 def _must_have_been_served(candidate_id: int, question_id: str) -> None:
-    # All question detail/grade/attempt lookups are bound to a previous server
-    # selection. This avoids making even fallback questions enumerable.
     if not candidate_was_served_question(candidate_id, question_id):
         raise HTTPException(status_code=404, detail="Question not found")
 
@@ -118,8 +117,6 @@ def candidate_mock_config(track_id: str = "snowpro-core", candidate: dict[str, A
     del candidate
     payload = dict(public_config(track_id))
     payload.pop("question_bank", None)
-    # Product-level Free entitlement metadata is safe to expose; bank pools,
-    # selection strategies, reset window keys and authoring metadata remain private.
     payload["free_full_content_mock"] = {
         "question_count": FREE_FULL_CONTENT_MOCK_QUESTIONS,
         "time_limit_minutes": FREE_FULL_CONTENT_MOCK_MINUTES,
@@ -135,11 +132,27 @@ def start_candidate_practice(payload: CertificationQuizStart, candidate: dict[st
             status_code=403,
             detail={"code": "session_required", "message": "Private source sets are not part of the candidate product. Start practice from the Free or Premium experience."},
         )
-    selected = select_certification_questions(payload, candidate, trusted_exam_session=False)
+    preferred: list[str] | None = None
+    if str(payload.mode or "").strip().lower().replace("_", "-") == "adaptive":
+        # Ask the intelligence layer for a wider candidate priority set, then let
+        # the canonical selector enforce active release, tier eligibility, quota,
+        # served-history recording and answer hiding.
+        preferred = adaptive_question_ids(
+            candidate["id"],
+            payload.track_id,
+            limit=min(100, max(int(payload.count) * 4, int(payload.count))),
+        )
+    selected = select_certification_questions(
+        payload,
+        candidate,
+        trusted_exam_session=False,
+        preferred_question_ids=preferred,
+    )
     return {
         "questions": [_candidate_question(dict(item)) for item in selected.get("questions") or []],
         "total": int(selected.get("total") or 0),
         "quota": selected.get("quota"),
+        "selection_strategy": selected.get("selection_strategy"),
     }
 
 
@@ -152,9 +165,6 @@ def start_candidate_mock(payload: TierMockSessionStart, candidate: dict[str, Any
         quick_count = int(public_config(payload.track_id).get("quick_mock", {}).get("question_count") or 30)
         reserve_daily_questions(candidate["id"], candidate["membership"], quick_count)
 
-    # Limited timed-exam starts use a DB-backed reservation before any question
-    # selection/session creation. This closes the race where concurrent requests
-    # could all observe the same remaining weekly/monthly allowance.
     reset = mock_reset_context(candidate, normalized_mode)
     reservation_id = reserve_exam_attempt(candidate, payload.track_id, normalized_mode, reset)
     try:

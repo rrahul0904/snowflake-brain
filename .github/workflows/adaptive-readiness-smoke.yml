@@ -1,0 +1,87 @@
+name: Adaptive Readiness Smoke
+
+on:
+  pull_request:
+    paths:
+      - "app/adaptive_readiness.py"
+      - "app/postgres_backend.py"
+      - "app/main.py"
+      - "app/question_bank_selection.py"
+      - "app/routers/adaptive.py"
+      - "app/routers/question_bank_runtime.py"
+      - "frontend/api.js"
+      - "frontend/router-complete.js"
+      - "frontend/components/nav.js"
+      - "frontend/views/adaptive-v26.js"
+      - "migrations/postgres/020_adaptive_readiness.sql"
+      - "scripts/test_adaptive_readiness_intelligence.py"
+      - "scripts/test_adaptive_frontend_contract.py"
+      - ".github/workflows/adaptive-readiness-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: adaptive-readiness-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile adaptive runtime
+        run: python -m compileall -q app scripts/test_adaptive_readiness_intelligence.py scripts/test_adaptive_frontend_contract.py
+      - name: Verify adaptive browser contract
+        run: |
+          node --check frontend/api.js
+          node --check frontend/router-complete.js
+          node --check frontend/components/nav.js
+          node --check frontend/views/adaptive-v26.js
+          python scripts/test_adaptive_frontend_contract.py
+      - name: Verify adaptive readiness on SQLite
+        run: python scripts/test_adaptive_readiness_intelligence.py
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: adaptive_ci
+          POSTGRES_USER: snowflake
+          POSTGRES_PASSWORD: snowflake
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U snowflake -d adaptive_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://snowflake:snowflake@127.0.0.1:5432/adaptive_ci
+      DATABASE_SCHEMA: adaptive_ci
+      DB_POOL_MIN_SIZE: "2"
+      DB_POOL_MAX_SIZE: "12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile adaptive runtime
+        run: python -m compileall -q app scripts/test_adaptive_readiness_intelligence.py
+      - name: Verify adaptive readiness on PostgreSQL
+        run: python scripts/test_adaptive_readiness_intelligence.py

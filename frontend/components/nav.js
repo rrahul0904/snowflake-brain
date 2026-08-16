@@ -5,6 +5,7 @@ import { activeTrack, navigateWithTrack, normalizeTrack, setActiveTrack } from "
 const certificationItems = [
   ["#/curriculum", "Curriculum"],
   ["#/practice", "Practice"],
+  ["#/adaptive", "Adaptive"],
   ["#/reference", "Reference"],
   ["#/journal", "Journal"],
 ];
@@ -16,6 +17,7 @@ const aliases = new Map([
   ["#/quick-reference", "#/reference"], ["#/glossary", "#/reference"],
   ["#/mock", "#/practice"], ["#/mock/start", "#/practice"], ["#/mock/session", "#/practice"], ["#/mock/result", "#/practice"], ["#/mock/history", "#/practice"],
   ["#/diagnostic", "#/practice"], ["#/drill", "#/practice"], ["#/quiz", "#/practice"],
+  ["#/readiness", "#/adaptive"],
   ["#/article", "#/journal"], ["#/account", "#/membership"],
 ]);
 
@@ -48,7 +50,7 @@ export async function renderNav() {
     <nav class="v26-primary-nav" aria-label="Primary navigation">${primaryItems.map(([href, label]) => `<a href="${href}" data-href="${href}">${label}</a>`).join("")}${account ? "" : `<button class="v26-mobile-auth" type="button" data-auth-intent="login">Sign In</button><button class="v26-mobile-auth" type="button" data-auth-intent="signup">Create Account</button>`}</nav>
     <div class="v26-nav-actions">
       ${account ? `<div class="v26-cert-menu"><button class="v26-cert-trigger" type="button" data-cert-trigger aria-haspopup="menu" aria-expanded="false"><span>${cert.exam_code || "COF-C03"}</span><i>⌄</i></button><div class="v26-cert-popover" data-cert-popover role="menu" hidden><a class="v26-cert-all" href="#/certifications" role="menuitem"><span>All certifications</span><b>View paths →</b></a>${(catalog.length ? catalog : [cert]).map((item) => item.id === "snowpro-core" ? `<button type="button" role="menuitem" data-track="snowpro-core" class="selected"><span>${escapeHtml(item.exam_code || "COF-C03")}</span><b>${escapeHtml(item.title || "SnowPro Core")}</b><em>Current</em></button>` : `<div class="v26-cert-option-soon" role="menuitem" aria-disabled="true"><span>${escapeHtml(item.exam_code || "SnowPro")}</span><b>${escapeHtml(item.title || "Advanced certification")}</b><em>Coming Soon</em></div>`).join("")}</div></div>` : ""}
-      ${account ? `<div class="v26-account-menu"><button class="v26-account-link compact" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em>${methods ? `<small>Signed in with ${escapeHtml(methods)}</small>` : ""}</div><a href="#/account" role="menuitem">Account & Sessions</a><a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">My Progress</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
+      ${account ? `<div class="v26-account-menu"><button class="v26-account-link compact" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em>${methods ? `<small>Signed in with ${escapeHtml(methods)}</small>` : ""}</div><a href="#/account" role="menuitem">Account & Sessions</a><a href="#/adaptive?track_id=${encodeURIComponent(selected)}" role="menuitem">Adaptive Readiness</a><a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">My Progress</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
       ${account ? `<a class="v26-mock-cta" href="#/mock?track_id=${encodeURIComponent(selected)}">${account?.plan_code === "free" ? "Weekly Mock" : "Take Mock Exam"}</a>` : ""}
       <button class="v26-theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme">${theme === "dark" ? "☼" : "☾"}</button>
     </div>

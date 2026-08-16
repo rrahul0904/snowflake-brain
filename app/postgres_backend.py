@@ -59,6 +59,8 @@ _SERIAL_ID_TABLES = {
     "editorial_qa_runs",
     "editorial_findings",
     "editorial_review_events",
+    "candidate_readiness_snapshots",
+    "candidate_adaptive_recommendations",
 }
 _REPLACE_CONFLICT_TARGETS: dict[str, tuple[str, ...]] = {
     "pending_identity_links": ("token_hash",),
