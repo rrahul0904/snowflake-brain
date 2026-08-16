@@ -122,6 +122,30 @@ def _select_targeted(rows: list[dict[str, Any]], count: int, mode: str, skill_id
     return ranked[:count]
 
 
+def _select_adaptive_preferred(rows: list[dict[str, Any]], count: int, preferred_question_ids: list[str]) -> list[dict[str, Any]]:
+    """Apply intelligence ranking only after release/tier filtering.
+
+    The adaptive engine can prioritize IDs, but this selector remains the sole
+    candidate question-delivery boundary. Any preferred ID unavailable to the
+    candidate's tier is ignored and the session fills from normal exposure-aware
+    eligible inventory.
+    """
+    rank = {str(question_id): index for index, question_id in enumerate(preferred_question_ids)}
+    preferred = sorted(
+        [row for row in rows if str(row.get("id") or "") in rank],
+        key=lambda row: (rank[str(row["id"])], question_exposure_rank(row, "adaptive")),
+    )
+    selected = preferred[:count]
+    seen = {str(row["id"]) for row in selected}
+    if len(selected) < count:
+        fallback = sorted(
+            [row for row in rows if str(row.get("id") or "") not in seen],
+            key=lambda row: question_exposure_rank(row, "adaptive"),
+        )
+        selected.extend(fallback[: count - len(selected)])
+    return selected[:count]
+
+
 def _domain_id(row: dict[str, Any]) -> str:
     return str(row.get("mapped_domain_id") or row.get("domain_id") or "")
 
@@ -133,13 +157,6 @@ def _select_blueprint_with_fresh_fallback(
     mode: str,
     excluded_question_ids: set[str],
 ) -> tuple[list[dict[str, Any]], int]:
-    """Preserve blueprint targets while minimizing reset-window repeats.
-
-    Freshness is evaluated inside every domain bucket. A domain with enough
-    fresh inventory contributes only fresh questions. If one domain is short,
-    only that domain fills its deficit from excluded questions, using the
-    existing exposure rank so the least-seen / least-recent repeats win.
-    """
     if not excluded_question_ids:
         return select_blueprint_questions(rows, domains, count, mode), 0
 
@@ -179,16 +196,9 @@ def _select_blueprint_with_fresh_fallback(
                     seen.add(row["id"])
                     repeated_count += 1
 
-    # A malformed/temporarily sparse bank may not have enough inventory inside
-    # one blueprint bucket. Preserve prior behavior by filling the total count,
-    # but still consume any remaining fresh questions before repeats.
     if len(selected) < count:
         remaining_fresh = sorted(
-            [
-                row
-                for row in rows
-                if row["id"] not in seen and str(row.get("id") or "") not in excluded_question_ids
-            ],
+            [row for row in rows if row["id"] not in seen and str(row.get("id") or "") not in excluded_question_ids],
             key=lambda row: question_exposure_rank(row, mode),
         )
         for row in remaining_fresh:
@@ -199,11 +209,7 @@ def _select_blueprint_with_fresh_fallback(
 
     if len(selected) < count:
         remaining_repeats = sorted(
-            [
-                row
-                for row in rows
-                if row["id"] not in seen and str(row.get("id") or "") in excluded_question_ids
-            ],
+            [row for row in rows if row["id"] not in seen and str(row.get("id") or "") in excluded_question_ids],
             key=lambda row: question_exposure_rank(row, mode),
         )
         for row in remaining_repeats:
@@ -222,6 +228,7 @@ def select_certification_questions(
     *,
     trusted_exam_session: bool = False,
     exclude_question_ids: set[str] | None = None,
+    preferred_question_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     cert = _cert(payload.track_id)
     count = max(1, min(int(payload.count), 500))
@@ -248,9 +255,6 @@ def select_certification_questions(
         persisted = _best_reliable_edges(conn, payload.track_id)
     rows, reliable_count, heuristic_count = _assign_edges(rows, payload.track_id, persisted)
     rows = _enrich_rows(rows, candidate["id"])
-    # Managed private-bank questions are candidate-visible only when they are
-    # members of the currently active release snapshot. Fresh imports therefore
-    # remain staging/admin content until explicit release activation.
     rows = filter_rows_to_active_release(rows, payload.track_id)
     rows = _safe_fallback_rows(rows, pinned_internal_test=bool(payload.test_id and trusted_exam_session))
     rows = filter_rows_for_entitlement(rows, candidate["membership"], mode, count)
@@ -280,6 +284,9 @@ def select_certification_questions(
     if payload.test_id:
         selected = sorted(rows, key=lambda row: (int(row.get("question_position") or 0), row.get("id") or ""))[:count]
         strategy = "source_exam_order"
+    elif mode == "adaptive" and preferred_question_ids:
+        selected = _select_adaptive_preferred(rows, count, preferred_question_ids)
+        strategy = "adaptive_readiness_entitlement_aware"
     elif payload.skill_id:
         selected = _select_targeted(rows, count, mode, payload.skill_id, payload.domain_id)
         strategy = "skill_targeted_exposure_aware"
@@ -287,9 +294,6 @@ def select_certification_questions(
         selected = _select_targeted(rows, count, mode, None, payload.domain_id)
         strategy = "domain_targeted_exposure_aware"
     elif mode in BLUEPRINT_MODES:
-        # The Free weekly product is a 30-question full-content timed mock. It
-        # deliberately uses the same 30Q blueprint composition as Quick Mock,
-        # while entitlement filtering above still limits Free to the Free pool.
         blueprint_mode = "quick-mock" if mode == "weekly-mock" and count == 30 else mode
         selected, reset_repeat_count = _select_blueprint_with_fresh_fallback(
             rows,
