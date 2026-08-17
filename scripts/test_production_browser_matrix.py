@@ -76,6 +76,33 @@ def assert_client_clean(page: Page, label: str) -> None:
         raise AssertionError(f"Client errors for {label}: {errors}")
 
 
+def assert_membership_layout(page: Page, profile: Profile) -> dict:
+    cards = page.locator(".v26-membership-page .v26-plan-card")
+    if cards.count() != 5:
+        raise AssertionError(f"{profile.name} membership expected five plans, found {cards.count()}")
+
+    metrics = page.evaluate(
+        """() => {
+          const first = document.querySelector('.v26-membership-page .v26-plan-card');
+          const heading = first?.querySelector('h2');
+          const feature = first?.querySelector('li');
+          const root = document.documentElement;
+          return {
+            overflow: root.scrollWidth > window.innerWidth + 2,
+            headingPx: heading ? parseFloat(getComputedStyle(heading).fontSize) : 0,
+            featurePx: feature ? parseFloat(getComputedStyle(feature).fontSize) : 0,
+          };
+        }"""
+    )
+    if metrics["overflow"]:
+        raise AssertionError(f"{profile.name} membership has horizontal overflow")
+    if not 26 <= metrics["headingPx"] <= 34:
+        raise AssertionError(f"{profile.name} membership plan heading scale regressed: {metrics['headingPx']}px")
+    if metrics["featurePx"] < 12:
+        raise AssertionError(f"{profile.name} membership feature text is too small: {metrics['featurePx']}px")
+    return metrics
+
+
 def register_candidate(page: Page, suffix: str) -> None:
     result = page.evaluate(
         """async ({suffix}) => {
@@ -119,6 +146,7 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_accessible_baseline(page, f"{profile.name} home")
         assert_client_clean(page, f"{profile.name} home")
 
+        # Public privacy page must remain independently navigable on every launch profile.
         page.goto(f"{BASE_URL}/#/privacy", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/privacy")
         page.get_by_role("heading", name="Your certification data stays under your control.").wait_for(
@@ -127,7 +155,33 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_accessible_baseline(page, f"{profile.name} privacy")
         assert_client_clean(page, f"{profile.name} privacy")
 
+        # Membership is a public commercial surface and must not regress on desktop or mobile.
+        page.goto(f"{BASE_URL}/#/membership", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/membership")
+        page.locator(".v26-membership-page h1").wait_for(state="visible", timeout=10_000)
+        if "Study freely" not in page.locator(".v26-membership-page h1").inner_text():
+            raise AssertionError(f"{profile.name} membership headline did not render")
+        membership_metrics = assert_membership_layout(page, profile)
+        assert_accessible_baseline(page, f"{profile.name} membership")
+        assert_client_clean(page, f"{profile.name} membership")
+
+        # Account action links must be public and fail safely when incomplete.
+        page.goto(f"{BASE_URL}/#/account-action", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/account-action")
+        page.get_by_role("heading", name="Invalid or incomplete link").wait_for(state="visible", timeout=10_000)
+        assert_accessible_baseline(page, f"{profile.name} account action")
+        assert_client_clean(page, f"{profile.name} account action")
+
         register_candidate(page, profile.name.replace("-", ""))
+
+        # Registration must visibly remain unverified in the normal account experience.
+        page.goto(f"{BASE_URL}/#/account", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/account")
+        page.get_by_text("Verification required", exact=True).wait_for(state="visible", timeout=10_000)
+        page.get_by_text("Action required", exact=True).wait_for(state="visible", timeout=10_000)
+        assert_accessible_baseline(page, f"{profile.name} account")
+        assert_client_clean(page, f"{profile.name} account")
+
         page.goto(f"{BASE_URL}/#/adaptive?track_id=snowpro-core", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/adaptive")
         page.get_by_role("heading", name="What should you study next?").wait_for(state="visible", timeout=10_000)
@@ -141,7 +195,13 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
 
         if console_errors:
             raise AssertionError(f"Browser console errors for {profile.name}: {console_errors}")
-        return {"profile": profile.name, "status": "pass", "home_load_ms": round(load_ms, 2)}
+        return {
+            "profile": profile.name,
+            "status": "pass",
+            "home_load_ms": round(load_ms, 2),
+            "membership_heading_px": membership_metrics["headingPx"],
+            "membership_feature_px": membership_metrics["featurePx"],
+        }
     finally:
         context.close()
 
@@ -156,7 +216,11 @@ def main() -> None:
                 try:
                     result = run_profile(browser, profile)
                     results.append(result)
-                    print(f"Browser profile PASS: {profile.name} ({result['home_load_ms']} ms)", flush=True)
+                    print(
+                        f"Browser profile PASS: {profile.name} "
+                        f"({result['home_load_ms']} ms; membership heading {result['membership_heading_px']}px)",
+                        flush=True,
+                    )
                 except Exception as exc:
                     failure = {
                         "profile": profile.name,
@@ -175,7 +239,11 @@ def main() -> None:
         write_report({"status": "pass", "results": results})
         print("Production browser matrix: PASS")
         for item in results:
-            print(f"- {item['profile']}: home network-idle {item['home_load_ms']} ms")
+            print(
+                f"- {item['profile']}: home network-idle {item['home_load_ms']} ms; "
+                f"membership heading {item['membership_heading_px']} px; "
+                f"feature text {item['membership_feature_px']} px"
+            )
     except Exception:
         if not REPORT_PATH.exists():
             write_report({"status": "failure", "results": results, "traceback": traceback.format_exc()})
