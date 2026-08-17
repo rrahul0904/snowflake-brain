@@ -1,0 +1,228 @@
+/* 2026-08-17 membership page visual hierarchy pass.
+   This is deliberately loaded after the recording-parity layers so the
+   five-plan production membership experience is not forced into the type
+   scale that was designed for the earlier two-card prototype. */
+
+.v26-membership-page{
+  max-width:1180px;
+  padding-bottom:110px;
+}
+
+.v26-membership-page .v26-page-intro.centered{
+  max-width:860px;
+  margin:0 auto 42px;
+}
+.v26-membership-page .v26-page-intro .v26-kicker{
+  font-size:9px;
+  letter-spacing:.15em;
+}
+.v26-membership-page .v26-page-intro h1{
+  max-width:780px;
+  margin:10px auto 15px;
+  font:500 clamp(40px,5vw,58px)/1.02 var(--serif);
+  letter-spacing:-.035em;
+}
+.v26-membership-page .v26-page-intro>p:last-child{
+  max-width:720px;
+  margin:0 auto;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.v26-membership-page .v26-account-banner{
+  margin-bottom:26px;
+  padding:21px 24px;
+}
+.v26-membership-page .v26-account-banner h2{
+  margin-bottom:7px;
+  font:500 23px/1.15 var(--serif);
+  letter-spacing:-.015em;
+}
+.v26-membership-page .v26-account-banner p:not(.v26-kicker){
+  font-size:12px;
+  line-height:1.6;
+}
+.v26-membership-page .v26-account-methods{
+  margin-top:4px!important;
+  font-size:10px!important;
+}
+.v26-membership-page .v26-current-plan{
+  font-size:8.5px;
+}
+
+.v26-membership-page .v26-entitlement-usage{
+  margin:-8px auto 34px;
+}
+.v26-membership-page .v26-entitlement-usage>div{
+  padding:17px 20px;
+}
+.v26-membership-page .v26-entitlement-usage span{
+  font-size:8.5px;
+}
+.v26-membership-page .v26-entitlement-usage strong{
+  font:500 16px/1.35 var(--serif);
+}
+
+/* Three cards on the first row, two visually centered on the second. */
+.v26-membership-page .v26-plan-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:18px;
+  align-items:stretch;
+}
+.v26-membership-page .v26-plan-card{
+  grid-column:span 2;
+  min-width:0;
+  min-height:510px;
+  padding:28px 28px 26px;
+  border-color:var(--border-strong);
+  background:var(--surface);
+}
+.v26-membership-page .v26-plan-card:nth-child(4){grid-column:2/span 2}
+.v26-membership-page .v26-plan-card:nth-child(5){grid-column:4/span 2}
+.v26-membership-page .v26-plan-card.featured{
+  border-color:var(--border-strong);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 7%,transparent),transparent 48%),var(--surface);
+}
+.v26-membership-page .v26-plan-card.current{
+  border-color:var(--accent);
+  box-shadow:inset 0 3px 0 var(--accent);
+}
+
+.v26-membership-page .v26-plan-label{
+  color:var(--accent-strong);
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.13em;
+}
+.v26-membership-page .v26-plan-card h2{
+  min-height:66px;
+  margin:18px 0 8px;
+  display:flex;
+  align-items:flex-end;
+  font:500 clamp(27px,2.4vw,33px)/1.08 var(--serif);
+  letter-spacing:-.025em;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.v26-membership-page .v26-plan-price{
+  min-height:52px;
+  margin-bottom:15px;
+  gap:8px;
+  align-items:baseline;
+}
+.v26-membership-page .v26-plan-price strong{
+  font:500 clamp(34px,3vw,40px)/1 var(--serif);
+  letter-spacing:-.025em;
+}
+.v26-membership-page .v26-plan-price span{
+  max-width:110px;
+  color:var(--muted);
+  font-size:10.5px;
+  line-height:1.35;
+}
+.v26-membership-page .v26-plan-card>p{
+  min-height:72px;
+  margin:0;
+  color:var(--muted);
+  font-size:12.5px;
+  line-height:1.65;
+}
+.v26-membership-page .v26-plan-card h3{
+  margin:20px 0 0;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.12em;
+}
+.v26-membership-page .v26-plan-card ul{
+  margin:15px 0 28px;
+  gap:10px;
+}
+.v26-membership-page .v26-plan-card li{
+  padding-left:19px;
+  font-size:12px;
+  line-height:1.55;
+}
+.v26-membership-page .v26-plan-card li::before{
+  top:.05em;
+  font-size:11px;
+}
+.v26-membership-page .v26-plan-card>.v26-btn,
+.v26-membership-page .v26-plan-current{
+  min-height:42px;
+  font-size:10px;
+}
+
+.v26-membership-page .v26-billing-note{
+  max-width:860px;
+  margin-top:24px;
+  font-size:10px;
+  line-height:1.65;
+}
+.v26-membership-page .v26-membership-assurance{
+  margin-top:42px;
+}
+.v26-membership-page .v26-membership-assurance>div{
+  min-height:132px;
+  padding:24px 26px;
+}
+.v26-membership-page .v26-membership-assurance span{
+  margin-bottom:9px;
+  font-size:8.5px;
+}
+.v26-membership-page .v26-membership-assurance strong{
+  color:var(--muted);
+  font:500 12px/1.6 var(--sans);
+}
+
+@media(max-width:1050px){
+  .v26-membership-page .v26-plan-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .v26-membership-page .v26-plan-card,
+  .v26-membership-page .v26-plan-card:nth-child(4),
+  .v26-membership-page .v26-plan-card:nth-child(5){
+    grid-column:auto;
+  }
+  .v26-membership-page .v26-plan-card{
+    min-height:500px;
+  }
+}
+
+@media(max-width:700px){
+  .v26-membership-page{
+    padding-bottom:80px;
+  }
+  .v26-membership-page .v26-page-intro.centered{
+    margin-bottom:30px;
+  }
+  .v26-membership-page .v26-page-intro h1{
+    font-size:clamp(34px,11vw,44px);
+  }
+  .v26-membership-page .v26-page-intro>p:last-child{
+    font-size:12px;
+  }
+  .v26-membership-page .v26-plan-grid{
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+  .v26-membership-page .v26-plan-card,
+  .v26-membership-page .v26-plan-card:nth-child(4),
+  .v26-membership-page .v26-plan-card:nth-child(5){
+    grid-column:auto;
+    min-height:0;
+    padding:25px 22px;
+  }
+  .v26-membership-page .v26-plan-card h2{
+    min-height:0;
+    font-size:30px;
+  }
+  .v26-membership-page .v26-plan-card>p{
+    min-height:0;
+  }
+  .v26-membership-page .v26-plan-price strong{
+    font-size:36px;
+  }
+}
