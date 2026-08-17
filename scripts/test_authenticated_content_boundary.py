@@ -39,11 +39,12 @@ def main() -> None:
         response = client.get(path)
         check(response.status_code == 200, f"public endpoint must remain available: {path} -> {response.status_code}")
 
-    # Public SPA modules contain marketing/informational UI only.
+    # Public SPA modules contain marketing/informational or account-action UI only.
     for path in (
         "/static/views/home-v26.js",
         "/static/views/membership-v26.js",
         "/static/views/info-v26.js",
+        "/static/views/account-action-v26.js",
     ):
         response = client.get(path)
         check(response.status_code == 200, f"public view module must remain available: {path}")
@@ -116,7 +117,7 @@ def main() -> None:
 
     # The SPA must gate protected routes before importing/rendering their views.
     router = (ROOT / "frontend" / "router-complete.js").read_text(encoding="utf-8")
-    check('const publicRoutes=new Set(["#/home","#/membership","#/about","#/changelog","#/privacy"])' in router, "public SPA route allowlist is explicit")
+    check('const publicRoutes=new Set(["#/home","#/membership","#/about","#/changelog","#/privacy","#/account-action"])' in router, "public SPA route allowlist is explicit and limited to informational/account-action routes")
     check("if(!publicRoutes.has(path))" in router and "if(!candidate())" in router, "protected SPA routes require candidate state")
     check("authentication-required" in router, "anonymous deep links render the access gate, not study content")
 

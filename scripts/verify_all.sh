@@ -39,6 +39,9 @@ echo "== V26 functional and visual contract =="
 echo "== Candidate authentication and membership =="
 "$PYTHON_BIN" scripts/test_auth_membership.py
 
+echo "== Account verification and recording UX =="
+"$PYTHON_BIN" scripts/test_auth_verification_ux.py
+
 echo "== Login-required certification content boundary =="
 "$PYTHON_BIN" scripts/test_authenticated_content_boundary.py
 

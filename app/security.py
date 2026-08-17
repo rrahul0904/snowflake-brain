@@ -30,10 +30,15 @@ PUBLIC_API_PREFIXES = (
     "/api/auth/",
     "/api/billing/",
 )
+# Only marketing/informational modules and the secure account-action module are
+# readable before authentication. The latter contains no study content; it must
+# load publicly so email verification/change-email/password-reset links can work
+# when the candidate is signed out or all sessions have been revoked.
 PUBLIC_STATIC_VIEWS = {
     "/static/views/home-v26.js",
     "/static/views/membership-v26.js",
     "/static/views/info-v26.js",
+    "/static/views/account-action-v26.js",
 }
 
 
