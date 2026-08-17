@@ -1,5 +1,5 @@
 import { candidate, linkGoogle, logIn, logOut, signUp } from "../auth.js";
-import { createBillingCheckout, createBillingPortal, getAuthProviders, getPendingGoogleLink } from "../api.js";
+import { api, createBillingCheckout, createBillingPortal, getAuthProviders, getPendingGoogleLink } from "../api.js";
 
 let bound = false;
 let pendingChecked = false;
@@ -27,10 +27,14 @@ function providers() {
   return providersPromise;
 }
 
+function modalShell(inner) {
+  return `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal" role="dialog" aria-modal="true"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button>${inner}</section>`;
+}
+
 function openAuth(intent = "login") {
   const signup = intent === "signup";
   const root = document.querySelector("#candidate-access-root");
-  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal" role="dialog" aria-modal="true" aria-labelledby="candidate-auth-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Candidate account</p><h2 id="candidate-auth-title">${signup ? "Create account" : "Sign in"}</h2><p>${signup ? "Create a Free account to save progress and use diagnostic practice." : "Sign in to continue with your saved progress and membership."}</p><button class="v26-btn secondary v26-google-auth" type="button" data-google-auth disabled>G&nbsp;&nbsp;Continue with Google</button><p class="v26-google-status" data-google-status aria-live="polite"></p><div class="v26-auth-divider"><span>or</span></div><form data-auth-form data-intent="${intent}" novalidate>${signup ? `<label>Name<input name="display_name" autocomplete="name" minlength="2" maxlength="120" required /></label>` : ""}<label>Email<input name="email" type="email" autocomplete="email" maxlength="320" required /></label><label>Password<input name="password" type="password" autocomplete="${signup ? "new-password" : "current-password"}" minlength="8" maxlength="256" required /></label><button class="v26-btn primary" type="submit">${signup ? "Create Free Account" : "Sign In"}</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch">${signup ? "Already have an account?" : "Don't have an account?"} <button type="button" data-auth-intent="${signup ? "login" : "signup"}">${signup ? "Sign in →" : "Create account →"}</button></p></section>`;
+  root.innerHTML = modalShell(`<p class="v26-kicker">Candidate account</p><h2 id="candidate-auth-title">${signup ? "Create account" : "Sign in"}</h2><p>${signup ? "Create a Free account to save your SnowPro progress, practice history, and readiness evidence." : "Sign in to continue with your saved progress and membership."}</p><button class="v26-btn secondary v26-google-auth" type="button" data-google-auth disabled>G&nbsp;&nbsp;Continue with Google</button><p class="v26-google-status" data-google-status aria-live="polite"></p><div class="v26-auth-divider"><span>or</span></div><form data-auth-form data-intent="${intent}" novalidate>${signup ? `<label>Name<input name="display_name" autocomplete="name" minlength="2" maxlength="120" required /></label>` : ""}<label>Email<input name="email" type="email" autocomplete="email" maxlength="320" required /></label><label>Password<input name="password" type="password" autocomplete="${signup ? "new-password" : "current-password"}" minlength="8" maxlength="256" required /></label>${signup ? "" : `<button class="v26-text-action" type="button" data-password-reset>Forgot password?</button>`}<button class="v26-btn primary" type="submit">${signup ? "Create Free Account" : "Sign In"}</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch">${signup ? "Already have an account?" : "Don't have an account?"} <button type="button" data-auth-intent="${signup ? "login" : "signup"}">${signup ? "Sign in →" : "Create account →"}</button></p>`);
   hydrateGoogleButton(root);
   root.querySelector("input")?.focus();
   root.querySelector("[data-auth-form]")?.addEventListener("submit", submitAuth);
@@ -45,12 +49,46 @@ async function hydrateGoogleButton(root) {
   button.textContent = "G  Continue with Google";
   if (config.google?.enabled) {
     button.disabled = false;
+    button.title = "Continue securely with Google";
     if (status) status.textContent = "";
   } else {
     button.disabled = true;
     button.title = "Google OAuth credentials are not configured in this environment.";
-    if (status) status.textContent = "Google sign-in is available when OAuth is configured for this deployment.";
+    if (status) status.textContent = "Google sign-in is ready in the product and turns on when this deployment has its Google OAuth client configured.";
   }
+}
+
+function openPasswordReset(prefill = "") {
+  const root = document.querySelector("#candidate-access-root");
+  root.innerHTML = modalShell(`<p class="v26-kicker">Account recovery</p><h2>Reset your password</h2><p>Enter the email on your candidate account. If it exists, we’ll send a secure, expiring reset link.</p><form data-reset-request novalidate><label>Email<input name="email" type="email" autocomplete="email" value="${escapeText(prefill)}" maxlength="320" required /></label><button class="v26-btn primary" type="submit">Send reset link</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch"><button type="button" data-auth-intent="login">← Back to sign in</button></p>`);
+  const form = root.querySelector("[data-reset-request]");
+  root.querySelector("input")?.focus();
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const status = form.querySelector("[data-auth-status]");
+    const button = form.querySelector("button[type=submit]");
+    const email = String(new FormData(form).get("email") || "").trim();
+    if (!email.includes("@")) {
+      status.textContent = "Enter a valid email address.";
+      return;
+    }
+    button.disabled = true;
+    status.textContent = "Requesting a secure link…";
+    try {
+      await api("/api/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email }) });
+      status.textContent = "If an account exists for that email, a reset link has been sent. The link expires automatically.";
+      button.textContent = "Reset link requested";
+    } catch (error) {
+      status.textContent = error.message || "Unable to request a reset link.";
+      button.disabled = false;
+    }
+  });
+}
+
+function openVerificationNotice(account, delivery = "") {
+  const root = document.querySelector("#candidate-access-root");
+  const local = delivery === "queued";
+  root.innerHTML = modalShell(`<p class="v26-kicker">Verify your email</p><h2>One quick security step</h2><p>We created your candidate account for <strong>${escapeText(account?.email || "your email")}</strong>.</p><div class="v26-verification-callout"><strong>Check your email and open the verification link.</strong><span>${local ? "This local development environment queued the message in its development outbox. A configured production mailer sends the same secure link to the candidate." : "The verification link is single-use and expires automatically."}</span></div><div class="v26-modal-actions"><a class="v26-btn secondary" href="#/account" data-auth-close>Account security</a><button class="v26-btn primary" type="button" data-auth-close>Continue to guide</button></div>`);
 }
 
 async function maybeOpenPendingGoogleLink() {
@@ -63,7 +101,7 @@ async function maybeOpenPendingGoogleLink() {
 function openGoogleLink(pending) {
   const root = document.querySelector("#candidate-access-root");
   if (!root) return;
-  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal" role="dialog" aria-modal="true" aria-labelledby="google-link-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Secure account linking</p><h2 id="google-link-title">Link Google to your existing account</h2><p>We found an existing Snowflake Brain account for ${escapeText(pending.email || "this email")}. Sign in once with its password. Your existing membership, progress, and mock history will stay on the same candidate account.</p><form data-google-link-form novalidate><label>Existing password<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="256" required /></label><button class="v26-btn primary" type="submit">Verify and Link Google</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form></section>`;
+  root.innerHTML = modalShell(`<p class="v26-kicker">Secure account linking</p><h2 id="google-link-title">Link Google to your existing account</h2><p>We found an existing Snowflake Certification Guide account for ${escapeText(pending.email || "this email")}. Sign in once with its password. Your membership, progress, and mock history stay on the same candidate account.</p><form data-google-link-form novalidate><label>Existing password<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="256" required /></label><button class="v26-btn primary" type="submit">Verify and Link Google</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form>`);
   root.querySelector("input")?.focus();
   root.querySelector("[data-google-link-form]")?.addEventListener("submit", submitGoogleLink);
 }
@@ -92,7 +130,7 @@ async function submitGoogleLink(event) {
 
 function openPremiumNotice(message = "Checkout is not enabled in this environment. No membership change, payment, or tax charge has been made.") {
   const root = document.querySelector("#candidate-access-root");
-  root.innerHTML = `<div class="v26-modal-backdrop" data-auth-close></div><section class="v26-auth-modal v26-plan-modal" role="dialog" aria-modal="true" aria-labelledby="membership-change-title"><button class="v26-modal-close" type="button" data-auth-close aria-label="Close">×</button><p class="v26-kicker">Paid access</p><h2 id="membership-change-title">Secure billing</h2><p>${escapeText(message)}</p><p>Premium access is activated only after a verified server-to-server billing event. A success URL, browser flag, edited cookie, or reusable license key can never grant paid access.</p><a class="v26-btn secondary" href="#/membership" data-auth-close>Back to Membership</a></section>`;
+  root.innerHTML = modalShell(`<p class="v26-kicker">Paid access</p><h2 id="membership-change-title">Secure billing</h2><p>${escapeText(message)}</p><p>Premium access is activated only after a verified server-to-server billing event. A success URL, browser flag, edited cookie, or reusable license key can never grant paid access.</p><a class="v26-btn secondary" href="#/membership" data-auth-close>Back to Membership</a>`);
 }
 
 function closeModal() {
@@ -122,9 +160,14 @@ async function submitAuth(event) {
   status.textContent = "Working…";
   try {
     if (form.dataset.intent === "signup") {
-      await signUp({ display_name: values.display_name, email: values.email, password: values.password });
-    } else {
-      await logIn({ email: values.email, password: values.password });
+      const result = await signUp({ display_name: values.display_name, email: values.email, password: values.password });
+      openVerificationNotice(result.candidate, result.verification_delivery);
+      return;
+    }
+    const result = await logIn({ email: values.email, password: values.password });
+    if (result.candidate?.email_verified === false) {
+      openVerificationNotice(result.candidate);
+      return;
     }
     closeModal();
   } catch (error) {
@@ -166,6 +209,13 @@ async function handleClick(event) {
   if (authIntent) {
     event.preventDefault();
     openAuth(authIntent.dataset.authIntent);
+    return;
+  }
+  const reset = event.target.closest("[data-password-reset]");
+  if (reset) {
+    event.preventDefault();
+    const email = reset.closest("form")?.querySelector("input[name=email]")?.value || "";
+    openPasswordReset(email);
     return;
   }
   const google = event.target.closest("[data-google-auth]");
