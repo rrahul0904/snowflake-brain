@@ -21,6 +21,8 @@ os.environ["GOOGLE_AUTH_ENABLED"] = "false"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.account_lifecycle import development_outbox  # noqa: E402
+from app.database import run_migrations  # noqa: E402
+from app.identity_billing_schema import ensure_identity_billing_schema  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -31,6 +33,13 @@ def token_from_url(url: str) -> str:
 
 
 def check_runtime_verification() -> None:
+    # This test owns a fresh database/schema and must establish the same base
+    # contract the application startup does before exercising registration.
+    # run_migrations follows the configured backend, so the regression runs
+    # against SQLite locally and PostgreSQL in the production convergence job.
+    run_migrations()
+    ensure_identity_billing_schema()
+
     client = TestClient(app)
     registered = client.post(
         "/api/auth/register",
