@@ -1,110 +1,171 @@
-# V24 Architecture
+# V26 Production Architecture
 
-## Boundary
+## Product boundary
 
-Snowflake Certification Guide is a certification-preparation application. The runtime does not ingest, index, stream, or track video courses, captions, transcripts, course folders, or lesson media.
-
-The product source of truth is the certification model:
+Snowflake Certification Guide is a certification-preparation application centered on SnowPro Core COF-C03. The active runtime does not ingest, index, stream or track video courses, captions, transcripts, course folders or lesson media.
 
 ```text
 Certification
   -> Blueprint
      -> Weighted domain
         -> Task statement
-           -> Written task content
+           -> Written lesson
            -> Question evidence
            -> Build exercise
+  -> Practice / diagnostic / adaptive session
+  -> Timed mock
+  -> Candidate evidence
+     -> SRS / mistakes / confidence / remediation
+     -> domain and task readiness
 ```
 
-Learning evidence flows back upward:
+## Runtime shell
+
+`app/main.py` owns the FastAPI application, production middleware, startup migrations/schema convergence, readiness endpoints and router registration. `frontend/index-v26.html` is the only active SPA shell and loads `frontend/app-complete.js` plus `frontend/router-complete.js`.
+
+Public SPA routes are limited to home, membership, about, changelog, privacy and secure account-action links. Certification study routes require a candidate session.
+
+## Configuration and authored content
+
+- `config/snowpro_core_cof_c03_blueprint.json` — canonical 5-domain / 19-task COF-C03 blueprint
+- `config/study_content_core.json` — written lessons for all Core task statements
+- `config/certification_catalog.json` — learner-visible certification catalog
+- `config/certification_skill_map.json` — certification metadata / mapping support
+- `config/snowflake_lab_challenges.json` — build exercises
+- `config/exam_simulation.json` — preparation mock configuration
+
+Commercial question wording is not stored in tracked frontend/config assets. Production bank content is mounted read-only through `PRIVATE_QUESTION_BANK_DIR`.
+
+## Backend boundaries
+
+### Persistence
+
+`app/database.py` abstracts local SQLite and production PostgreSQL. Production uses PostgreSQL pooling and migrations under `migrations/postgres/`. CI verifies schema convergence, concurrent bootstrap, logical backup and clean restore.
+
+### Candidate identity
+
+- `app/auth.py` — scrypt credentials, hashed/revocable candidate sessions, candidate dependencies
+- `app/routers/auth.py` — registration, login, logout, current candidate and session controls
+- `app/account_lifecycle.py` / `app/routers/account.py` — verification, recovery, email/password changes, export and deletion
+- `app/google_oidc.py` / `app/routers/google_auth.py` — Google OpenID Connect with state, nonce and PKCE
+
+Email/password registration begins unverified. Verification/recovery tokens are hashed, expiring and single-use. Google and email/password methods resolve to the same internal candidate ID.
+
+### Membership and billing
+
+- `app/billing/` — provider mapping, trusted entitlement transitions and Stripe webhook authority
+- `app/routers/billing.py` — public billing config, authenticated checkout/portal, provider webhook
+- candidate membership state remains server-side; browser state cannot grant Premium
+
+Stripe is configuration-driven and disabled until real deployment secrets and price IDs are installed.
+
+### Certification content and question delivery
+
+- `app/skill_brain.py` — certification/domain/task resolution
+- `app/certification_content.py` — authored lesson/catalog helpers
+- `app/question_bank.py` — private-bank import boundary
+- `app/question_bank_releases.py` — active release snapshots and rollback
+- `app/question_versions.py` — immutable question-version linkage
+- `app/routers/question_bank_runtime.py` — authorized candidate question/session delivery
+- `app/routers/question_bank_candidate_state.py` — candidate-specific question state
+
+Correct answers and explanations are not exposed in active timed sitting payloads before grading.
+
+### Learning intelligence
+
+- `app/learning_intelligence.py` — SRS, mistake notebook, confidence, study plan and remediation persistence
+- `app/adaptive_readiness.py` — evidence-based readiness, calibration, coverage, retention, runway and recommendation logic
+- `app/routers/intelligence.py` — candidate learning APIs
+- `app/routers/adaptive.py` — adaptive readiness and practice APIs
+
+Adaptive selection remains inside the active question-bank release and normal tier/quota/history boundaries.
+
+### Exercises, experience and supporting APIs
+
+- `app/routers/skills.py` — curriculum/skill map
+- `app/routers/experience.py` — candidate experience state
+- `app/routers/labs.py` — build exercises
+- `app/routers/activity.py` — candidate/public activity signals
+- `app/routers/feedback.py` — feedback
+- `app/routers/affiliate.py` — optional editorial affiliate resources; no display-ad network
+
+### Observability and security
+
+- `app/observability.py` — structured events, request IDs, latency/error metrics and alert sinks
+- `app/security.py` — HTTPS enforcement, rate limiting, authentication boundary, security headers and same-origin mutation checks
+- `/api/health` — process liveness
+- `/api/ready` — database readiness
+- `/api/metrics` — infrastructure-token-protected operational metrics
+
+Production requires HTTPS, secure cookies, PostgreSQL, account-email webhook delivery and a read-only private-bank mount.
+
+## Frontend architecture
+
+`frontend/router-complete.js` maps V26 routes to ES-module views. Primary modules include:
+
+- `home-v26.js`
+- `certifications.js`
+- `curriculum-v26.js`
+- `lesson-v26.js`
+- `progress-v26.js`
+- `adaptive-v26.js`
+- `practice-v26.js`
+- `mock-landing.js`
+- `mock-start-v26.js`
+- `exam-session-v26.js`
+- `exam-result-v26.js`
+- `lookup-v26.js`
+- `exercises-v26.js`
+- `reference.js`
+- `journal-v26.js`
+- `membership-v26.js`
+- `account-v26.js`
+- `account-action-v26.js`
+- `info-v26.js`
+
+The style stack is layered under `frontend/styles/`, with final recording/account/membership polish loaded last where intentional overrides are required.
+
+## Question and release governance
+
+The private-bank lifecycle is:
 
 ```text
-Question attempt / task completion / lab result / timed mock
-  -> task mastery
-  -> domain mastery
-  -> certification readiness
+Draft
+  -> automated QA
+  -> human content review
+  -> human SME approval
+  -> staging
+  -> active immutable release
 ```
 
-## Runtime modules
+Official-source freshness detects Snowflake documentation changes but never rewrites question wording or answers automatically. Historical exam sittings preserve the question versions used when the sitting began.
 
-### Configuration and content
+## Deployment model
 
-- `config/snowpro_core_cof_c03_blueprint.json`: canonical Core C03 domain/task contract.
-- `config/study_content_core.json`: fully written content for all 19 Core tasks.
-- `config/certification_skill_map.json`: configured certification metadata; Core is overridden by the current C03 blueprint at runtime.
-- `config/certification_curricula_supplement.json`: additional certification curriculum definitions.
-- `config/certification_catalog.json`: certification catalog metadata.
-- `config/snowflake_lab_challenges.json`: certification-linked build exercises.
+### Local development
 
-### Backend
+- SQLite-compatible local runtime is supported
+- `./scripts/setup.sh`
+- `./scripts/dev.sh`
+- default URL `http://127.0.0.1:8000/#/home`
 
-- `app/main.py`: FastAPI entry point; registers only certification routers.
-- `app/database.py`: clean certification-native SQLite schema.
-- `app/skill_brain.py`: resolves certification/domain/task definitions and task matching.
-- `app/certification_content.py`: written-task and catalog content API helpers.
-- `app/intelligence.py`: question mapping, mastery, diagnostics, mistakes, readiness.
-- `app/evidence.py`: mapping trust, stale-edge detection, human review.
-- `app/lab_challenges.py`: build exercise catalog and offline validation.
+### Docker / production rehearsal
 
-Routers:
+`docker-compose.yml` runs PostgreSQL 17 plus the application and mounts the private bank read-only. Default host URL is `http://localhost:8010/#/home`.
 
-- `app/routers/skills.py`
-- `app/routers/questions.py`
-- `app/routers/certification_practice.py`
-- `app/routers/intelligence.py`
-- `app/routers/experience.py`
-- `app/routers/labs.py`
+`deploy/production.env.example` documents the secure production contract; real secrets and provider credentials must live in the deployment secret store.
 
-### Frontend
+## Verification architecture
 
-- `frontend/router.js`: certification-only route table.
-- `frontend/api.js`: certification-only API client.
-- `frontend/views/guide.js`: overview, curriculum, domains, tasks, progress, reference, glossary.
-- `frontend/views/quiz.js`: diagnostic/drill/mock exam player.
-- `frontend/views/labs.js`: build exercise workspace.
-- `frontend/views/journal.js`: certification technical articles.
+`./scripts/verify_all.sh` covers certification, auth, verification, Google identity, billing, tier transitions, question-bank isolation, releases, mocks, learning intelligence, observability, no-ad policy, retired-media guards and all frontend JavaScript syntax.
 
-## Exam engine
+`./scripts/run_production_release_gates.sh` adds account lifecycle, source freshness, editorial maturity, adaptive readiness and the production launch gate.
 
-`POST /api/certification-quiz/start` selects questions by certification task mapping.
+`.github/workflows/production-launch-gate.yml` runs on pull requests and pushes to `main` and blocks on:
 
-Selection modes:
+1. SQLite security/convergence + production image/Compose validation
+2. PostgreSQL full regression + logical backup/restore
+3. Chromium desktop, Firefox desktop and Chromium mobile browser/accessibility rehearsal
+4. zero-blocker Production GO decision
 
-- Diagnostic: balanced across configured domains.
-- Drill: prioritizes weak/unseen/missed task evidence.
-- Quick/full mock: allocates questions by current blueprint weights.
-- Source exam: exact `practice_tests.id`, ordered by original question position.
-
-Question source priority for current certification practice:
-
-1. current source material (`source`)
-2. curated material (`curated`)
-3. deterministic supplemental material (`canonical`)
-
-Legacy exam-version material (`legacy`) is excluded from current readiness and default practice selection.
-
-## Mapping precedence
-
-Question-to-task assignment uses:
-
-1. human-reviewed persisted edge
-2. persisted edge with confidence >= 0.70
-3. heuristic fallback against the current configured task list
-
-Persisted edges that reference task IDs retired from the current blueprint are ignored. `app/evidence.py` reports them as stale edges so old taxonomies cannot silently inflate mapping trust.
-
-## Persistence boundary
-
-The V24 default database is `data/snowflake_certification.sqlite`, deliberately separate from historical local databases.
-
-There are no course, lesson, transcript, video, document, or archive tables in the V24 schema.
-
-## Verification
-
-Run:
-
-```bash
-scripts/verify_all.sh
-```
-
-The hard cleanup gate is `scripts/smoke_certification_native.py`. It verifies the clean table model, direct question-to-certification ownership, C03 blueprint shape, exact-set grading, stale-edge handling, deleted runtime files, and banned legacy runtime identifiers.
+The canonical release boundary is the exact `main` SHA that passes those jobs.

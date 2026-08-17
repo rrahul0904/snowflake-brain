@@ -2,17 +2,6 @@ name: Production Launch Gate
 
 on:
   pull_request:
-    paths:
-      - "app/**"
-      - "frontend/**"
-      - "migrations/postgres/**"
-      - "scripts/**"
-      - "deploy/**"
-      - "docs/production-readiness-checklist.md"
-      - "Dockerfile"
-      - "docker-compose.yml"
-      - "requirements.txt"
-      - ".github/workflows/production-launch-gate.yml"
   push:
     branches:
       - main
