@@ -1,4 +1,5 @@
 {
+  "alias": ["snowflake-certification-platform.vercel.app"],
   "headers": [
     {
       "source": "/(.*)",
