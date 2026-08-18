@@ -1,4 +1,4 @@
-# Snowflake Certification Guide — Public Beta
+# Snowflake Certification Platform — Public Beta
 
 Original public-beta experience for SnowPro Core COF-C03 preparation.
 
