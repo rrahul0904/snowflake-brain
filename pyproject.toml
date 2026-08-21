@@ -1,0 +1,17 @@
+[project]
+name = "snowflake-certification-platform"
+version = "0.13.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.32.1",
+  "pydantic==2.10.3",
+  "httpx==0.28.1",
+  "google-auth>=2.38,<3",
+  "requests>=2.32,<3",
+  "psycopg[binary]>=3.2,<4",
+  "psycopg-pool>=3.2,<4",
+]
+
+[tool.vercel]
+entrypoint = "app.main:app"

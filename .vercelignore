@@ -1,0 +1,23 @@
+# Local/dev state and non-runtime assets
+.venv/
+__pycache__/
+.pytest_cache/
+.git/
+.github/
+beta-demo/
+data/
+docs/
+tests/
+scripts/
+deploy/
+Dockerfile
+docker-compose*.yml
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# Never package private/local configuration or provider secrets
+.env
+.env.*
+private_content/
