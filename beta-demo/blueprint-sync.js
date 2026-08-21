@@ -101,9 +101,10 @@ async function flushQueuedBetaFeedback(){
   try{ queued=JSON.parse(localStorage.getItem(FEEDBACK_QUEUE_KEY)||'[]'); }catch{ queued=[]; }
   if(!Array.isArray(queued) || !queued.length) return;
   feedbackFlushRunning=true;
-  const remaining=[];
+  let remaining=[];
   try{
-    for(const payload of queued){
+    for(let i=0;i<queued.length;i++){
+      const payload=queued[i];
       try{
         const response=await fetch('/api/feedback',{
           method:'POST',
@@ -111,22 +112,19 @@ async function flushQueuedBetaFeedback(){
           body:JSON.stringify(payload)
         });
         if(!response.ok){
-          remaining.push(payload);
-          if(response.status===429 || response.status>=500) break;
+          remaining=queued.slice(i);
+          break;
         }
       }catch{
-        remaining.push(payload);
+        remaining=queued.slice(i);
         break;
       }
     }
-    if(remaining.length<queued.length){
-      const processed=queued.length-remaining.length;
-      const untouched=queued.slice(processed+remaining.length);
-      localStorage.setItem(FEEDBACK_QUEUE_KEY,JSON.stringify([...remaining,...untouched].slice(-50)));
-    }else{
+    if(remaining.length){
       localStorage.setItem(FEEDBACK_QUEUE_KEY,JSON.stringify(remaining.slice(-50)));
+    }else{
+      localStorage.removeItem(FEEDBACK_QUEUE_KEY);
     }
-    if(!remaining.length) localStorage.removeItem(FEEDBACK_QUEUE_KEY);
   }finally{
     feedbackFlushRunning=false;
   }
