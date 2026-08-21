@@ -1,0 +1,36 @@
+name: Content IP Compliance
+
+on:
+  pull_request:
+    paths:
+      - 'beta-demo/**'
+      - 'frontend/**'
+      - 'docs/**'
+      - 'scripts/test_content_ip_compliance.py'
+      - '.github/workflows/content-ip-compliance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'beta-demo/**'
+      - 'frontend/**'
+      - 'docs/**'
+      - 'scripts/test_content_ip_compliance.py'
+      - '.github/workflows/content-ip-compliance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  content-ip-compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run content IP compliance gate
+        run: python scripts/test_content_ip_compliance.py
