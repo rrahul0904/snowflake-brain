@@ -89,3 +89,48 @@ if(guideSection){
 if(typeof renderQ==='function') renderQ();
 if(typeof renderMock==='function') renderMock();
 if(typeof renderAdaptive==='function') renderAdaptive();
+
+// Feedback that could not reach the API is kept in localStorage by app.js.
+// Retry it automatically when the page loads, when connectivity returns, and
+// periodically while the beta is open. Only successfully persisted rows are removed.
+const FEEDBACK_QUEUE_KEY='snowflake-beta-feedback';
+let feedbackFlushRunning=false;
+async function flushQueuedBetaFeedback(){
+  if(feedbackFlushRunning || !navigator.onLine) return;
+  let queued=[];
+  try{ queued=JSON.parse(localStorage.getItem(FEEDBACK_QUEUE_KEY)||'[]'); }catch{ queued=[]; }
+  if(!Array.isArray(queued) || !queued.length) return;
+  feedbackFlushRunning=true;
+  const remaining=[];
+  try{
+    for(const payload of queued){
+      try{
+        const response=await fetch('/api/feedback',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+        if(!response.ok){
+          remaining.push(payload);
+          if(response.status===429 || response.status>=500) break;
+        }
+      }catch{
+        remaining.push(payload);
+        break;
+      }
+    }
+    if(remaining.length<queued.length){
+      const processed=queued.length-remaining.length;
+      const untouched=queued.slice(processed+remaining.length);
+      localStorage.setItem(FEEDBACK_QUEUE_KEY,JSON.stringify([...remaining,...untouched].slice(-50)));
+    }else{
+      localStorage.setItem(FEEDBACK_QUEUE_KEY,JSON.stringify(remaining.slice(-50)));
+    }
+    if(!remaining.length) localStorage.removeItem(FEEDBACK_QUEUE_KEY);
+  }finally{
+    feedbackFlushRunning=false;
+  }
+}
+window.addEventListener('online',flushQueuedBetaFeedback);
+setTimeout(flushQueuedBetaFeedback,1500);
+setInterval(flushQueuedBetaFeedback,60000);
