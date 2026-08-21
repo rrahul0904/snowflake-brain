@@ -17,6 +17,17 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ADMIN_TOKEN = os.getenv("FEEDBACK_ADMIN_TOKEN", "").strip()
 IP_HASH_SECRET = os.getenv("FEEDBACK_IP_HASH_SECRET", ADMIN_TOKEN).strip()
 SUBMISSION_LIMIT_PER_HOUR = max(5, min(100, int(os.getenv("FEEDBACK_SUBMISSION_LIMIT_PER_HOUR", "30"))))
+AREA_MAP = {
+    "overall experience": "Other",
+    "study guide": "Study Guide",
+    "practice questions": "Practice",
+    "mock exam": "Mock Exam",
+    "adaptive readiness": "Adaptive",
+    "membership/pricing": "Membership",
+    "mobile experience": "Mobile",
+    "light/dark mode": "Visual Design",
+    "earth/globe visual": "Visual Design",
+}
 
 
 def _json(handler, status: int, payload: dict) -> None:
@@ -101,7 +112,8 @@ class handler(BaseHTTPRequestHandler):
             rating = int(rating) if str(rating or "").isdigit() else None
             if rating is not None and rating not in range(1, 6):
                 rating = None
-            area = _safe_text(body.get("area"), 120) or "Other"
+            raw_area = _safe_text(body.get("area"), 120) or "Other"
+            area = AREA_MAP.get(raw_area.lower(), raw_area)
             email = _safe_text(body.get("email"), 320) or None
             context = _safe_text(body.get("context"), 220) or None
             route = _safe_text(body.get("route"), 180) or None
@@ -130,7 +142,7 @@ class handler(BaseHTTPRequestHandler):
                     RETURNING feedback_uid, submitted_at
                     """,
                     (rating, area, message, email, context, route, theme, viewport, user_agent, ip_hash,
-                     client_created_at, json.dumps({"schema": "beta_feedback_v4"})),
+                     client_created_at, json.dumps({"schema": "beta_feedback_v4", "raw_area": raw_area})),
                 ).fetchone()
                 conn.commit()
             print(json.dumps({"event": "BETA_FEEDBACK_PERSISTED", "feedback_uid": str(row["feedback_uid"]), "area": area, "rating": rating}), flush=True)
