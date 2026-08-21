@@ -1,32 +1,185 @@
+from __future__ import annotations
+
 from http.server import BaseHTTPRequestHandler
+import csv
+import hashlib
+import hmac
+import io
 import json
+import os
+from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlparse
+
+import psycopg
+from psycopg.rows import dict_row
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+ADMIN_TOKEN = os.getenv("FEEDBACK_ADMIN_TOKEN", "").strip()
+IP_HASH_SECRET = os.getenv("FEEDBACK_IP_HASH_SECRET", ADMIN_TOKEN).strip()
+
+
+def _json(handler, status: int, payload: dict) -> None:
+    body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Content-Type", "application/json; charset=utf-8")
+    handler.send_header("Cache-Control", "no-store")
+    handler.send_header("X-Content-Type-Options", "nosniff")
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def _connect():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=8)
+
+
+def _authorized(headers) -> bool:
+    if not ADMIN_TOKEN:
+        return False
+    value = headers.get("authorization", "")
+    if not value.lower().startswith("bearer "):
+        return False
+    return hmac.compare_digest(value[7:].strip(), ADMIN_TOKEN)
+
+
+def _safe_text(value, limit: int) -> str:
+    return str(value or "").strip()[:limit]
+
+
+def _client_ip(headers) -> str:
+    forwarded = headers.get("x-forwarded-for", "")
+    return forwarded.split(",")[0].strip() if forwarded else ""
+
+
+def _hash_ip(ip: str) -> str | None:
+    if not ip or not IP_HASH_SECRET:
+        return None
+    return hmac.new(IP_HASH_SECRET.encode(), ip.encode(), hashlib.sha256).hexdigest()
+
+
+def _parse_client_time(value: str):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
 
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             length = min(int(self.headers.get("content-length", "0")), 12000)
-            raw = self.rfile.read(length)
-            body = json.loads(raw or b"{}")
-            safe = {
-                "event": "BETA_FEEDBACK_V3",
-                "rating": body.get("rating"),
-                "area": str(body.get("area", ""))[:120],
-                "message": str(body.get("message", ""))[:3000],
-                "email": str(body.get("email", ""))[:320],
-                "context": str(body.get("context", ""))[:220],
-                "route": str(body.get("route", ""))[:180],
-                "theme": str(body.get("theme", ""))[:20],
-                "viewport": str(body.get("viewport", ""))[:40],
-                "created_at": str(body.get("created_at", ""))[:80],
-            }
-            print(json.dumps(safe, ensure_ascii=False), flush=True)
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"ok": True}).encode())
-        except Exception:
-            self.send_response(400)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(b'{"ok":false}')
+            body = json.loads(self.rfile.read(length) or b"{}")
+            message = _safe_text(body.get("message"), 3000)
+            if len(message) < 2:
+                return _json(self, 422, {"ok": False, "error": "Feedback message is required."})
+            rating = body.get("rating")
+            rating = int(rating) if str(rating or "").isdigit() else None
+            if rating is not None and rating not in range(1, 6):
+                rating = None
+            area = _safe_text(body.get("area"), 120) or "Other"
+            email = _safe_text(body.get("email"), 320) or None
+            context = _safe_text(body.get("context"), 220) or None
+            route = _safe_text(body.get("route"), 180) or None
+            theme = _safe_text(body.get("theme"), 20) or None
+            viewport = _safe_text(body.get("viewport"), 40) or None
+            user_agent = _safe_text(self.headers.get("user-agent"), 512) or None
+            client_created_at = _parse_client_time(_safe_text(body.get("created_at"), 80))
+            ip_hash = _hash_ip(_client_ip(self.headers))
+            with _connect() as conn:
+                row = conn.execute(
+                    """
+                    INSERT INTO public.beta_feedback_submissions
+                      (rating,area,message,email,context,route,theme,viewport,user_agent,ip_hash,source,client_created_at,metadata)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'public-beta',%s,%s::jsonb)
+                    RETURNING feedback_uid, submitted_at
+                    """,
+                    (rating, area, message, email, context, route, theme, viewport, user_agent, ip_hash,
+                     client_created_at, json.dumps({"schema": "beta_feedback_v4"})),
+                ).fetchone()
+                conn.commit()
+            print(json.dumps({"event": "BETA_FEEDBACK_PERSISTED", "feedback_uid": str(row["feedback_uid"]), "area": area, "rating": rating}), flush=True)
+            return _json(self, 201, {"ok": True, "feedback_id": str(row["feedback_uid"]), "submitted_at": row["submitted_at"]})
+        except Exception as exc:
+            print(json.dumps({"event": "BETA_FEEDBACK_ERROR", "type": type(exc).__name__}), flush=True)
+            return _json(self, 503, {"ok": False, "error": "Feedback storage is temporarily unavailable."})
+
+    def do_GET(self):
+        if not _authorized(self.headers):
+            return _json(self, 401, {"ok": False, "error": "Unauthorized"})
+        try:
+            query = parse_qs(urlparse(self.path).query)
+            q = _safe_text((query.get("q") or [""])[0], 200)
+            area = _safe_text((query.get("area") or [""])[0], 120)
+            theme = _safe_text((query.get("theme") or [""])[0], 20)
+            route = _safe_text((query.get("route") or [""])[0], 180)
+            rating_raw = _safe_text((query.get("rating") or [""])[0], 2)
+            rating = int(rating_raw) if rating_raw.isdigit() and 1 <= int(rating_raw) <= 5 else None
+            page = max(1, int((query.get("page") or ["1"])[0] or 1))
+            limit = min(100, max(10, int((query.get("limit") or ["50"])[0] or 50)))
+            export = (query.get("format") or [""])[0] == "csv"
+
+            clauses = ["1=1"]
+            params = []
+            if q:
+                clauses.append("(message ILIKE %s OR COALESCE(email,'') ILIKE %s OR COALESCE(context,'') ILIKE %s OR COALESCE(route,'') ILIKE %s)")
+                needle = f"%{q}%"
+                params.extend([needle] * 4)
+            if area:
+                clauses.append("area = %s"); params.append(area)
+            if theme:
+                clauses.append("theme = %s"); params.append(theme)
+            if route:
+                clauses.append("COALESCE(route,'') ILIKE %s"); params.append(f"%{route}%")
+            if rating:
+                clauses.append("rating = %s"); params.append(rating)
+            where = " AND ".join(clauses)
+
+            with _connect() as conn:
+                summary = conn.execute(
+                    """SELECT COUNT(*)::int AS total,
+                              ROUND(AVG(rating)::numeric,2) AS avg_rating,
+                              COUNT(*) FILTER (WHERE rating=5)::int AS five_star,
+                              COUNT(*) FILTER (WHERE COALESCE(email,'')<>'')::int AS with_email
+                       FROM public.beta_feedback_submissions"""
+                ).fetchone()
+                filtered_total = conn.execute(f"SELECT COUNT(*)::int AS n FROM public.beta_feedback_submissions WHERE {where}", params).fetchone()["n"]
+                fetch_limit = 5000 if export else limit
+                offset = 0 if export else (page - 1) * limit
+                rows = conn.execute(
+                    f"""SELECT feedback_uid,rating,area,message,email,context,route,theme,viewport,source,submitted_at,client_created_at
+                        FROM public.beta_feedback_submissions WHERE {where}
+                        ORDER BY submitted_at DESC LIMIT %s OFFSET %s""",
+                    [*params, fetch_limit, offset],
+                ).fetchall()
+
+            if export:
+                out = io.StringIO()
+                writer = csv.writer(out)
+                writer.writerow(["feedback_id","submitted_at","rating","area","message","email","context","route","theme","viewport","source","client_created_at"])
+                for row in rows:
+                    writer.writerow([row.get("feedback_uid"),row.get("submitted_at"),row.get("rating"),row.get("area"),row.get("message"),row.get("email"),row.get("context"),row.get("route"),row.get("theme"),row.get("viewport"),row.get("source"),row.get("client_created_at")])
+                data = out.getvalue().encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", "attachment; filename=beta-feedback.csv")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(data)
+                return
+
+            return _json(self, 200, {
+                "ok": True,
+                "summary": dict(summary),
+                "filtered_total": filtered_total,
+                "page": page,
+                "limit": limit,
+                "rows": [dict(row) for row in rows],
+                "retention": "persistent_database_no_automatic_deletion",
+            })
+        except Exception as exc:
+            print(json.dumps({"event": "BETA_FEEDBACK_ADMIN_ERROR", "type": type(exc).__name__}), flush=True)
+            return _json(self, 500, {"ok": False, "error": "Unable to load feedback."})
