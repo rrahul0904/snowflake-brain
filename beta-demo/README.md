@@ -12,9 +12,17 @@ Original public-beta experience for SnowPro Core COF-C03 preparation.
 - In-product feedback collection
 - Interactive dotted world globe based on the project's existing globe behavior
 - Snowflake non-affiliation/trademark disclaimer
+- Public Copyright & IP Notice at `/legal.html`
 
 ## Feedback persistence
-For the short public feedback beta, the Vercel serverless feedback endpoint emits structured `BETA_FEEDBACK_V3` events to runtime logs and the browser stores a local fallback if submission fails. Before a broader commercial launch, switch the beta to the application's existing persistent `/api/feedback` path backed by managed PostgreSQL.
+Public-beta feedback is submitted to the Vercel serverless `/api/feedback` endpoint and persisted to the configured PostgreSQL/Neon database. The browser retains a local retry/fallback path if network submission fails. Admin access is protected separately as described in `FEEDBACK_ADMIN.md`.
+
+## Content and IP integrity
+The public beta is governed by `docs/CONTENT_IP_COPYRIGHT_POLICY.md`.
+
+The policy prohibits live/recalled certification questions, exam dumps/braindumps, and unlicensed third-party commercial question-bank/course wording. Production learning material must have lawful provenance, independently authored expression, and editorial review. Snowflake/SnowPro references are descriptive only; the product must not imply Snowflake sponsorship or endorsement.
+
+For U.S. copyright/trademark registration planning, see `docs/IP_REGISTRATION_RUNBOOK.md`.
 
 ## Design provenance
-The attached Claude Certification Guide recording was used only as a reference for high-level interaction patterns such as a clear hero, study-path choice, FAQ, and content discovery. Copy, palette, typography, information architecture, cards, spacing, navigation, globe treatment, and learning flows are original to this Snowflake product.
+The attached Claude Certification Guide recording was used only as a reference for high-level interaction patterns such as a clear hero, study-path choice, FAQ, and content discovery. Copy, palette, typography, information architecture, cards, spacing, navigation, globe treatment, and learning flows are original to this Snowflake-focused product.
