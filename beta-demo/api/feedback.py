@@ -16,6 +16,7 @@ from psycopg.rows import dict_row
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ADMIN_TOKEN = os.getenv("FEEDBACK_ADMIN_TOKEN", "").strip()
 IP_HASH_SECRET = os.getenv("FEEDBACK_IP_HASH_SECRET", ADMIN_TOKEN).strip()
+SUBMISSION_LIMIT_PER_HOUR = max(5, min(100, int(os.getenv("FEEDBACK_SUBMISSION_LIMIT_PER_HOUR", "30"))))
 
 
 def _json(handler, status: int, payload: dict) -> None:
@@ -47,6 +48,14 @@ def _safe_text(value, limit: int) -> str:
     return str(value or "").strip()[:limit]
 
 
+def _safe_int(value, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return min(maximum, max(minimum, parsed))
+
+
 def _client_ip(headers) -> str:
     forwarded = headers.get("x-forwarded-for", "")
     return forwarded.split(",")[0].strip() if forwarded else ""
@@ -68,11 +77,23 @@ def _parse_client_time(value: str):
         return None
 
 
+def _csv_safe(value):
+    """Prevent user-controlled cells from becoming spreadsheet formulas."""
+    if value is None:
+        return ""
+    text = str(value)
+    if text.startswith(("=", "+", "-", "@", "\t", "\r", "\n")):
+        return "'" + text
+    return text
+
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            length = min(int(self.headers.get("content-length", "0")), 12000)
-            body = json.loads(self.rfile.read(length) or b"{}")
+            declared_length = _safe_int(self.headers.get("content-length", "0"), 0, 0, 12001)
+            if declared_length > 12000:
+                return _json(self, 413, {"ok": False, "error": "Feedback payload is too large."})
+            body = json.loads(self.rfile.read(declared_length) or b"{}")
             message = _safe_text(body.get("message"), 3000)
             if len(message) < 2:
                 return _json(self, 422, {"ok": False, "error": "Feedback message is required."})
@@ -89,7 +110,18 @@ class handler(BaseHTTPRequestHandler):
             user_agent = _safe_text(self.headers.get("user-agent"), 512) or None
             client_created_at = _parse_client_time(_safe_text(body.get("created_at"), 80))
             ip_hash = _hash_ip(_client_ip(self.headers))
+
             with _connect() as conn:
+                if ip_hash:
+                    recent = conn.execute(
+                        """SELECT COUNT(*)::int AS n
+                           FROM public.beta_feedback_submissions
+                           WHERE ip_hash=%s AND submitted_at >= now() - interval '1 hour'""",
+                        (ip_hash,),
+                    ).fetchone()["n"]
+                    if recent >= SUBMISSION_LIMIT_PER_HOUR:
+                        return _json(self, 429, {"ok": False, "error": "Too many feedback submissions. Please try again later."})
+
                 row = conn.execute(
                     """
                     INSERT INTO public.beta_feedback_submissions
@@ -103,6 +135,8 @@ class handler(BaseHTTPRequestHandler):
                 conn.commit()
             print(json.dumps({"event": "BETA_FEEDBACK_PERSISTED", "feedback_uid": str(row["feedback_uid"]), "area": area, "rating": rating}), flush=True)
             return _json(self, 201, {"ok": True, "feedback_id": str(row["feedback_uid"]), "submitted_at": row["submitted_at"]})
+        except json.JSONDecodeError:
+            return _json(self, 400, {"ok": False, "error": "Invalid JSON payload."})
         except Exception as exc:
             print(json.dumps({"event": "BETA_FEEDBACK_ERROR", "type": type(exc).__name__}), flush=True)
             return _json(self, 503, {"ok": False, "error": "Feedback storage is temporarily unavailable."})
@@ -118,8 +152,8 @@ class handler(BaseHTTPRequestHandler):
             route = _safe_text((query.get("route") or [""])[0], 180)
             rating_raw = _safe_text((query.get("rating") or [""])[0], 2)
             rating = int(rating_raw) if rating_raw.isdigit() and 1 <= int(rating_raw) <= 5 else None
-            page = max(1, int((query.get("page") or ["1"])[0] or 1))
-            limit = min(100, max(10, int((query.get("limit") or ["50"])[0] or 50)))
+            page = _safe_int((query.get("page") or ["1"])[0], 1, 1, 1000000)
+            limit = _safe_int((query.get("limit") or ["50"])[0], 50, 10, 100)
             export = (query.get("format") or [""])[0] == "csv"
 
             clauses = ["1=1"]
@@ -129,13 +163,17 @@ class handler(BaseHTTPRequestHandler):
                 needle = f"%{q}%"
                 params.extend([needle] * 4)
             if area:
-                clauses.append("area = %s"); params.append(area)
+                clauses.append("area = %s")
+                params.append(area)
             if theme:
-                clauses.append("theme = %s"); params.append(theme)
+                clauses.append("theme = %s")
+                params.append(theme)
             if route:
-                clauses.append("COALESCE(route,'') ILIKE %s"); params.append(f"%{route}%")
+                clauses.append("COALESCE(route,'') ILIKE %s")
+                params.append(f"%{route}%")
             if rating:
-                clauses.append("rating = %s"); params.append(rating)
+                clauses.append("rating = %s")
+                params.append(rating)
             where = " AND ".join(clauses)
 
             with _connect() as conn:
@@ -146,7 +184,9 @@ class handler(BaseHTTPRequestHandler):
                               COUNT(*) FILTER (WHERE COALESCE(email,'')<>'')::int AS with_email
                        FROM public.beta_feedback_submissions"""
                 ).fetchone()
-                filtered_total = conn.execute(f"SELECT COUNT(*)::int AS n FROM public.beta_feedback_submissions WHERE {where}", params).fetchone()["n"]
+                filtered_total = conn.execute(
+                    f"SELECT COUNT(*)::int AS n FROM public.beta_feedback_submissions WHERE {where}", params
+                ).fetchone()["n"]
                 fetch_limit = 5000 if export else limit
                 offset = 0 if export else (page - 1) * limit
                 rows = conn.execute(
@@ -161,12 +201,18 @@ class handler(BaseHTTPRequestHandler):
                 writer = csv.writer(out)
                 writer.writerow(["feedback_id","submitted_at","rating","area","message","email","context","route","theme","viewport","source","client_created_at"])
                 for row in rows:
-                    writer.writerow([row.get("feedback_uid"),row.get("submitted_at"),row.get("rating"),row.get("area"),row.get("message"),row.get("email"),row.get("context"),row.get("route"),row.get("theme"),row.get("viewport"),row.get("source"),row.get("client_created_at")])
+                    writer.writerow([
+                        _csv_safe(row.get("feedback_uid")), _csv_safe(row.get("submitted_at")), _csv_safe(row.get("rating")),
+                        _csv_safe(row.get("area")), _csv_safe(row.get("message")), _csv_safe(row.get("email")),
+                        _csv_safe(row.get("context")), _csv_safe(row.get("route")), _csv_safe(row.get("theme")),
+                        _csv_safe(row.get("viewport")), _csv_safe(row.get("source")), _csv_safe(row.get("client_created_at")),
+                    ])
                 data = out.getvalue().encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/csv; charset=utf-8")
                 self.send_header("Content-Disposition", "attachment; filename=beta-feedback.csv")
                 self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
                 self.wfile.write(data)
                 return
