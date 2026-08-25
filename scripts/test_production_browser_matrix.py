@@ -3,18 +3,21 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 import traceback
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from playwright.sync_api import Browser, Page, sync_playwright
 
 from app import credential_verification as credential_verification
 
 
-ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = os.getenv("LAUNCH_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 REPORT_PATH = ROOT / "artifacts" / "browser-matrix-report.json"
 
@@ -172,6 +175,29 @@ def assert_credentials_layout(page: Page, profile: Profile) -> dict:
     return metrics
 
 
+def fetch_talent_profile(page: Page) -> dict:
+    return page.evaluate(
+        """async () => {
+          const response = await fetch('/api/talent/profile', {credentials:'same-origin'});
+          return {status: response.status, body: await response.json()};
+        }"""
+    )
+
+
+def wait_for_recruiter_discoverability(page: Page, expected: bool) -> dict:
+    page.wait_for_function(
+        """async expected => {
+          const response = await fetch('/api/talent/profile', {credentials:'same-origin'});
+          if (!response.ok) return false;
+          const body = await response.json();
+          return body.recruiter_discoverable === expected;
+        }""",
+        arg=expected,
+        timeout=10_000,
+    )
+    return fetch_talent_profile(page)
+
+
 def run_profile(browser: Browser, profile: Profile) -> dict:
     context = browser.new_context(
         viewport=profile.viewport,
@@ -258,17 +284,14 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
             raise AssertionError(f"{profile.name} discoverability was not private by default")
         recruiter_toggle.check()
         page.get_by_role("button", name="Save profile").click()
-        page.get_by_text("Saved.", exact=True).wait_for(state="visible", timeout=10_000)
-        talent = page.evaluate(
-            """async () => {
-              const response = await fetch('/api/talent/profile', {credentials:'same-origin'});
-              return {status: response.status, body: await response.json()};
-            }"""
-        )
+        talent = wait_for_recruiter_discoverability(page, True)
         if talent["status"] != 200 or talent["body"].get("recruiter_discoverable") is not True:
             raise AssertionError(f"{profile.name} recruiter discoverability did not persist: {talent}")
         if talent["body"].get("public_profile") is not False:
             raise AssertionError(f"{profile.name} public profile changed without candidate consent: {talent}")
+        page.locator('input[name="recruiter_discoverable"]').wait_for(state="attached", timeout=10_000)
+        if not page.locator('input[name="recruiter_discoverable"]').is_checked():
+            raise AssertionError(f"{profile.name} recruiter discoverability did not survive credential view remount")
         credential_metrics = assert_credentials_layout(page, profile)
         if credential_metrics["cards"] != 1 or credential_metrics["verified"] != 1:
             raise AssertionError(f"{profile.name} verified credential card did not render: {credential_metrics}")
