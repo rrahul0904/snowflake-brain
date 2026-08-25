@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
 
-from app.auth import password_digest
-from app.credential_verification import (
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.auth import password_digest  # noqa: E402
+from app.credential_verification import (  # noqa: E402
     CredentialVerificationError,
     names_match,
     parse_credly_badge_url,
