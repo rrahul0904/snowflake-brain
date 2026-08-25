@@ -65,8 +65,14 @@ def main() -> None:
         require(token in deployment, f"deployment runbook does not match manifest token: {token}")
 
     # The active tier policy is the source of truth: Free's weekly full-content mock is 30Q/45m.
-    require("Free Weekly Mock is 30 questions." in deployment, "deployment runbook has stale Free Weekly Mock count")
-    require("45 minutes" in deployment, "deployment runbook is missing the Free Weekly Mock duration")
+    require(
+        re.search(r"Free Weekly Mock\s+is\s+30\s+questions\b", deployment, flags=re.IGNORECASE),
+        "deployment runbook has stale Free Weekly Mock count",
+    )
+    require(
+        re.search(r"Free Weekly Mock[^\n]*45\s+minutes", deployment, flags=re.IGNORECASE),
+        "deployment runbook is missing the Free Weekly Mock duration",
+    )
 
     print("Question-bank manifest/deployment integrity contract passed: 1,200 questions, 5 domains, 19 tasks.")
 
