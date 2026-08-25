@@ -256,6 +256,7 @@ The expected marker includes:
 
 ```bash
 docker compose up --build -d
+docker compose ps
 ```
 
 Open:
