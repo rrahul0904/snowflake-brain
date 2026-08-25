@@ -24,6 +24,7 @@ from ..account_lifecycle import (
 )
 from ..auth import COOKIE_NAME, require_candidate
 from ..config import AUTH_COOKIE_SECURE
+from ..credential_verification import get_talent_profile, list_candidate_credentials
 
 
 router = APIRouter(tags=["account-lifecycle"])
@@ -155,10 +156,16 @@ def identity_unlink(identity_id: int, candidate: dict[str, Any] = Depends(requir
 
 @router.get("/account/export")
 def export_account(candidate: dict[str, Any] = Depends(require_candidate)) -> JSONResponse:
+    candidate_id = _candidate_id(candidate)
     try:
-        payload = account_export_payload(_candidate_id(candidate))
+        payload = account_export_payload(candidate_id)
     except AccountLifecycleError as exc:
         raise _lifecycle_error(exc) from exc
+    # Employment-marketplace data is candidate-owned data too. Keep it in the
+    # same export boundary as learning/account data; do not make candidates use
+    # a separate privacy workflow to retrieve their verified credential record.
+    payload["verified_credentials"] = list_candidate_credentials(candidate_id)
+    payload["talent_profile"] = get_talent_profile(candidate_id)
     response = JSONResponse(payload)
     response.headers["Content-Disposition"] = 'attachment; filename="snowflake-certification-account-export.json"'
     response.headers["Cache-Control"] = "private, no-store"

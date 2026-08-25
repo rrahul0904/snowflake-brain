@@ -1,7 +1,7 @@
 export const VIEW_ID = "v26-account";
 
 import { candidate, refreshCandidate } from "../auth.js";
-import { api, escapeHtml, getAuthProviders, getCandidateSessions, revokeAllCandidateSessions, revokeCandidateSession } from "../api.js";
+import { api, escapeHtml, getAuthProviders, getCandidateSessions, getCredentials, revokeAllCandidateSessions, revokeCandidateSession } from "../api.js";
 
 export default async function mount(container) {
   await refreshCandidate().catch(() => {});
@@ -11,16 +11,19 @@ export default async function mount(container) {
     return;
   }
 
-  const [sessions, status, providers] = await Promise.all([
+  const [sessions, status, providers, credentialResult] = await Promise.all([
     getCandidateSessions().catch(() => ({ sessions: [] })),
     api("/api/account/status").catch(() => ({ email_verified: account.email_verified, identities: [] })),
     getAuthProviders().catch(() => ({ google: { enabled: false } })),
+    getCredentials().catch(() => ({ credentials: [], verified_count: 0 })),
   ]);
   const methods = (account.sign_in_methods || ["email"]).map((item) => item === "google" ? "Google" : "Email");
   const verified = status.email_verified !== false;
   const identities = status.identities || [];
   const googleLinked = methods.includes("Google") || identities.some((item) => item.provider === "google");
   const canLinkGoogle = Boolean(providers.google?.enabled && !googleLinked);
+  const credentialCount = Number(credentialResult.credentials?.length || 0);
+  const verifiedCredentialCount = Number(credentialResult.verified_count || 0);
 
   container.innerHTML = `<main class="v26-page v26-account-page">
     <header class="v26-page-intro"><p class="v26-kicker">Account & security</p><h1>${escapeHtml(account.display_name)}</h1><p>${escapeHtml(account.email)}</p></header>
@@ -28,6 +31,7 @@ export default async function mount(container) {
     <section class="v26-account-banner signed-in"><div><p class="v26-kicker">Identity</p><h2>Signed in with ${escapeHtml(methods.join(" + "))}</h2><p>All linked sign-in methods resolve to candidate #${escapeHtml(account.id)}. Your ${escapeHtml(account.plan)} membership, progress, and mock history stay on this single account.</p></div><div>${canLinkGoogle ? `<button class="v26-btn secondary" type="button" data-link-google>Link Google</button>` : ""}<a class="v26-btn secondary" href="#/membership">Membership</a></div></section>
     <section class="v26-account-security-grid">
       <article><span>Email verification</span><strong>${verified ? "Verified" : "Action required"}</strong><p>${verified ? "This candidate email has been confirmed." : "Verify this email so account recovery and identity changes have a trusted destination."}</p>${verified ? "" : `<button type="button" data-resend-verification>Resend verification email</button><small data-verification-status aria-live="polite"></small>`}</article>
+      <article><span>Licenses & certifications</span><strong>${verifiedCredentialCount ? `${verifiedCredentialCount} verified` : credentialCount ? "Verification pending" : "Add credentials"}</strong><p>Add the public Credly link for your SnowPro certifications. Verified credentials can later qualify your profile for candidate-controlled recruiter discovery.</p><a href="#/credentials">Manage credentials →</a></article>
       <article><span>Google sign-in</span><strong>${googleLinked ? "Linked" : providers.google?.enabled ? "Available" : "Not configured here"}</strong><p>${googleLinked ? "Google can sign in to this same candidate account." : providers.google?.enabled ? "Link Google without creating a second progress history." : "The Google sign-in implementation is present, but this deployment has no Google OAuth client credentials."}</p>${canLinkGoogle ? `<button type="button" data-link-google>Link Google account</button>` : ""}</article>
       <article><span>Recovery & privacy</span><strong>Account controls</strong><p>Change your email or password, review linked identities, export your data, or permanently delete the account.</p><a href="/static/account-management.html">Open account management →</a></article>
     </section>

@@ -14,6 +14,7 @@ export async function api(path, options = {}) {
     }
     throw new Error(message || "Request failed");
   }
+  if (response.status === 204) return null;
   return response.json();
 }
 
@@ -30,6 +31,13 @@ export const revokeAllCandidateSessions = () => api("/api/auth/sessions/revoke-a
 export const getBillingConfig = () => api("/api/billing/config");
 export const createBillingCheckout = (planCode) => api("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan_code: planCode }) });
 export const createBillingPortal = () => api("/api/billing/portal", { method: "POST", body: "{}" });
+
+export const getCredentials = () => api("/api/credentials");
+export const verifyCredlyCredential = (credentialUrl) => api("/api/credentials/credly/verify", { method: "POST", body: JSON.stringify({ credential_url: credentialUrl }) });
+export const reverifyCredential = (credentialUid) => api(`/api/credentials/${encodeURIComponent(credentialUid)}/reverify`, { method: "POST", body: "{}" });
+export const deleteCredential = (credentialUid) => api(`/api/credentials/${encodeURIComponent(credentialUid)}`, { method: "DELETE" });
+export const getTalentProfile = () => api("/api/talent/profile");
+export const updateTalentProfile = (payload) => api("/api/talent/profile", { method: "PATCH", body: JSON.stringify(payload) });
 
 export const getSkillMap = () => api("/api/skills/map");
 export const getCertificationCatalog = () => api("/api/skills/catalog");

@@ -1,6 +1,6 @@
 # Snowflake Certification Guide
 
-Production-oriented SnowPro Core COF-C03 certification preparation built around the current exam blueprint, written task lessons, private question-bank delivery, diagnostic and drill practice, timed mocks, adaptive readiness, persistent candidate accounts, and production operations.
+Production-oriented SnowPro Core COF-C03 certification preparation built around the current exam blueprint, written task lessons, private question-bank delivery, diagnostic and drill practice, timed mocks, adaptive readiness, persistent candidate accounts, verified SnowPro credential profiles, and production operations.
 
 ## Product boundary
 
@@ -19,6 +19,7 @@ SnowPro Core COF-C03
   -> weekly / full timed mocks
   -> persisted attempts, SRS, mistakes, confidence and study plan
   -> evidence-based readiness
+  -> candidate-owned verified SnowPro credentials
 ```
 
 Learner-visible certification catalog:
@@ -66,10 +67,31 @@ Primary V26 routes:
 - `#/journal` — certification-focused technical articles
 - `#/membership` — Free / Premium / Exam Pack plans
 - `#/account` — account, verification, identities and sessions
+- `#/credentials` — candidate SnowPro licenses/certifications and talent visibility
 - `#/account-action` — email verification, email-change and password-reset actions
 - `#/privacy`, `#/about`, `#/changelog` — public information pages
 
-Study content, practice, progress, adaptive readiness, reference material, journal content, labs and mocks require a candidate account. Public routes are intentionally limited.
+Study content, practice, progress, adaptive readiness, reference material, journal content, labs, credentials and mocks require a candidate account. Public routes are intentionally limited.
+
+## Verified SnowPro credential foundation
+
+Candidates can add the public Credly URL for a SnowPro certification. The server verifies issuer-backed evidence rather than trusting a screenshot or uploaded certificate image.
+
+Automatic verification requires:
+
+- a supported HTTPS Credly badge URL;
+- issuer evidence identifying Snowflake;
+- a SnowPro credential title;
+- a conservative recipient-name match to the candidate profile;
+- an active, non-expired credential.
+
+Credential states include `verified`, `expired`, `needs_review`, and `rejected`. Every verification/reverification records an immutable verification event. The same Credly badge cannot be claimed by two candidate accounts.
+
+Talent visibility is **private by default**. Candidates cannot enable recruiter/public discoverability until at least one active SnowPro credential is verified, and visibility is automatically disabled if the last active verified credential expires or otherwise stops qualifying.
+
+The raw credential document upload, manual-review console, recruiter accounts/search, and introduction workflow are later marketplace slices and must not be represented as live today.
+
+See `docs/VERIFIED_TALENT_MARKETPLACE.md`.
 
 ## Membership model
 
@@ -95,7 +117,7 @@ Email/password registration starts **unverified** and creates the normal candida
 - change email
 - active-session review and revocation
 - password/session revocation controls
-- candidate data export
+- candidate data export, including verified credential/talent-profile facts
 - permanent account deletion subject to subscription checks
 - visible verified/unverified status in the V26 account experience
 
@@ -267,6 +289,12 @@ Run the complete local regression bundle:
 
 ```bash
 ./scripts/verify_all.sh
+```
+
+Run the verified credential lifecycle smoke directly:
+
+```bash
+python scripts/smoke_verified_credentials.py
 ```
 
 Run the production release bundle:

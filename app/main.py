@@ -28,6 +28,7 @@ from .routers import (
     affiliate,
     auth,
     billing,
+    credentials,
     experience,
     feedback,
     google_auth,
@@ -38,14 +39,15 @@ from .routers import (
     skills,
 )
 from .security import SecurityBoundaryMiddleware
+from .talent_schema import ensure_talent_schema
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 
 app = FastAPI(
     title="Snowflake Certification Guide",
-    version="0.13.0",
-    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, candidate learning intelligence, adaptive readiness, PostgreSQL production persistence, production observability, and self-service account lifecycle controls.",
+    version="0.14.0",
+    description="Certification-native SnowPro preparation with private question-bank delivery, tier-aware practice and exams, candidate identity, trusted paid entitlements, verified SnowPro credentials, candidate-controlled talent discoverability, learning intelligence, adaptive readiness, PostgreSQL production persistence, production observability, and self-service account lifecycle controls.",
 )
 app.add_middleware(SecurityBoundaryMiddleware)
 # Added after SecurityBoundaryMiddleware so observability is the outer request
@@ -64,6 +66,7 @@ def startup() -> None:
         ensure_learning_intelligence_schema()
         ensure_account_lifecycle_schema()
         ensure_adaptive_readiness_schema()
+        ensure_talent_schema()
         # SQLite historically created feedback lazily. Account export/deletion
         # needs that candidate-linked table to exist even for candidates who have
         # never submitted feedback, so bootstrap its lightweight local schema.
@@ -147,6 +150,7 @@ app.include_router(feedback.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(account.router, prefix="/api")
+app.include_router(credentials.router, prefix="/api")
 app.include_router(google_auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 

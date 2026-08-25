@@ -3,15 +3,21 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 import traceback
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from playwright.sync_api import Browser, Page, sync_playwright
 
+from app import credential_verification as credential_verification
 
-ROOT = Path(__file__).resolve().parents[1]
+
 BASE_URL = os.getenv("LAUNCH_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 REPORT_PATH = ROOT / "artifacts" / "browser-matrix-report.json"
 
@@ -103,7 +109,7 @@ def assert_membership_layout(page: Page, profile: Profile) -> dict:
     return metrics
 
 
-def register_candidate(page: Page, suffix: str) -> None:
+def register_candidate(page: Page, suffix: str) -> dict:
     result = page.evaluate(
         """async ({suffix}) => {
           const response = await fetch('/api/auth/register', {
@@ -122,6 +128,74 @@ def register_candidate(page: Page, suffix: str) -> None:
     )
     if result["status"] != 201 or result["body"].get("email_verified") is not False:
         raise AssertionError(f"Browser registration failed: {result}")
+    candidate = result["body"].get("candidate") or {}
+    if not candidate.get("id") or candidate.get("display_name") != "Launch Browser Candidate":
+        raise AssertionError(f"Browser registration candidate payload missing identity: {result}")
+    return candidate
+
+
+def seed_verified_credential(candidate: dict, profile_name: str) -> dict:
+    badge_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"snowflake-browser-{profile_name}"))
+    evidence = credential_verification.CredlyEvidence(
+        badge_id=badge_id,
+        credential_url=f"https://www.credly.com/badges/{badge_id}/public_url",
+        credential_name="SnowPro Core Certification",
+        issuer_name="Snowflake",
+        issued_to_name=str(candidate["display_name"]),
+        issued_at="2026-08-24",
+        expires_at="2028-08-24",
+        provider_expired=False,
+        provider_text_hash=f"browser-{profile_name}",
+        provider_status="active",
+    )
+    original = credential_verification.fetch_credly_evidence
+    credential_verification.fetch_credly_evidence = lambda credential_url, *, client=None: evidence  # type: ignore[assignment]
+    try:
+        result = credential_verification.verify_credly_credential(
+            candidate,
+            evidence.credential_url,
+        )
+    finally:
+        credential_verification.fetch_credly_evidence = original
+    if result.get("verification_status") != "verified":
+        raise AssertionError(f"Failed to seed verified browser credential: {result}")
+    return result
+
+
+def assert_credentials_layout(page: Page, profile: Profile) -> dict:
+    metrics = page.evaluate(
+        """() => ({
+          overflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+          cards: document.querySelectorAll('.v26-credential-card').length,
+          verified: document.querySelectorAll('.v26-credential-status.verified').length,
+        })"""
+    )
+    if metrics["overflow"]:
+        raise AssertionError(f"{profile.name} credentials page has horizontal overflow")
+    return metrics
+
+
+def fetch_talent_profile(page: Page) -> dict:
+    return page.evaluate(
+        """async () => {
+          const response = await fetch('/api/talent/profile', {credentials:'same-origin'});
+          return {status: response.status, body: await response.json()};
+        }"""
+    )
+
+
+def wait_for_recruiter_discoverability(page: Page, expected: bool) -> dict:
+    page.wait_for_function(
+        """async expected => {
+          const response = await fetch('/api/talent/profile', {credentials:'same-origin'});
+          if (!response.ok) return false;
+          const body = await response.json();
+          return body.recruiter_discoverable === expected;
+        }""",
+        arg=expected,
+        timeout=10_000,
+    )
+    return fetch_talent_profile(page)
 
 
 def run_profile(browser: Browser, profile: Profile) -> dict:
@@ -172,15 +246,58 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_accessible_baseline(page, f"{profile.name} account action")
         assert_client_clean(page, f"{profile.name} account action")
 
-        register_candidate(page, profile.name.replace("-", ""))
+        candidate = register_candidate(page, profile.name.replace("-", ""))
 
         # Registration must visibly remain unverified in the normal account experience.
         page.goto(f"{BASE_URL}/#/account", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/account")
         page.get_by_text("Verification required", exact=True).wait_for(state="visible", timeout=10_000)
         page.get_by_text("Action required", exact=True).wait_for(state="visible", timeout=10_000)
+        page.get_by_text("Licenses & certifications", exact=True).wait_for(state="visible", timeout=10_000)
         assert_accessible_baseline(page, f"{profile.name} account")
         assert_client_clean(page, f"{profile.name} account")
+
+        # Credentials are private by default and discoverability is locked until
+        # issuer-backed SnowPro evidence is verified.
+        page.goto(f"{BASE_URL}/#/credentials", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/credentials")
+        page.get_by_role("heading", name="Licenses & certifications").wait_for(state="visible", timeout=10_000)
+        page.get_by_text("No credentials yet", exact=True).wait_for(state="visible", timeout=10_000)
+        recruiter_toggle = page.locator('input[name="recruiter_discoverable"]')
+        public_toggle = page.locator('input[name="public_profile"]')
+        if recruiter_toggle.is_enabled() or public_toggle.is_enabled():
+            raise AssertionError(f"{profile.name} discoverability was enabled before credential verification")
+        empty_credential_metrics = assert_credentials_layout(page, profile)
+        assert_accessible_baseline(page, f"{profile.name} credentials empty")
+        assert_client_clean(page, f"{profile.name} credentials empty")
+
+        seeded = seed_verified_credential(candidate, profile.name)
+        page.reload(wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, "#/credentials")
+        page.get_by_text("SnowPro Core Certification", exact=True).wait_for(state="visible", timeout=10_000)
+        page.locator(".v26-credential-status.verified").get_by_text("Verified", exact=True).wait_for(state="visible", timeout=10_000)
+        recruiter_toggle = page.locator('input[name="recruiter_discoverable"]')
+        public_toggle = page.locator('input[name="public_profile"]')
+        if not recruiter_toggle.is_enabled() or not public_toggle.is_enabled():
+            raise AssertionError(f"{profile.name} discoverability remained locked after verification")
+        if recruiter_toggle.is_checked() or public_toggle.is_checked():
+            raise AssertionError(f"{profile.name} discoverability was not private by default")
+        recruiter_toggle.check()
+        page.get_by_role("button", name="Save profile").click()
+        talent = wait_for_recruiter_discoverability(page, True)
+        if talent["status"] != 200 or talent["body"].get("recruiter_discoverable") is not True:
+            raise AssertionError(f"{profile.name} recruiter discoverability did not persist: {talent}")
+        if talent["body"].get("public_profile") is not False:
+            raise AssertionError(f"{profile.name} public profile changed without candidate consent: {talent}")
+        page.locator('input[name="recruiter_discoverable"]').wait_for(state="attached", timeout=10_000)
+        if not page.locator('input[name="recruiter_discoverable"]').is_checked():
+            raise AssertionError(f"{profile.name} recruiter discoverability did not survive credential view remount")
+        credential_metrics = assert_credentials_layout(page, profile)
+        if credential_metrics["cards"] != 1 or credential_metrics["verified"] != 1:
+            raise AssertionError(f"{profile.name} verified credential card did not render: {credential_metrics}")
+        assert seeded["credential_uid"]
+        assert_accessible_baseline(page, f"{profile.name} credentials verified")
+        assert_client_clean(page, f"{profile.name} credentials verified")
 
         page.goto(f"{BASE_URL}/#/adaptive?track_id=snowpro-core", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/adaptive")
@@ -201,6 +318,9 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
             "home_load_ms": round(load_ms, 2),
             "membership_heading_px": membership_metrics["headingPx"],
             "membership_feature_px": membership_metrics["featurePx"],
+            "credential_empty_cards": empty_credential_metrics["cards"],
+            "credential_verified_cards": credential_metrics["verified"],
+            "credential_discoverability": talent["body"]["recruiter_discoverable"],
         }
     finally:
         context.close()
@@ -218,7 +338,8 @@ def main() -> None:
                     results.append(result)
                     print(
                         f"Browser profile PASS: {profile.name} "
-                        f"({result['home_load_ms']} ms; membership heading {result['membership_heading_px']}px)",
+                        f"({result['home_load_ms']} ms; membership heading {result['membership_heading_px']}px; "
+                        f"verified credentials {result['credential_verified_cards']})",
                         flush=True,
                     )
                 except Exception as exc:
@@ -242,7 +363,9 @@ def main() -> None:
             print(
                 f"- {item['profile']}: home network-idle {item['home_load_ms']} ms; "
                 f"membership heading {item['membership_heading_px']} px; "
-                f"feature text {item['membership_feature_px']} px"
+                f"feature text {item['membership_feature_px']} px; "
+                f"verified credentials {item['credential_verified_cards']}; "
+                f"recruiter discoverability {item['credential_discoverability']}"
             )
     except Exception:
         if not REPORT_PATH.exists():
