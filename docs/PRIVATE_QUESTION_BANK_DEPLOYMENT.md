@@ -86,7 +86,7 @@ Do not expose this status as a candidate HTTP endpoint.
 After import, verify through normal candidate product flows only:
 
 - Free practice serves only Free-entitled questions when sufficient private coverage exists.
-- Free Weekly Mock is 20 questions.
+- Free Weekly Mock is 30 questions and is timed for 45 minutes.
 - Premium Quick Mock is 30 questions.
 - Premium Full Mock is 100 questions.
 - Exam Pack receives its persisted candidate-specific Practice Mock and Full Exam sets.
