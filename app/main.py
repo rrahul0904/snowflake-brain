@@ -11,13 +11,13 @@ from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
 from .observability import (
-    ObservabilityMiddleware,
     log_event,
     metrics_snapshot,
     metrics_token_matches,
     record_background_failure,
     record_readiness_failure,
 )
+from .observability_middleware import ObservabilityMiddleware
 from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema

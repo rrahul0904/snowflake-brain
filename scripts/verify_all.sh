@@ -45,6 +45,12 @@ echo "== Account verification and recording UX =="
 echo "== Login-required certification content boundary =="
 "$PYTHON_BIN" scripts/test_authenticated_content_boundary.py
 
+echo "== Adversarial HTTP security boundary =="
+"$PYTHON_BIN" scripts/test_security_adversarial.py
+
+echo "== Private question-bank manifest integrity =="
+"$PYTHON_BIN" scripts/test_question_bank_manifest_contract.py
+
 echo "== Google identity and trusted billing authority =="
 "$PYTHON_BIN" scripts/test_google_billing_security.py
 
