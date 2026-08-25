@@ -40,10 +40,21 @@ jobs:
           cache: pip
       - name: Install security scanners
         run: python -m pip install --upgrade pip && pip install -r requirements.txt bandit pip-audit
-      - name: Bandit high-confidence application scan
-        run: bandit -r app -ll -ii
+      - name: Capture full Bandit SAST report
+        run: bandit -r app -f json -o bandit-report.json || true
+      - name: Enforce Bandit blocking policy
+        run: python scripts/check_bandit_report.py
       - name: Python dependency vulnerability audit
-        run: pip-audit -r requirements.txt --strict
+        run: pip-audit -r requirements.txt --strict -f json -o pip-audit-report.json
+      - name: Upload SAST and dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-static-dependency-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+          if-no-files-found: ignore
 
   dast-baseline:
     name: OWASP ZAP baseline DAST
