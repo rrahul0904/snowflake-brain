@@ -272,7 +272,7 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_client_clean(page, f"{profile.name} credentials empty")
 
         seeded = seed_verified_credential(candidate, profile.name)
-        page.goto(f"{BASE_URL}/#/credentials", wait_until="networkidle", timeout=20_000)
+        page.reload(wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/credentials")
         page.get_by_text("SnowPro Core Certification", exact=True).wait_for(state="visible", timeout=10_000)
         page.locator(".v26-credential-status.verified").get_by_text("Verified", exact=True).wait_for(state="visible", timeout=10_000)
