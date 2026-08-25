@@ -1,5 +1,7 @@
 {
-  "alias": ["snowflake-certification-platform.vercel.app"],
+  "rewrites": [
+    {"source": "/credentials", "destination": "/credentials.html"}
+  ],
   "headers": [
     {
       "source": "/(.*)",
