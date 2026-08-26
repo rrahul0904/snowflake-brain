@@ -24,12 +24,13 @@ jobs:
         run: |
           node --check beta-demo/data.js
           node --check beta-demo/app.js
+          node --check beta-demo/globe.js
       - name: Validate deployment config
         run: python -m json.tool beta-demo/vercel.json >/dev/null
-      - name: Block legacy beta assets
+      - name: Block deleted legacy beta assets
         run: |
-          if grep -RniE 'world-major-land|<canvas[^>]*globe|20 beta practice questions' beta-demo; then
-            echo 'Legacy demo content detected'
+          if grep -RniE 'world-major-land|20 beta practice questions' beta-demo; then
+            echo 'Deleted legacy demo content detected'
             exit 1
           fi
       - name: Verify static assets are servable
@@ -40,8 +41,10 @@ jobs:
           sleep 2
           curl --fail http://127.0.0.1:8088/ >/dev/null
           curl --fail http://127.0.0.1:8088/styles.css >/dev/null
+          curl --fail http://127.0.0.1:8088/globe.css >/dev/null
           curl --fail http://127.0.0.1:8088/data.js >/dev/null
           curl --fail http://127.0.0.1:8088/app.js >/dev/null
+          curl --fail http://127.0.0.1:8088/globe.js >/dev/null
       - name: Verify core feature strings
         run: |
           grep -q 'Mistake Collection' beta-demo/index.html
@@ -50,3 +53,5 @@ jobs:
           grep -q 'Cheat Sheet' beta-demo/app.js
           grep -q 'Community Insights' beta-demo/app.js
           grep -q 'COF-C03' beta-demo/data.js
+          grep -q 'Global Snowflake learning' beta-demo/globe.js
+          grep -q 'earth-canvas' beta-demo/globe.js
