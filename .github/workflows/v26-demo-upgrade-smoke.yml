@@ -1,0 +1,48 @@
+name: V26 Demo Upgrade Smoke
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/v26-demo-upgrade-smoke.yml'
+  push:
+    branches:
+      - 'feature/v26-demo-upgrade'
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/v26-demo-upgrade-smoke.yml'
+
+jobs:
+  v26-demo-upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate changed JavaScript syntax
+        run: |
+          node --check frontend/components/home-command-center.js
+          node --check frontend/views/home-v26.js
+          node --check frontend/views/mistakes-v26.js
+          node --check frontend/views/community-v26.js
+          node --check frontend/router-complete.js
+          node --check frontend/components/nav.js
+          node --check frontend/app-complete.js
+      - name: Preserve the approved V26 baseline
+        run: |
+          test -f frontend/components/globe.js
+          grep -q 'renderActivityGlobe' frontend/views/home-v26.js
+          grep -q 'v26-home-globe' frontend/views/home-v26.js
+          if grep -Rni 'beta-demo' frontend/views/home-v26.js frontend/components/home-command-center.js frontend/router-complete.js; then
+            echo 'V26 upgrade must not route back to beta-demo'
+            exit 1
+          fi
+      - name: Verify new V26 experiences
+        run: |
+          grep -q 'Mistake Collection' frontend/views/mistakes-v26.js
+          grep -q 'Community Insights' frontend/views/community-v26.js
+          grep -q 'Your prep command center' frontend/components/home-command-center.js
+          grep -q '"#/mistakes":"mistakes-v26.js"' frontend/router-complete.js
+          grep -q '"#/community":"community-v26.js"' frontend/router-complete.js
+          grep -q 'v26-demo-upgrade.css' frontend/index-v26.html
