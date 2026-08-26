@@ -5,6 +5,21 @@
       "maxDuration": 60
     }
   },
+  "env": {
+    "APP_BASE_URL": "https://snowflakecertificationguide.vercel.app",
+    "ACCOUNT_EMAIL_ACTION_BASE_URL": "https://snowflakecertificationguide.vercel.app",
+    "GOOGLE_OIDC_REDIRECT_URI": "https://snowflakecertificationguide.vercel.app/api/auth/google/callback",
+    "AUTH_COOKIE_SECURE": "true",
+    "FORCE_HTTPS": "true",
+    "SECURITY_RATE_LIMIT_ENABLED": "true",
+    "DATABASE_SCHEMA": "public",
+    "DB_POOL_MIN_SIZE": "1",
+    "DB_POOL_MAX_SIZE": "6",
+    "DB_POOL_TIMEOUT_SECONDS": "10",
+    "OBSERVABILITY_ENABLED": "true",
+    "QUESTION_BANK_AUTO_IMPORT": "false",
+    "ALLOW_MEMBERSHIP_DEV_OVERRIDE": "false"
+  },
   "headers": [
     {
       "source": "/(.*)",
