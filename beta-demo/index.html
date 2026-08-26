@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="SnowPro Core COF-C03 certification preparation demo with study guide, targeted practice, mock exams, mistakes, readiness and quick reference." />
+  <meta name="theme-color" content="#071521" />
+  <title>Snowflake Certification Platform</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Snowflake Certification Platform home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" role="img"><path d="M16 3v26M7.6 7.6l16.8 16.8M3 16h26M7.6 24.4 24.4 7.6"/><circle cx="16" cy="16" r="4.2"/></svg>
+        </span>
+        <span class="brand-copy"><strong>Snowflake</strong><small>Certification Platform</small></span>
+      </a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="#study" data-nav="study">Study</a>
+        <a href="#practice" data-nav="practice">Practice</a>
+        <a href="#mock" data-nav="mock">Mock Exams</a>
+        <a href="#progress" data-nav="progress">Progress</a>
+      </nav>
+      <div class="top-actions">
+        <button class="icon-button" id="themeToggle" type="button" aria-label="Toggle color theme" title="Toggle theme"><span aria-hidden="true">◐</span></button>
+        <a class="profile-pill" href="#account" aria-label="Open account"><span class="avatar">RS</span><span class="profile-name">Demo Learner</span></a>
+        <button class="icon-button mobile-only" id="menuToggle" type="button" aria-label="Open navigation">☰</button>
+      </div>
+    </header>
+
+    <aside class="sidebar" id="sidebar" aria-label="Study navigation">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Prepare</div>
+        <a href="#home" data-nav="home"><span>⌂</span> Home</a>
+        <a href="#study" data-nav="study"><span>▤</span> Study Guide</a>
+        <a href="#practice" data-nav="practice"><span>✓</span> Practice</a>
+        <a href="#mock" data-nav="mock"><span>◷</span> Mock Exams</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Improve</div>
+        <a href="#mistakes" data-nav="mistakes"><span>↺</span> Mistake Collection <b class="nav-count" id="mistakeNavCount">0</b></a>
+        <a href="#progress" data-nav="progress"><span>↗</span> Readiness</a>
+        <a href="#cheatsheet" data-nav="cheatsheet"><span>⌘</span> Cheat Sheet</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Explore</div>
+        <a href="#community" data-nav="community"><span>◎</span> Community</a>
+        <a href="#resources" data-nav="resources"><span>◇</span> Resources</a>
+      </div>
+      <div class="sidebar-card">
+        <span class="eyebrow">COF-C03</span>
+        <strong>Exam blueprint</strong>
+        <p>5 domains · 19 objectives · weighted coverage</p>
+        <a href="#study">View blueprint →</a>
+      </div>
+    </aside>
+
+    <main id="main" class="main-content" tabindex="-1"><div id="routeView"></div></main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
