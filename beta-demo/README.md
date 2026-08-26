@@ -7,8 +7,8 @@ This directory is a clean rebuild of the public demo experience. It intentionall
 - Application shell with top navigation + left study navigation
 - Responsive mobile drawer
 - Light/dark theme
+- Home hero centered on SnowPro readiness, exam pacing, and next learning actions — no globe or decorative world visualization
 - Home readiness dashboard
-- Restrained animated Earth globe with projected continent points, atmospheric treatment, light/dark support, and reduced-motion handling
 - COF-C03 domain weights and 19-objective study hierarchy
 - Domain/task learning pages
 - Practice hub with Quick, Adaptive, Advanced, and Redo Mistakes modes
@@ -30,6 +30,10 @@ The static demo uses a small independently authored sample set to demonstrate in
 ## Content/IP boundary
 
 The demo captures product and interaction patterns only. It does not copy competitor branding, proprietary questions, or article text. Sample Snowflake questions in this demo are independently authored for prototyping.
+
+## Visual boundary
+
+The public demo intentionally avoids decorative globe/world-map hero treatments. The hero should communicate certification value through readiness, blueprint coverage, target-date pacing, mistakes, practice accuracy, and next-best actions.
 
 ## Run locally
 
