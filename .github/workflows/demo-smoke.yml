@@ -25,6 +25,7 @@ jobs:
           node --check beta-demo/data.js
           node --check beta-demo/app.js
           node --check beta-demo/globe.js
+          node --check beta-demo/mock-engine.js
       - name: Validate deployment config
         run: python -m json.tool beta-demo/vercel.json >/dev/null
       - name: Block deleted legacy beta assets
@@ -42,9 +43,11 @@ jobs:
           curl --fail http://127.0.0.1:8088/ >/dev/null
           curl --fail http://127.0.0.1:8088/styles.css >/dev/null
           curl --fail http://127.0.0.1:8088/globe.css >/dev/null
+          curl --fail http://127.0.0.1:8088/mock-engine.css >/dev/null
           curl --fail http://127.0.0.1:8088/data.js >/dev/null
           curl --fail http://127.0.0.1:8088/app.js >/dev/null
           curl --fail http://127.0.0.1:8088/globe.js >/dev/null
+          curl --fail http://127.0.0.1:8088/mock-engine.js >/dev/null
       - name: Verify core feature strings
         run: |
           grep -q 'Mistake Collection' beta-demo/index.html
@@ -55,3 +58,5 @@ jobs:
           grep -q 'COF-C03' beta-demo/data.js
           grep -q 'Global Snowflake learning' beta-demo/globe.js
           grep -q 'earth-canvas' beta-demo/globe.js
+          grep -q 'Question map' beta-demo/mock-engine.js
+          grep -q 'Remediation queue' beta-demo/mock-engine.js
