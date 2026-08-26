@@ -1,0 +1,2 @@
+Production deployment trigger for snowflakecertificationguide.vercel.app
+Triggered after Git integration was connected on 2026-08-26.
