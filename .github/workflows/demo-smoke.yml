@@ -24,14 +24,15 @@ jobs:
         run: |
           node --check beta-demo/data.js
           node --check beta-demo/app.js
-          node --check beta-demo/globe.js
           node --check beta-demo/mock-engine.js
       - name: Validate deployment config
         run: python -m json.tool beta-demo/vercel.json >/dev/null
-      - name: Block deleted legacy beta assets
+      - name: Block deleted legacy beta and globe assets
         run: |
-          if grep -RniE 'world-major-land|20 beta practice questions' beta-demo; then
-            echo 'Deleted legacy demo content detected'
+          test ! -e beta-demo/globe.js
+          test ! -e beta-demo/globe.css
+          if grep -RniE 'world-major-land|20 beta practice questions|earth-canvas|earth-card|Global Snowflake learning|globe\.js|globe\.css' beta-demo; then
+            echo 'Deleted legacy demo or globe content detected'
             exit 1
           fi
       - name: Verify static assets are servable
@@ -42,11 +43,9 @@ jobs:
           sleep 2
           curl --fail http://127.0.0.1:8088/ >/dev/null
           curl --fail http://127.0.0.1:8088/styles.css >/dev/null
-          curl --fail http://127.0.0.1:8088/globe.css >/dev/null
           curl --fail http://127.0.0.1:8088/mock-engine.css >/dev/null
           curl --fail http://127.0.0.1:8088/data.js >/dev/null
           curl --fail http://127.0.0.1:8088/app.js >/dev/null
-          curl --fail http://127.0.0.1:8088/globe.js >/dev/null
           curl --fail http://127.0.0.1:8088/mock-engine.js >/dev/null
       - name: Verify core feature strings
         run: |
@@ -56,7 +55,7 @@ jobs:
           grep -q 'Cheat Sheet' beta-demo/app.js
           grep -q 'Community Insights' beta-demo/app.js
           grep -q 'COF-C03' beta-demo/data.js
-          grep -q 'Global Snowflake learning' beta-demo/globe.js
-          grep -q 'earth-canvas' beta-demo/globe.js
+          grep -q 'Prepare with <span>evidence</span>' beta-demo/app.js
+          grep -q 'Exam readiness' beta-demo/app.js
           grep -q 'Question map' beta-demo/mock-engine.js
           grep -q 'Remediation queue' beta-demo/mock-engine.js
