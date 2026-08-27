@@ -15,32 +15,38 @@ BRAIN_DB = Path(
 # pooled PostgreSQL adapter. POSTGRES_TEST_ISOLATION is CI-only and gives each
 # test process a private schema while exercising the same PostgreSQL server.
 #
-# A Vercel production function must never silently select the local SQLite
-# implementation. Besides losing durable data on serverless instances, that
-# could make a deployment appear healthy while serving an empty database.
+# Every hosted Vercel function (Preview and Production) must remain cloud-only
+# and verification-only. A preview can otherwise mutate the same managed
+# database accidentally, which is just as dangerous as a production function
+# performing DDL itself.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-# This credential is deliberately separate from the runtime pool.  It is used
+# This credential is deliberately separate from the runtime pool. It is used
 # only by the controlled migration job and must never be configured on a Vercel
-# runtime deployment.  Keeping the two credentials distinct lets the runtime
+# runtime deployment. Keeping the two credentials distinct lets the runtime
 # role remain DML-only.
 DATABASE_MIGRATION_URL = os.getenv("DATABASE_MIGRATION_URL", "").strip()
-IS_VERCEL_PRODUCTION = os.getenv("VERCEL_ENV", "").strip().lower() == "production"
+VERCEL_ENV = os.getenv("VERCEL_ENV", "").strip().lower()
+IS_VERCEL_PRODUCTION = VERCEL_ENV == "production"
+IS_VERCEL_RUNTIME = (
+    os.getenv("VERCEL", "").strip() == "1"
+    or VERCEL_ENV in {"preview", "production"}
+)
 IS_POSTGRES_URL = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
 
-if IS_VERCEL_PRODUCTION and not DATABASE_URL:
+if IS_VERCEL_RUNTIME and not DATABASE_URL:
     raise RuntimeError(
-        "Production database configuration error: DATABASE_URL is required when "
-        "VERCEL_ENV=production; SQLite fallback is disabled."
+        "Vercel database configuration error: DATABASE_URL is required for every "
+        "Preview/Production runtime; SQLite fallback is disabled."
     )
-if IS_VERCEL_PRODUCTION and not IS_POSTGRES_URL:
+if IS_VERCEL_RUNTIME and not IS_POSTGRES_URL:
     raise RuntimeError(
-        "Production database configuration error: DATABASE_URL must be a PostgreSQL "
-        "connection URL when VERCEL_ENV=production; SQLite fallback is disabled."
+        "Vercel database configuration error: DATABASE_URL must be a PostgreSQL "
+        "connection URL for every Preview/Production runtime; SQLite fallback is disabled."
     )
-if IS_VERCEL_PRODUCTION and DATABASE_MIGRATION_URL:
+if IS_VERCEL_RUNTIME and DATABASE_MIGRATION_URL:
     raise RuntimeError(
-        "Production database configuration error: DATABASE_MIGRATION_URL must not be "
-        "available to the Vercel runtime. Run migrations from an approved deployment job."
+        "Vercel database configuration error: DATABASE_MIGRATION_URL must not be "
+        "available to a request-serving runtime. Run migrations from an approved deployment job."
     )
 DATABASE_BACKEND = "postgresql" if IS_POSTGRES_URL else "sqlite"
 DATABASE_SCHEMA = os.getenv("DATABASE_SCHEMA", "public").strip() or "public"
@@ -109,7 +115,7 @@ SNOWFLAKE_LABS_MODE = os.getenv("SNOWFLAKE_LABS_MODE", "offline").lower()
 # Commercial question-bank content is deliberately outside the repository and
 # outside the frontend static tree. The checked-in repository contains only the
 # importer/schema/selection engine; production bank files arrive through a
-# private deployment volume or secret-backed content store.
+# controlled administrative import job, never a request-serving Vercel function.
 PRIVATE_QUESTION_BANK_DIR = Path(
     os.getenv(
         "PRIVATE_QUESTION_BANK_DIR",
@@ -118,10 +124,10 @@ PRIVATE_QUESTION_BANK_DIR = Path(
 ).expanduser()
 QUESTION_BANK_AUTO_IMPORT = os.getenv("QUESTION_BANK_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}
 
-if IS_VERCEL_PRODUCTION and QUESTION_BANK_AUTO_IMPORT:
+if IS_VERCEL_RUNTIME and QUESTION_BANK_AUTO_IMPORT:
     raise RuntimeError(
-        "Production question-bank configuration error: QUESTION_BANK_AUTO_IMPORT "
-        "must be false. Import releases through the controlled migration/import job."
+        "Vercel question-bank configuration error: QUESTION_BANK_AUTO_IMPORT "
+        "must be false. Import releases through the controlled administrative job."
     )
 
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
