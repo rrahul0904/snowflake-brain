@@ -1,5 +1,13 @@
 export const VIEW_ID = "v26-info";
 
+const domains = [
+  ["01", "Snowflake AI Data Cloud Features & Architecture", "31%", "6 tasks"],
+  ["02", "Account Management & Data Governance", "20%", "3 tasks"],
+  ["03", "Data Loading, Unloading & Connectivity", "18%", "3 tasks"],
+  ["04", "Performance Optimization, Querying & Transformation", "21%", "4 tasks"],
+  ["05", "Data Collaboration", "10%", "3 tasks"],
+];
+
 const pages = {
   "#/about": {
     kicker: "About",
@@ -7,21 +15,6 @@ const pages = {
     body: [
       "Snowflake Certification Guide organizes study around the current certification blueprint instead of a course playlist.",
       "Learn task by task, practice the same objectives, rehearse timed sittings, and use progress evidence to decide what to review next."
-    ]
-  },
-  "#/exam-guide": {
-    kicker: "Exam guide",
-    title: "Know what the exam expects before you start drilling.",
-    body: [
-      "The guide maps SnowPro Core COF-C03 preparation to five weighted domains and nineteen task statements. Use the curriculum for concept coverage, Diagnostic for baseline evidence, Drill Mode for focused repair, and timed mocks for exam rehearsal.",
-      "The preparation score shown here is a study-readiness signal, not Snowflake's proprietary exam scoring formula."
-    ],
-    bullets: [
-      "Architecture and Snowflake platform features",
-      "Account management, security, and data governance",
-      "Data loading, unloading, and connectivity",
-      "Performance optimization, querying, and transformation",
-      "Data collaboration and sharing"
     ]
   },
   "#/terms": {
@@ -55,6 +48,31 @@ const pages = {
 
 export default async function mount(container, params = {}) {
   const path = params.__route || (window.location.hash || "#/about").split("?")[0];
+  if (path === "#/exam-guide") {
+    container.innerHTML = examGuide();
+    return;
+  }
   const page = pages[path] || pages["#/about"];
-  container.innerHTML = `<main class="v26-page v26-info-page"><section class="v26-page-intro"><p class="v26-kicker">${page.kicker}</p><h1>${page.title}</h1></section><section class="v26-info-copy">${page.body.map((item) => `<p>${item}</p>`).join("")}${page.bullets ? `<h2>What is covered</h2><ul>${page.bullets.map((item) => `<li>${item}</li>`).join("")}</ul><p><a href="#/curriculum">Browse the curriculum →</a></p>` : ""}</section></main>`;
+  container.innerHTML = `<main class="v26-page v26-info-page"><section class="v26-page-intro"><p class="v26-kicker">${page.kicker}</p><h1>${page.title}</h1></section><section class="v26-info-copy">${page.body.map((item) => `<p>${item}</p>`).join("")}</section></main>`;
+}
+
+function examGuide() {
+  return `<main class="v26-page v26-info-page v26-exam-guide-page">
+    <section class="v26-page-intro">
+      <p class="v26-kicker">COF-C03 · Exam guide</p>
+      <h1>Know the blueprint before you start drilling.</h1>
+      <p>SnowPro Core preparation in this guide is organized into five weighted domains and nineteen task statements. Domain weights help you allocate study time; the authenticated curriculum contains the detailed lessons and task-level practice.</p>
+      <p class="v26-exam-guide-note">For current registration, delivery, pricing, accommodations, and official policy details, always use Snowflake's official certification pages.</p>
+    </section>
+    <section class="v26-info-copy v26-exam-domain-outline">
+      <p class="v26-kicker">What is covered</p>
+      ${domains.map(([number, title, weight, count]) => `<div class="v26-exam-domain-row"><span>${number}</span><strong>${title}</strong><em>${count}</em><b>${weight}</b></div>`).join("")}
+      <article class="v26-how-to-prepare">
+        <p class="v26-kicker">Available now</p>
+        <h2>How to prepare here</h2>
+        <p>Take the diagnostic first. Use the result to identify the weighted domains that deserve the most attention, work through those task lessons, then validate the repair with drills and timed mocks.</p>
+        <div class="v26-how-to-actions"><a class="v26-btn primary" href="#/practice?mode=diagnostic">Take the diagnostic</a><a class="v26-btn secondary" href="#/curriculum">Browse the curriculum</a><a class="v26-btn secondary" href="#/quick-reference">Quick reference</a></div>
+      </article>
+    </section>
+  </main>`;
 }
