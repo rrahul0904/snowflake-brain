@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Integration proof that the production runtime role is DML-only.
+"""Real PostgreSQL integration proof for the production runtime ACL.
 
-Unlike the lightweight GRANT-shape unit test, this test creates separate login
-roles in a real PostgreSQL CI service, runs the repository migrations with the
-migration role, grants runtime privileges through the production migration
-helper, and proves the runtime role can perform application DML but cannot
-perform DDL, own the database/schema, or inherit the migration role.
+Creates separate migration/runtime roles against the disposable CI database,
+runs repository migrations, reconciles the production ACL, proves approved
+candidate-state DML succeeds, and proves DDL plus question-bank/migration-ledger
+writes fail.
 """
 
 from __future__ import annotations
@@ -37,12 +36,12 @@ def role_dsn(admin_url: str, role: str, password: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
 
 
-def expect_ddl_denied(connection: psycopg.Connection, statement: sql.Composed | sql.SQL, label: str) -> None:
+def expect_denied(connection: psycopg.Connection, statement: object, label: str, params: tuple | None = None) -> None:
     try:
-        connection.execute(statement)
+        connection.execute(statement, params or ())
     except (errors.InsufficientPrivilege, errors.NotOwner):
         return
-    raise AssertionError(f"Runtime role unexpectedly performed DDL: {label}")
+    raise AssertionError(f"Runtime role unexpectedly performed privileged operation: {label}")
 
 
 def main() -> None:
@@ -91,7 +90,6 @@ def main() -> None:
             )
         )
 
-    # Configure the application modules only after the disposable roles exist.
     os.environ["DATABASE_URL"] = runtime_url
     os.environ["DATABASE_MIGRATION_URL"] = migration_url
     os.environ["DATABASE_SCHEMA"] = schema
@@ -106,19 +104,10 @@ def main() -> None:
     try:
         run_postgres_migrations(migration_url=migration_url)
         grant_runtime_privileges()
-
-        # Default privileges must cover future migration-created objects too.
-        with psycopg.connect(migration_url, autocommit=True) as migrator:
-            migrator.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
-            migrator.execute(
-                sql.SQL("CREATE TABLE {}.role_default_probe (id bigint PRIMARY KEY, value text NOT NULL)").format(
-                    sql.Identifier(schema)
-                )
-            )
-
         status = assert_production_schema_ready()
-        require(status.get("status") == "ok", f"runtime schema verifier rejected isolated DML role: {status}")
+        require(status.get("status") == "ok", f"runtime schema verifier rejected isolated role: {status}")
         require(not status.get("unsafe_runtime_capabilities"), f"unsafe runtime capabilities detected: {status}")
+        require(not status.get("excessive_runtime_write"), f"governance table writes detected: {status}")
 
         with psycopg.connect(runtime_url, autocommit=True) as runtime:
             runtime.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
@@ -148,39 +137,83 @@ def main() -> None:
             member = runtime.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (migration_role,)).fetchone()
             require(member is not None and not bool(member[0]), "runtime role can inherit/set the migration role")
 
-            # Positive proof: required application DML works, including an object
-            # created after ALTER DEFAULT PRIVILEGES was established.
-            probe = sql.Identifier(schema, "role_default_probe")
-            runtime.execute(sql.SQL("INSERT INTO {}(id,value) VALUES (1,'a')").format(probe))
-            runtime.execute(sql.SQL("UPDATE {} SET value='b' WHERE id=1").format(probe))
-            row = runtime.execute(sql.SQL("SELECT value FROM {} WHERE id=1").format(probe)).fetchone()
-            require(row and row[0] == "b", "runtime SELECT/INSERT/UPDATE failed")
-            runtime.execute(sql.SQL("DELETE FROM {} WHERE id=1").format(probe))
+            # Positive proof on an approved candidate/runtime state table.
+            runtime.execute(
+                "INSERT INTO feedback_submissions(title,category,description,route,track_id) VALUES ('role test','other','','#/home','snowpro-core')"
+            )
+            row = runtime.execute("SELECT COUNT(*) FROM feedback_submissions WHERE title='role test'").fetchone()
+            require(row and int(row[0]) == 1, "approved runtime INSERT/SELECT failed")
+            runtime.execute("UPDATE feedback_submissions SET description='ok' WHERE title='role test'")
+            runtime.execute("DELETE FROM feedback_submissions WHERE title='role test'")
 
-            # Negative proof: DDL and schema creation are denied to the exact role
-            # the application would use at runtime.
-            expect_ddl_denied(
+            # Question-bank definitions and migration/release governance are read-only.
+            expect_denied(
+                runtime,
+                "UPDATE questions SET explanation='forbidden' WHERE 1=0",
+                "question-bank UPDATE",
+            )
+            expect_denied(
+                runtime,
+                "INSERT INTO schema_migrations(version,name) VALUES ('forbidden','forbidden')",
+                "schema migration ledger INSERT",
+            )
+            expect_denied(
+                runtime,
+                "UPDATE question_bank_releases SET notes='forbidden' WHERE 1=0",
+                "release governance UPDATE",
+            )
+            expect_denied(
+                runtime,
+                "UPDATE question_editorial_policies SET enforcement_enabled=0 WHERE 1=0",
+                "editorial policy UPDATE",
+            )
+
+            # DDL and schema elevation are denied.
+            expect_denied(
                 runtime,
                 sql.SQL("CREATE TABLE {}.runtime_must_not_create(id int)").format(sql.Identifier(schema)),
                 "CREATE TABLE",
             )
-            expect_ddl_denied(
+            expect_denied(
                 runtime,
-                sql.SQL("ALTER TABLE {}.role_default_probe ADD COLUMN forbidden int").format(sql.Identifier(schema)),
+                sql.SQL("ALTER TABLE {}.feedback_submissions ADD COLUMN forbidden int").format(sql.Identifier(schema)),
                 "ALTER TABLE",
             )
-            expect_ddl_denied(
+            expect_denied(
                 runtime,
-                sql.SQL("DROP TABLE {}.role_default_probe").format(sql.Identifier(schema)),
+                sql.SQL("DROP TABLE {}.feedback_submissions").format(sql.Identifier(schema)),
                 "DROP TABLE",
             )
-            expect_ddl_denied(
+            expect_denied(
                 runtime,
                 sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(f"runtime_schema_{suffix}")),
                 "CREATE SCHEMA",
             )
 
-        print("Production role separation: PASS (runtime DML works; DDL/ownership/escalation denied)")
+        # A future table is safe-by-default. After ACL reconciliation it is
+        # readable but not writable until explicitly added to RUNTIME_WRITE_TABLES.
+        with psycopg.connect(migration_url, autocommit=True) as migrator:
+            migrator.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
+            migrator.execute(
+                sql.SQL("CREATE TABLE {}.future_governance_probe (id bigint PRIMARY KEY, value text NOT NULL)").format(
+                    sql.Identifier(schema)
+                )
+            )
+        grant_runtime_privileges()
+        status = assert_production_schema_ready()
+        require(status.get("status") == "ok", f"future read-only table broke runtime verifier: {status}")
+        with psycopg.connect(runtime_url, autocommit=True) as runtime:
+            runtime.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
+            runtime.execute(sql.SQL("SELECT * FROM {}.future_governance_probe").format(sql.Identifier(schema)))
+            expect_denied(
+                runtime,
+                sql.SQL("INSERT INTO {}.future_governance_probe(id,value) VALUES (1,'forbidden')").format(
+                    sql.Identifier(schema)
+                ),
+                "future-table INSERT",
+            )
+
+        print("Production role separation: PASS (candidate DML works; bank/governance writes and DDL denied)")
     finally:
         close_pool()
         with psycopg.connect(admin_url, autocommit=True) as admin:
