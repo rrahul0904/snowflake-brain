@@ -1,6 +1,6 @@
 import { escapeHtml } from "../api.js";
 
-export const DOMAIN_COLORS = ["#4b8fe8", "#2dbf8b", "#8057e8", "#f39a0a", "#e72765"];
+export const DOMAIN_COLORS = ["#c87362", "#8498b1", "#c18f58", "#78988b", "#af7480"];
 
 export function studyLayout(cert, active, body, activeSkillId = "") {
   return `<div class="v26-study-layout">${studySidebar(cert, active, activeSkillId)}<main class="v26-study-content">${body}</main></div>`;
