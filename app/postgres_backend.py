@@ -134,6 +134,10 @@ def _prepare_connection(raw: Any, *, allow_schema_creation: bool = False) -> Non
                         raise RuntimeError(
                             f"PostgreSQL schema '{schema}' does not exist; apply the controlled migration job first."
                         )
+                    # The existence probe above starts a transaction on a
+                    # default psycopg connection. Finish it before enabling
+                    # autocommit for CREATE SCHEMA.
+                    raw.commit()
                     previous = raw.autocommit
                     raw.autocommit = True
                     try:
