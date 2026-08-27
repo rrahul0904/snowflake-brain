@@ -53,7 +53,6 @@ export const getExperienceCommandCenter = (params = {}) => api(`/api/experience/
 export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/readiness?${new URLSearchParams(params)}`);
 export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
 export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);
-export const getEvidenceAudit = (params = {}) => api(`/api/intelligence/evidence-audit?${new URLSearchParams(params)}`);
 export const getDueToday = (params = {}) => api(`/api/intelligence/due-today?${new URLSearchParams(params)}`);
 export const getMistakeNotebook = (params = {}) => api(`/api/intelligence/mistake-notebook?${new URLSearchParams(params)}`);
 export const updateMistakeNotebook = (questionId, payload) => api(`/api/intelligence/mistake-notebook/${encodeURIComponent(questionId)}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -61,7 +60,6 @@ export const getConfidenceCalibration = (params = {}) => api(`/api/intelligence/
 export const getStudyPlan = (params = {}) => api(`/api/intelligence/study-plan?${new URLSearchParams(params)}`);
 export const saveStudyPreferences = (payload) => api("/api/intelligence/study-plan/preferences", { method: "PUT", body: JSON.stringify(payload) });
 export const getMockRemediation = (sessionId) => api(`/api/intelligence/mock-remediation/${encodeURIComponent(sessionId)}`);
-export const reindexSkillMap = (trackId = "") => api(`/api/intelligence/reindex-skill-map?${new URLSearchParams({ track_id: trackId })}`, { method: "POST", body: "{}" });
 export const getAdaptiveReadiness = (params = {}) => api(`/api/intelligence/adaptive/readiness?${new URLSearchParams(params)}`);
 export const getAdaptiveRecommendations = (params = {}) => api(`/api/intelligence/adaptive/recommendations?${new URLSearchParams(params)}`);
 export const getAdaptiveQuestionIds = (params = {}) => api(`/api/intelligence/adaptive/question-ids?${new URLSearchParams(params)}`);
