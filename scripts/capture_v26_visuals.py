@@ -120,7 +120,7 @@ def guest_identity_pass(browser: Browser) -> None:
     page.wait_for_selector(".v26-auth-modal", state="detached")
     route(page, "#/curriculum?track_id=snowpro-core")
     require(page, "#view-root[data-view-id='authentication-required']", "guest content boundary")
-    if page.locator(".v26-domain-card-grid,.v26-domain-task-rows,.v26-study-nav").count():
+    if page.locator(".v26-curriculum-list,.v26-domain-task-rows,.v26-study-nav").count():
         raise AssertionError("Anonymous certification content rendered behind the candidate gate")
     shot(page, "00d-guest-content-login-gate")
     assert_no_browser_errors(problems, "guest identity pass")
@@ -141,10 +141,13 @@ def guest_mobile_identity_pass(browser: Browser) -> None:
 
 def recording_page_pass(page: Page, domain_id: str, skill_id: str) -> None:
     route(page, "#/curriculum?track_id=snowpro-core", theme="light")
-    require(page, ".v26-domain-card-grid", "Exam Domains overview")
-    if page.locator(".v26-domain-card").count() != 5:
-        raise AssertionError("Exam Domains must render five recording-style domain cards")
+    require(page, ".v26-curriculum-list", "Exam Domains overview")
+    if page.locator(".v26-domain-block").count() != 5:
+        raise AssertionError("Exam Domains must render five editorial syllabus rows")
     shot(page, "17-light-exam-domains")
+    page.locator("[data-domain-toggle]").first.click()
+    require(page, ".v26-domain-block [data-domain-tasks]:not([hidden])", "Expanded curriculum task rows")
+    shot(page, "17a-light-exam-domains-expanded")
 
     route(page, f"#/domain?track_id=snowpro-core&domain_id={domain_id}", theme="light")
     require(page, ".v26-domain-task-rows", "Domain detail task statements")
@@ -219,10 +222,15 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
         page.wait_for_timeout(180)
     shot(page, "02-dark-home-globe-rotated")
     route(page, "#/certifications", theme="dark"); shot(page, "03-dark-certifications")
-    route(page, "#/curriculum?track_id=snowpro-core", theme="dark"); require(page, ".v26-domain-card-grid", "dark curriculum"); shot(page, "04-dark-curriculum")
+    route(page, "#/curriculum?track_id=snowpro-core", theme="dark")
+    require(page, ".v26-curriculum-list", "dark curriculum")
+    shot(page, "04-dark-curriculum")
+    page.locator("[data-domain-toggle]").first.click()
+    require(page, ".v26-domain-block [data-domain-tasks]:not([hidden])", "dark expanded curriculum")
+    shot(page, "04b-dark-curriculum-expanded")
     route(page, f"#/domain?track_id=snowpro-core&domain_id={domain_id}", theme="dark"); shot(page, "05-dark-domain-detail")
     route(page, f"#/skill?track_id=snowpro-core&skill_id={skill_id}", theme="dark"); shot(page, "06-dark-lesson")
-    route(page, "#/practice?track_id=snowpro-core", theme="dark"); shot(page, "07-dark-practice")
+    route(page, "#/practice?track_id=snowpro-core", theme="dark"); require(page, ".v26-due-strip", "practice due strip"); shot(page, "07-dark-practice")
     route(page, "#/reference?track_id=snowpro-core", theme="dark"); shot(page, "08-dark-reference")
     route(page, "#/journal?track_id=snowpro-core", theme="dark"); shot(page, "09-dark-journal")
     clear_active_mock()
@@ -231,6 +239,12 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
 
     session = create_mock("weekly-mock")
     session_id = int(session["session_id"])
+    # Force an SPA remount after the server-side session is created. Navigating to
+    # the identical hash does not emit hashchange, so leave Mock Start and re-enter.
+    route(page, "#/mock?track_id=snowpro-core", theme="dark")
+    route(page, "#/mock/start?track_id=snowpro-core&type=weekly-mock", theme="dark")
+    require(page, ".v26-interrupted-sitting", "interrupted sitting resume state")
+    shot(page, "12-dark-interrupted-sitting")
     route(page, f"#/mock/session?session_id={session_id}", theme="dark")
     shot(page, "13-dark-exam-player")
     page.locator("input[name='answer']").first.check()
@@ -260,7 +274,7 @@ def mobile_pass(browser: Browser, session_id: int) -> None:
     context, page, problems = browser_page(browser, 390, 844)
     page.add_init_script("localStorage.setItem('snowflake-certification.theme','light')")
     route(page, "#/home", theme="light"); require(page, "[data-globe-canvas]", "mobile home"); page.wait_for_timeout(500); shot(page, "21-mobile-home")
-    route(page, "#/curriculum?track_id=snowpro-core", theme="light"); require(page, ".v26-domain-card-grid", "mobile curriculum"); shot(page, "22-mobile-curriculum")
+    route(page, "#/curriculum?track_id=snowpro-core", theme="light"); require(page, ".v26-curriculum-list", "mobile curriculum"); shot(page, "22-mobile-curriculum")
     route(page, f"#/mock/session?session_id={session_id}", theme="light"); shot(page, "23-mobile-exam-player")
     page.locator("[data-open-nav]").click(); page.wait_for_timeout(160); shot(page, "24-mobile-exam-navigator")
     assert_no_browser_errors(problems, "mobile pass")
@@ -275,7 +289,7 @@ def write_manifest(domain_id: str, skill_id: str, session_id: int) -> None:
         "domain_id": domain_id,
         "skill_id": skill_id,
         "mock_session_id": session_id,
-        "recording_contract_pages": ["Exam Domains", "Domain Detail", "Task Lesson", "Progress", "Drill Mode", "Build Exercises", "Diagnostic Assessment", "Quick Reference", "Glossary", "Mock Exam", "Resources", "SnowPro Journal"],
+        "recording_contract_pages": ["Home", "Rotated Globe", "Certification Chooser", "Exam Domains", "Expanded Curriculum", "Domain Detail", "Task Lesson", "Progress", "Practice", "Drill Mode", "Build Exercises", "Diagnostic Assessment", "Quick Reference", "Glossary", "Mock Exam", "Mock Start", "Interrupted Sitting", "Exam Player", "Answered and Flagged Exam", "Feedback Drawer", "Resources", "SnowPro Journal", "Light Mode", "Mobile Home", "Mobile Curriculum", "Mobile Exam", "Mobile Navigator"],
         "identity": "Google sign-in is rendered in guest desktop/mobile states. CI uses disabled-provider mode because no production OAuth secret is stored in GitHub.",
         "content_boundary": "Guest browser contexts deep-link to curriculum and must render authentication-required without loading domain content. Study APIs require a valid candidate session.",
         "paid_access": "Membership and account/session states are rendered; paid activation remains server-authoritative and requires deployment billing credentials.",

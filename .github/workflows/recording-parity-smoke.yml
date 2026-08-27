@@ -1,0 +1,79 @@
+name: Recording Feature Parity Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feature/recording-parity-v27
+
+jobs:
+  recording-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate V26 JavaScript
+        run: |
+          node --check frontend/components/globe.js
+          node --check frontend/components/home-extras.js
+          node --check frontend/views/curriculum-v26.js
+          node --check frontend/views/practice-v26.js
+          node --check frontend/views/info-v26.js
+          node --check frontend/router-complete.js
+          node --check frontend/app-complete.js
+      - name: Verify approved warm token system
+        run: |
+          grep -q -- '--bg:#211713' frontend/styles/tokens.css
+          grep -q -- '--text:#f0e5d8' frontend/styles/tokens.css
+          grep -q -- '--accent:#bd7148' frontend/styles/tokens.css
+          grep -q -- '--bg:#f2eadf' frontend/styles/tokens.css
+          grep -q -- '--text:#2b201b' frontend/styles/tokens.css
+          grep -q -- '--accent:#a75e38' frontend/styles/tokens.css
+      - name: Verify recording-derived globe treatment
+        run: |
+          grep -q 'centerLon = 123' frontend/components/globe.js
+          grep -q 'NEW ZEALAND' frontend/components/globe.js
+          grep -q 'AUSTRALIA' frontend/components/globe.js
+          grep -q 'JAPAN & KOREA' frontend/components/globe.js
+          grep -q 'BRAZIL' frontend/components/globe.js
+          grep -q 'NETHERLANDS' frontend/components/globe.js
+          grep -q 'CANADA' frontend/components/globe.js
+          grep -q 'UNITED STATES' frontend/components/globe.js
+          grep -q 'MEXICO' frontend/components/globe.js
+          grep -q 'COSTA RICA' frontend/components/globe.js
+          grep -q 'MALAYSIA' frontend/components/globe.js
+          grep -q 'rgba(128,166,211,.34)' frontend/components/globe.js
+          grep -q '#ef9778' frontend/components/globe.js
+          ! grep -q 'drawProjectedLine' frontend/components/globe.js
+          ! grep -q 'rgba(154,176,205,.055)' frontend/components/globe.js
+      - name: Verify recording primary navigation
+        run: |
+          grep -q '\["#/curriculum", "Curriculum"\]' frontend/components/nav.js
+          grep -q '\["#/practice", "Practice"\]' frontend/components/nav.js
+          grep -q '\["#/reference", "Reference"\]' frontend/components/nav.js
+          grep -q '\["#/journal", "Journal"\]' frontend/components/nav.js
+          ! grep -q '\["#/adaptive", "Adaptive"\]' frontend/components/nav.js
+          grep -q 'Adaptive Readiness' frontend/components/nav.js
+      - name: Verify parity surfaces use canonical architecture
+        run: |
+          ! grep -q 'recording-feature-parity.css' frontend/index-v26.html
+          grep -q 'v26-home-facts' frontend/views/home-v26.js
+          grep -q 'SPECIALTY' frontend/components/home-extras.js
+          grep -q 'v26-curriculum-list' frontend/views/curriculum-v26.js
+          grep -q 'data-domain-toggle' frontend/views/curriculum-v26.js
+          grep -q 'v26-due-strip' frontend/views/practice-v26.js
+          test "$(grep -o 'card("' frontend/views/practice-v26.js | wc -l | tr -d ' ')" -eq 4
+          grep -q '#/exam-guide' frontend/router-complete.js
+          grep -q '#/terms' frontend/router-complete.js
+          grep -q 'v26-testimonial-grid' frontend/components/home-extras.js
+          grep -q 'v26-exam-domain-row' frontend/views/info-v26.js
+      - name: Verify feedback drawer contract
+        run: |
+          grep -q 'width:min(420px,100vw)' frontend/styles/shell.css
+          grep -q 'top:0;right:0;bottom:0' frontend/styles/shell.css
+          grep -q 'event.key === "Escape"' frontend/components/feedback.js
+          grep -q 'previousFocus?.focus' frontend/components/feedback.js
+      - name: Block demo replacement
+        run: |
+          test -f frontend/components/globe.js
+          ! grep -q 'beta-demo' frontend/index-v26.html
+          grep -q 'renderActivityGlobe' frontend/views/home-v26.js

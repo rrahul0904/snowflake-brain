@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -116,8 +117,30 @@ def main() -> None:
         check(response.headers.get("cache-control") == "private, no-store", f"candidate content must not be shared-cacheable: {path}")
 
     # The SPA must gate protected routes before importing/rendering their views.
+    # Public routes are deliberately limited to product marketing, legal/exam
+    # information, and account-action surfaces. Exam Guide and Terms use the
+    # already-public info-v26 module and contain no certification study payload.
     router = (ROOT / "frontend" / "router-complete.js").read_text(encoding="utf-8")
-    check('const publicRoutes=new Set(["#/home","#/membership","#/about","#/changelog","#/privacy","#/account-action"])' in router, "public SPA route allowlist is explicit and limited to informational/account-action routes")
+    match = re.search(r"const publicRoutes=new Set\(\[(.*?)\]\)", router)
+    check(match is not None, "public SPA route allowlist is explicit")
+    public_routes = set(re.findall(r'"(#[^\"]+)"', match.group(1))) if match else set()
+    expected_public_routes = {
+        "#/home",
+        "#/membership",
+        "#/about",
+        "#/exam-guide",
+        "#/terms",
+        "#/changelog",
+        "#/privacy",
+        "#/account-action",
+    }
+    check(public_routes == expected_public_routes, f"public SPA route allowlist drifted: {sorted(public_routes)}")
+    for protected_route in (
+        "#/certifications", "#/curriculum", "#/domain", "#/skill", "#/progress",
+        "#/mistakes", "#/adaptive", "#/practice", "#/mock", "#/reference",
+        "#/journal", "#/community", "#/labs", "#/credentials", "#/account",
+    ):
+        check(protected_route not in public_routes, f"protected SPA route became public: {protected_route}")
     check("if(!publicRoutes.has(path))" in router and "if(!candidate())" in router, "protected SPA routes require candidate state")
     check("authentication-required" in router, "anonymous deep links render the access gate, not study content")
 

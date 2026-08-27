@@ -5,7 +5,6 @@ import { activeTrack, navigateWithTrack, normalizeTrack, setActiveTrack } from "
 const certificationItems = [
   ["#/curriculum", "Curriculum"],
   ["#/practice", "Practice"],
-  ["#/adaptive", "Adaptive"],
   ["#/reference", "Reference"],
   ["#/journal", "Journal"],
 ];

@@ -28,7 +28,12 @@ def main() -> None:
     for export in ("getAdaptiveReadiness", "getAdaptiveRecommendations", "getAdaptiveQuestionIds"):
         require(api, f"export const {export}", f"adaptive API export {export}")
     require(router, '"#/adaptive":"adaptive-v26.js"', "adaptive SPA route")
-    require(nav, '["#/adaptive", "Adaptive"]', "adaptive primary navigation")
+    # Adaptive remains a first-class signed-in capability but the recording-parity
+    # header intentionally keeps only Curriculum, Practice, Reference and Journal.
+    # Require an explicit account-menu entry instead of coupling the capability to
+    # one particular primary-navigation layout.
+    require(nav, 'href="#/adaptive?track_id=', "adaptive signed-in navigation")
+    require(nav, 'Adaptive Readiness', "adaptive navigation label")
     require(view, "not a probability", "readiness disclaimer")
     require(view, 'mode: "adaptive"', "adaptive practice launch")
     require(view, "confidence", "confidence capture")
@@ -48,7 +53,7 @@ def main() -> None:
         if token in question_ids_handler:
             raise AssertionError(f"Adaptive question-ID endpoint leaks answer-oriented field: {token}")
 
-    print("Adaptive frontend/delivery contract: PASS (route, UI, evidence, active-release + entitlement-aware delivery)")
+    print("Adaptive frontend/delivery contract: PASS (route, signed-in navigation, evidence, active-release + entitlement-aware delivery)")
 
 
 if __name__ == "__main__":
