@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove that Vercel startup verifies rather than mutates schema state."""
+"""Prove that every hosted Vercel startup verifies rather than mutates state."""
 
 from __future__ import annotations
 
@@ -12,15 +12,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def main() -> None:
+def run_boundary(vercel_environment: str) -> None:
     environment = os.environ.copy()
     environment.update(
         {
-            "VERCEL_ENV": "production",
+            "VERCEL": "1",
+            "VERCEL_ENV": vercel_environment,
             "DATABASE_URL": "postgresql://runtime:password@example.test:5432/snowflake",
             "QUESTION_BANK_AUTO_IMPORT": "false",
         }
     )
+    environment.pop("DATABASE_MIGRATION_URL", None)
     code = """
 import app.main as main
 
@@ -39,7 +41,7 @@ main.import_question_bank_directory = lambda: events.append('import')
 main.ensure_active_release_baseline = lambda *args: events.append('baseline')
 main.startup()
 assert events == ['verify'], events
-print('Production startup boundary: PASS (schema verification only)')
+print('verification-only')
 """
     result = subprocess.run(
         [sys.executable, "-c", code],
@@ -49,9 +51,16 @@ print('Production startup boundary: PASS (schema verification only)')
         text=True,
         check=False,
     )
-    if result.returncode:
-        raise AssertionError(f"Production startup boundary failed:\n{result.stdout}\n{result.stderr}")
-    print(result.stdout.strip())
+    if result.returncode or result.stdout.strip() != "verification-only":
+        raise AssertionError(
+            f"Vercel {vercel_environment} startup boundary failed:\n{result.stdout}\n{result.stderr}"
+        )
+
+
+def main() -> None:
+    for environment_name in ("preview", "production"):
+        run_boundary(environment_name)
+    print("Vercel startup boundary: PASS (Preview/Production schema verification only)")
 
 
 if __name__ == "__main__":
