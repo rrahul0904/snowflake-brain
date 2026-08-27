@@ -9,6 +9,7 @@ const LANDMARKS = [
   { label: "NEW ZEALAND", lat: -41.2, lon: 174.7, dx: -42, dy: -10 },
   { label: "AUSTRALIA", lat: -25.3, lon: 133.8, dx: 38, dy: -8 },
   { label: "SINGAPORE", lat: 1.35, lon: 103.82, dx: 44, dy: -2 },
+  { label: "MALAYSIA", lat: 4.2, lon: 102.0, dx: -48, dy: 14 },
   { label: "INDIA", lat: 21.1, lon: 78.9, dx: 46, dy: 0 },
   { label: "VIETNAM", lat: 14.05, lon: 108.28, dx: 44, dy: 4 },
   { label: "PAKISTAN", lat: 30.4, lon: 69.35, dx: 44, dy: 8 },
@@ -17,6 +18,12 @@ const LANDMARKS = [
   { label: "JAPAN & KOREA", lat: 36.1, lon: 135.2, dx: -58, dy: 12 },
   { label: "INDONESIA", lat: -2.5, lon: 118.0, dx: 48, dy: 10 },
   { label: "PHILIPPINES", lat: 12.8, lon: 122.7, dx: 48, dy: -10 },
+  { label: "BRAZIL", lat: -14.2, lon: -51.9, dx: 46, dy: 8 },
+  { label: "NETHERLANDS", lat: 52.13, lon: 5.29, dx: 46, dy: 10 },
+  { label: "CANADA", lat: 56.13, lon: -106.35, dx: 48, dy: -4 },
+  { label: "UNITED STATES", lat: 39.5, lon: -98.35, dx: 58, dy: 7, radius: 2.8, halo: 7.8 },
+  { label: "MEXICO", lat: 23.63, lon: -102.55, dx: 44, dy: 6 },
+  { label: "COSTA RICA", lat: 9.75, lon: -83.75, dx: 48, dy: 6 },
 ];
 
 function project(latDeg, lonDeg, centerLatDeg, centerLonDeg, radius, center) {
@@ -78,25 +85,6 @@ function buildLandDots(polygons) {
     for (let lon = -180; lon < 180; lon += lonStep) if (isLand(lon, lat, polygons)) dots.push({ lat, lon });
   }
   return dots;
-}
-
-function drawProjectedLine(ctx, points, projection, strokeStyle, lineWidth = 1) {
-  let segment = [];
-  const flush = () => {
-    if (segment.length < 2) { segment = []; return; }
-    ctx.beginPath();
-    ctx.moveTo(segment[0].x, segment[0].y);
-    for (let i = 1; i < segment.length; i += 1) ctx.lineTo(segment[i].x, segment[i].y);
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
-    segment = [];
-  };
-  for (const coord of points) {
-    const p = projection(coord[1], coord[0]);
-    if (p.visible) segment.push(p); else flush();
-  }
-  flush();
 }
 
 function overlaps(a, b, pad = 5) {
@@ -193,10 +181,6 @@ export function renderActivityGlobe(container) {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-
-    for (const polygon of polygons) {
-      for (const ring of polygon.rings) drawProjectedLine(ctx, ring, projection, "rgba(154,176,205,.055)", 0.42);
-    }
     ctx.restore();
 
     const rim = ctx.createRadialGradient(center, center, radius * 0.74, center, center, radius * 1.04);
@@ -228,12 +212,14 @@ export function renderActivityGlobe(container) {
       occupied.push(box);
 
       ctx.globalAlpha = alpha;
+      const anchorRadius = item.radius || Math.max(1.7, size / 180);
+      const haloRadius = item.halo || Math.max(4, size / 96);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(1.7, size / 180), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, anchorRadius, 0, Math.PI * 2);
       ctx.fillStyle = "#ef9778";
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(4, size / 96), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, haloRadius, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(239,151,120,.22)";
       ctx.lineWidth = 1;
       ctx.stroke();
