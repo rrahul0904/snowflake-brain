@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .account_lifecycle import ensure_account_lifecycle_schema
 from .adaptive_readiness import ensure_adaptive_readiness_schema
-from .config import DATABASE_BACKEND, IS_VERCEL_PRODUCTION, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
+from .config import DATABASE_BACKEND, IS_VERCEL_RUNTIME, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
@@ -60,13 +60,13 @@ app.add_middleware(ObservabilityMiddleware)
 @app.on_event("startup")
 def startup() -> None:
     try:
-        if IS_VERCEL_PRODUCTION:
-            # Serverless startup is deliberately read-only.  A missing or
-            # incompatible schema is a deployment error, not an invitation for a
-            # request-serving function to acquire DDL privileges or import files.
+        if IS_VERCEL_RUNTIME:
+            # Every Vercel request-serving deployment, including Preview, is
+            # deliberately read-only at startup. A preview must never mutate a
+            # shared managed database merely because it is not the production alias.
             assert_production_schema_ready()
         else:
-            # SQLite/local and CI retain their lightweight self-contained setup.
+            # Local/CI retain their lightweight self-contained setup.
             run_migrations()
             ensure_identity_billing_schema()
             ensure_question_version_schema()
