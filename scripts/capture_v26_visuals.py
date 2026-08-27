@@ -239,6 +239,9 @@ def desktop_pass(browser: Browser, domain_id: str, skill_id: str) -> int:
 
     session = create_mock("weekly-mock")
     session_id = int(session["session_id"])
+    # Force an SPA remount after the server-side session is created. Navigating to
+    # the identical hash does not emit hashchange, so leave Mock Start and re-enter.
+    route(page, "#/mock?track_id=snowpro-core", theme="dark")
     route(page, "#/mock/start?track_id=snowpro-core&type=weekly-mock", theme="dark")
     require(page, ".v26-interrupted-sitting", "interrupted sitting resume state")
     shot(page, "12-dark-interrupted-sitting")
