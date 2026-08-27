@@ -1,0 +1,40 @@
+name: Recording Feature Parity Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feature/recording-parity-v27
+
+jobs:
+  recording-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate V26 JavaScript
+        run: |
+          node --check frontend/components/globe.js
+          node --check frontend/components/home-extras.js
+          node --check frontend/views/info-v26.js
+          node --check frontend/router-complete.js
+          node --check frontend/app-complete.js
+      - name: Verify recording-derived globe treatment
+        run: |
+          grep -q 'centerLon = 123' frontend/components/globe.js
+          grep -q 'NEW ZEALAND' frontend/components/globe.js
+          grep -q 'AUSTRALIA' frontend/components/globe.js
+          grep -q 'JAPAN & KOREA' frontend/components/globe.js
+          grep -q 'rgba(128,166,211,.34)' frontend/components/globe.js
+          grep -q '#ef9778' frontend/components/globe.js
+      - name: Verify parity surfaces
+        run: |
+          test -f frontend/styles/recording-feature-parity.css
+          grep -q 'recording-feature-parity.css' frontend/index-v26.html
+          grep -q '#/exam-guide' frontend/router-complete.js
+          grep -q '#/terms' frontend/router-complete.js
+          grep -q 'v26-testimonial-grid' frontend/components/home-extras.js
+      - name: Block demo replacement
+        run: |
+          test -f frontend/components/globe.js
+          ! grep -q 'beta-demo' frontend/index-v26.html
+          grep -q 'renderActivityGlobe' frontend/views/home-v26.js
