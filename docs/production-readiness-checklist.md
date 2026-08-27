@@ -5,6 +5,8 @@ A production release is permitted only when every **blocking** row below is gree
 ## 1. Platform and persistence — blocking
 
 - [ ] PostgreSQL migrations apply from an empty database.
+- [ ] Vercel startup performs only read-only schema verification; the controlled migration job has completed with a separate migration credential.
+- [ ] Production configuration has no SQLite, Docker, localhost, local question-bank mount or auto-import dependency.
 - [ ] SQLite remains green for local/test compatibility.
 - [ ] Full certification regression passes on PostgreSQL.
 - [ ] Concurrent entitlement and schema-bootstrap tests pass.
@@ -63,8 +65,8 @@ A production release is permitted only when every **blocking** row below is gree
 
 ## 7. Deployment rehearsal — blocking
 
-- [ ] `docker compose --env-file deploy/production.env.example config --quiet` succeeds.
-- [ ] Production image builds from `Dockerfile`.
+- [ ] `docker compose --env-file deploy/production.env.example config --quiet` succeeds as a development/CI rehearsal only.
+- [ ] Development/CI image builds from `Dockerfile`.
 - [ ] Production-only account lifecycle configuration is passed into the container.
 - [ ] No `.env`, key, PEM, private bank or secret file is tracked.
 - [ ] No display/programmatic ad SDK/network is present.

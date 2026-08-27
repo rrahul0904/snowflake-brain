@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .account_lifecycle import ensure_account_lifecycle_schema
 from .adaptive_readiness import ensure_adaptive_readiness_schema
-from .config import DATABASE_BACKEND, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
+from .config import DATABASE_BACKEND, IS_VERCEL_PRODUCTION, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
@@ -21,6 +21,7 @@ from .observability_middleware import ObservabilityMiddleware
 from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema
+from .production_schema import assert_production_schema_ready
 from .routers import (
     account,
     activity,
@@ -59,25 +60,30 @@ app.add_middleware(ObservabilityMiddleware)
 @app.on_event("startup")
 def startup() -> None:
     try:
-        run_migrations()
-        ensure_identity_billing_schema()
-        ensure_question_version_schema()
-        ensure_question_bank_release_schema()
-        ensure_learning_intelligence_schema()
-        ensure_account_lifecycle_schema()
-        ensure_adaptive_readiness_schema()
-        ensure_talent_schema()
-        # SQLite historically created feedback lazily. Account export/deletion
-        # needs that candidate-linked table to exist even for candidates who have
-        # never submitted feedback, so bootstrap its lightweight local schema.
-        feedback.ensure_feedback_schema()
-        if QUESTION_BANK_AUTO_IMPORT:
-            # The source directory is private deployment content, never a frontend
-            # asset and never committed to this repository. Imports never replace an
-            # already active release; they remain admin/staging content until an
-            # explicit release activation.
-            import_question_bank_directory()
-        ensure_active_release_baseline("snowpro-core")
+        if IS_VERCEL_PRODUCTION:
+            # Serverless startup is deliberately read-only.  A missing or
+            # incompatible schema is a deployment error, not an invitation for a
+            # request-serving function to acquire DDL privileges or import files.
+            assert_production_schema_ready()
+        else:
+            # SQLite/local and CI retain their lightweight self-contained setup.
+            run_migrations()
+            ensure_identity_billing_schema()
+            ensure_question_version_schema()
+            ensure_question_bank_release_schema()
+            ensure_learning_intelligence_schema()
+            ensure_account_lifecycle_schema()
+            ensure_adaptive_readiness_schema()
+            ensure_talent_schema()
+            # SQLite historically created feedback lazily. Account export/deletion
+            # needs that candidate-linked table to exist even for candidates who have
+            # never submitted feedback, so bootstrap its lightweight local schema.
+            feedback.ensure_feedback_schema()
+            if QUESTION_BANK_AUTO_IMPORT:
+                # The source directory is private development/CI content, never a
+                # frontend asset and never committed to this repository.
+                import_question_bank_directory()
+            ensure_active_release_baseline("snowpro-core")
     except Exception as exc:
         record_background_failure("application_startup", exc)
         raise

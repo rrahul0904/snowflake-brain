@@ -19,6 +19,11 @@ BRAIN_DB = Path(
 # implementation. Besides losing durable data on serverless instances, that
 # could make a deployment appear healthy while serving an empty database.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+# This credential is deliberately separate from the runtime pool.  It is used
+# only by the controlled migration job and must never be configured on a Vercel
+# runtime deployment.  Keeping the two credentials distinct lets the runtime
+# role remain DML-only.
+DATABASE_MIGRATION_URL = os.getenv("DATABASE_MIGRATION_URL", "").strip()
 IS_VERCEL_PRODUCTION = os.getenv("VERCEL_ENV", "").strip().lower() == "production"
 IS_POSTGRES_URL = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
 
@@ -32,12 +37,22 @@ if IS_VERCEL_PRODUCTION and not IS_POSTGRES_URL:
         "Production database configuration error: DATABASE_URL must be a PostgreSQL "
         "connection URL when VERCEL_ENV=production; SQLite fallback is disabled."
     )
-
+if IS_VERCEL_PRODUCTION and DATABASE_MIGRATION_URL:
+    raise RuntimeError(
+        "Production database configuration error: DATABASE_MIGRATION_URL must not be "
+        "available to the Vercel runtime. Run migrations from an approved deployment job."
+    )
 DATABASE_BACKEND = "postgresql" if IS_POSTGRES_URL else "sqlite"
 DATABASE_SCHEMA = os.getenv("DATABASE_SCHEMA", "public").strip() or "public"
 DB_POOL_MIN_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "2")))
 DB_POOL_MAX_SIZE = max(DB_POOL_MIN_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "12")))
 DB_POOL_TIMEOUT_SECONDS = max(1, int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "10")))
+# Serverless functions can be frozen long enough for the database or a network
+# proxy to close an otherwise idle socket. Keep pooled connections short-lived
+# and validate every checkout so a thawed function reconnects before serving.
+DB_POOL_MAX_IDLE_SECONDS = max(1, int(os.getenv("DB_POOL_MAX_IDLE_SECONDS", "60")))
+DB_POOL_MAX_LIFETIME_SECONDS = max(1, int(os.getenv("DB_POOL_MAX_LIFETIME_SECONDS", "300")))
+DB_POOL_RECONNECT_TIMEOUT_SECONDS = max(1, int(os.getenv("DB_POOL_RECONNECT_TIMEOUT_SECONDS", "10")))
 POSTGRES_TEST_ISOLATION = os.getenv("POSTGRES_TEST_ISOLATION", "false").lower() in {"1", "true", "yes", "on"}
 POSTGRES_TEST_SCHEMA_PREFIX = os.getenv("POSTGRES_TEST_SCHEMA_PREFIX", "snowflake_ci").strip() or "snowflake_ci"
 
@@ -102,6 +117,12 @@ PRIVATE_QUESTION_BANK_DIR = Path(
     )
 ).expanduser()
 QUESTION_BANK_AUTO_IMPORT = os.getenv("QUESTION_BANK_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}
+
+if IS_VERCEL_PRODUCTION and QUESTION_BANK_AUTO_IMPORT:
+    raise RuntimeError(
+        "Production question-bank configuration error: QUESTION_BANK_AUTO_IMPORT "
+        "must be false. Import releases through the controlled migration/import job."
+    )
 
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}

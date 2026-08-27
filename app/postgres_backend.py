@@ -18,7 +18,10 @@ from .config import (
     DATABASE_SCHEMA,
     DATABASE_URL,
     DB_POOL_MAX_SIZE,
+    DB_POOL_MAX_IDLE_SECONDS,
+    DB_POOL_MAX_LIFETIME_SECONDS,
     DB_POOL_MIN_SIZE,
+    DB_POOL_RECONNECT_TIMEOUT_SECONDS,
     DB_POOL_TIMEOUT_SECONDS,
     POSTGRES_TEST_ISOLATION,
     POSTGRES_TEST_SCHEMA_PREFIX,
@@ -103,6 +106,13 @@ def _pool() -> ConnectionPool:
                 min_size=DB_POOL_MIN_SIZE,
                 max_size=DB_POOL_MAX_SIZE,
                 timeout=DB_POOL_TIMEOUT_SECONDS,
+                max_idle=DB_POOL_MAX_IDLE_SECONDS,
+                max_lifetime=DB_POOL_MAX_LIFETIME_SECONDS,
+                reconnect_timeout=DB_POOL_RECONNECT_TIMEOUT_SECONDS,
+                # Vercel functions may resume with a connection that the
+                # managed PostgreSQL provider has already retired. psycopg's
+                # built-in probe discards it and reconnects before use.
+                check=ConnectionPool.check_connection,
                 kwargs={"row_factory": dict_row},
                 open=True,
             )
@@ -110,17 +120,26 @@ def _pool() -> ConnectionPool:
     return _POOL
 
 
-def _prepare_connection(raw: Any) -> None:
+def _prepare_connection(raw: Any, *, allow_schema_creation: bool = False) -> None:
     schema = current_schema_name()
     if schema not in _READY_SCHEMAS:
         with _SCHEMA_LOCK:
             if schema not in _READY_SCHEMAS:
-                previous = raw.autocommit
-                raw.autocommit = True
-                try:
-                    raw.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(schema)))
-                finally:
-                    raw.autocommit = previous
+                exists = raw.execute(
+                    "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname=%s) AS exists",
+                    (schema,),
+                ).fetchone()
+                if not exists or not bool(exists["exists"]):
+                    if not allow_schema_creation:
+                        raise RuntimeError(
+                            f"PostgreSQL schema '{schema}' does not exist; apply the controlled migration job first."
+                        )
+                    previous = raw.autocommit
+                    raw.autocommit = True
+                    try:
+                        raw.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(schema)))
+                    finally:
+                        raw.autocommit = previous
                 _READY_SCHEMAS.add(schema)
     raw.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
     raw.commit()
@@ -398,6 +417,9 @@ def get_conn() -> PostgresConnectionAdapter:
         _prepare_connection(raw)
         return PostgresConnectionAdapter(raw, pool)
     except Exception:
+        # Do not return a connection that failed setup to the idle pool. The
+        # next checkout will receive a replacement connection instead.
+        raw.close()
         pool.putconn(raw)
         raise
 
@@ -492,12 +514,27 @@ def _split_sql_script(script: str) -> list[str]:
     return statements
 
 
-def run_postgres_migrations() -> None:
+def run_postgres_migrations(*, migration_url: str | None = None) -> None:
     migrations_dir = Path(ROOT_DIR) / "migrations" / "postgres"
-    pool = _pool()
+    # Passing a migration URL is reserved for the deploy job.  Runtime code
+    # calls this without one only in local/CI, where a single credential is OK.
+    temporary_pool: ConnectionPool | None = None
+    if migration_url:
+        temporary_pool = ConnectionPool(
+            conninfo=migration_url,
+            min_size=1,
+            max_size=1,
+            timeout=DB_POOL_TIMEOUT_SECONDS,
+            kwargs={"row_factory": dict_row},
+            open=True,
+        )
+        temporary_pool.wait(timeout=DB_POOL_TIMEOUT_SECONDS)
+        pool = temporary_pool
+    else:
+        pool = _pool()
     raw = pool.getconn()
     try:
-        _prepare_connection(raw)
+        _prepare_connection(raw, allow_schema_creation=True)
         raw.execute("SELECT pg_advisory_xact_lock(%s)", (MIGRATION_LOCK,))
         raw.execute(
             """
@@ -524,6 +561,8 @@ def run_postgres_migrations() -> None:
         raise
     finally:
         pool.putconn(raw)
+        if temporary_pool is not None:
+            temporary_pool.close()
 
 
 def database_health() -> dict[str, Any]:

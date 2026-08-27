@@ -67,15 +67,15 @@ def check_production_environment() -> dict:
     for key, value in required_pairs.items():
         if f"{key}={value}" not in env:
             raise AssertionError(f"Production profile must set {key}={value}")
-    if "DATABASE_URL=postgresql://" not in env:
-        raise AssertionError("Production profile must use PostgreSQL")
+    if "DATABASE_URL=SET_IN_VERCEL_SECRET_STORE_ONLY" not in env:
+        raise AssertionError("Production profile must require a Vercel-only PostgreSQL secret")
     if "OBSERVABILITY_METRICS_TOKEN=REPLACE_ME" not in env:
         raise AssertionError("Metrics token must be an explicit deployment secret")
     if "ACCOUNT_EMAIL_ACTION_BASE_URL=https://" not in env:
         raise AssertionError("Account actions must use a public HTTPS URL")
     compose = read("docker-compose.yml")
-    if ":/private/question_bank:ro" not in compose:
-        raise AssertionError("Private question bank must be mounted read-only")
+    if "DEVELOPMENT / CI ONLY — NOT PRODUCTION" not in compose:
+        raise AssertionError("Docker Compose must be explicitly restricted to development/CI")
     return {"name": "production_environment", "status": "pass"}
 
 

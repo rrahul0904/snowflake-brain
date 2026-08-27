@@ -201,7 +201,8 @@ Adaptive Readiness explicitly is **not a pass-probability forecast** and sparse 
 - Python 3.13
 - FastAPI + Pydantic
 - SQLite for local/test compatibility
-- PostgreSQL for production
+- Vercel for the sole production application runtime
+- managed Neon PostgreSQL for the sole production datastore
 - connection pooling and migrations
 - structured logs, request IDs, latency/error metrics and alert webhooks
 - `/api/health` liveness
@@ -252,7 +253,7 @@ The expected marker includes:
 
 `scripts/dev.sh` loads a gitignored local `.env` when present. Never commit provider secrets.
 
-## Docker
+## Docker (development / CI only)
 
 ```bash
 docker compose up --build -d
@@ -265,21 +266,21 @@ Open:
 http://localhost:8010/#/home
 ```
 
-Compose runs PostgreSQL plus the application. The private question bank is mounted read-only from `PRIVATE_QUESTION_BANK_HOST_DIR` into `/private/question_bank`.
+Compose runs a local PostgreSQL rehearsal stack plus the application. It is **DEVELOPMENT / CI ONLY — NOT PRODUCTION** and must never receive production credentials. Production does not mount question-bank files: an approved administrative job imports the private artifact into PostgreSQL, and the Vercel runtime serves only the active release.
 
 ## Production configuration
 
-`deploy/production.env.example` is a **contract**, not deployable credentials. Copy its values into the real hosting secret/configuration system and replace all provider/domain placeholders.
+`deploy/production.env.example` is a **contract**, not deployable credentials. Configure production secrets only in the existing Vercel project's encrypted Production environment. The canonical production URL is `https://snowflakecertificationguide.vercel.app/`.
 
 A public production cutover requires real values for the chosen deployment features, including:
 
-- HTTPS domain / edge proxy
-- managed PostgreSQL
+- Vercel HTTPS domain / edge runtime
+- managed Neon PostgreSQL with a pooled runtime URL
 - metrics and alert destinations
 - account-email webhook
 - Google OAuth client if Google is enabled
 - Stripe keys, webhook and price IDs if billing is enabled
-- private approved question-bank release
+- private approved question-bank release imported into PostgreSQL
 
 See `docs/public-launch-cutover.md` and `docs/production-readiness-checklist.md`.
 
@@ -308,8 +309,8 @@ The Production Launch Gate runs on pull requests and every push to `main`. It bl
 - SQLite security/convergence
 - PostgreSQL full regression
 - PostgreSQL logical backup + clean restore
-- production Compose validation
-- production image build
+- development/CI Compose validation
+- development/CI image build
 - Chromium desktop
 - Firefox desktop
 - Chromium mobile

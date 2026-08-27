@@ -36,9 +36,9 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run all release gates on SQLite
         run: bash scripts/run_production_release_gates.sh
-      - name: Validate secure production Compose profile
+      - name: Validate development/CI Compose rehearsal profile
         run: docker compose --env-file deploy/production.env.example config --quiet
-      - name: Build production image
+      - name: Build development/CI rehearsal image
         run: docker build -t snowflake-certification-guide:launch .
       - name: Upload readiness report
         if: always()

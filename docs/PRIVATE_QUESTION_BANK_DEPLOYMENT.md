@@ -13,7 +13,7 @@ Never place production bank JSON under:
 - a browser bundle
 - a publicly downloadable object-store path
 
-The application expects production question-bank files through `PRIVATE_QUESTION_BANK_DIR` (default development path: `private_content/question_bank`). Production should mount this directory read-only from private deployment storage.
+`PRIVATE_QUESTION_BANK_DIR` is a development/CI or one-time administrative-import input only (default development path: `private_content/question_bank`). Vercel production does not mount this directory or read bank JSON at runtime: an approved deployment job validates and imports the artifact into PostgreSQL, then candidate delivery reads the active immutable release.
 
 ## Current beta artifact
 
@@ -27,7 +27,7 @@ The public repository contains only the non-content manifest at `docs/COF_C03_PR
 
 ## Pre-import validation
 
-On the backend host/container, with the private artifact available only to administrators:
+In an approved administrative import environment, with the private artifact available only to administrators:
 
 ```bash
 sha256sum /private/question_bank/snowpro_core_cof_c03_private_bank_1200_beta_v2.json
@@ -46,7 +46,7 @@ Validation must report `valid: true`, all 19 tasks covered, and 1,200 active que
 
 ## Import
 
-Point the application at the private read-only directory:
+For an administrative import job only, point the importer at the private read-only directory. Do not configure this variable in Vercel Production:
 
 ```bash
 export PRIVATE_QUESTION_BANK_DIR=/private/question_bank
@@ -65,7 +65,7 @@ Or dry-run a directory before importing it:
 python scripts/question_bank_admin.py import-dir /private/question_bank --dry-run
 ```
 
-After review, import the directory:
+After review, import the directory from that administrative job:
 
 ```bash
 python scripts/question_bank_admin.py import-dir /private/question_bank
@@ -95,7 +95,7 @@ After import, verify through normal candidate product flows only:
 
 ## Rollback
 
-Do not edit the production bank in place from the browser. Author/review a new versioned private artifact, validate it, and import it through the backend CLI. Retire or replace questions through versioned bank metadata and controlled backend operations.
+Do not edit the production bank in place from the browser. Author/review a new versioned private artifact, validate it, and import it through the controlled administrative job. Retire or replace questions through versioned bank metadata and controlled backend operations.
 
 Keep the prior private artifact in restricted backup storage according to the deployment backup policy; do not add it to Git history.
 
@@ -106,5 +106,5 @@ Before unrestricted public launch:
 1. complete automated schema/coverage/security checks;
 2. complete independent human/SME review of ambiguous or high-value mock questions;
 3. confirm source freshness for Snowflake features that may have changed since the bank's source-verification date;
-4. import only the approved artifact into the private backend store;
+4. import only the approved artifact into PostgreSQL and activate the reviewed immutable release;
 5. rerun tier, no-answer-leak, ownership, and browser smoke tests against the deployed bank.
