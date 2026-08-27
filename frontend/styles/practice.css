@@ -1,9 +1,13 @@
-.v26-practice-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);border-left:1px solid var(--border)}
-.v26-practice-card{min-height:220px;padding:26px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);background:transparent;display:flex;flex-direction:column}
-.v26-practice-card:hover{background:var(--accent-soft)}
-.v26-practice-card.featured,.v26-practice-card.full{box-shadow:inset 0 2px var(--accent)}
+.v26-due-strip{max-width:880px;margin:-8px auto 10px;min-height:62px;padding:14px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--text);text-decoration:none}
+.v26-due-strip span{display:grid;gap:3px}.v26-due-strip b{color:var(--accent-strong);font-size:8px;text-transform:uppercase;letter-spacing:.13em}.v26-due-strip strong{font:500 16px var(--serif)}.v26-due-strip em{font-style:normal;color:var(--accent-strong);font-size:10px;white-space:nowrap}.v26-due-strip.clear{color:var(--muted)}.v26-due-strip.clear em{color:var(--muted)}
+.v26-practice-choices{max-width:880px;padding-top:34px}
+.v26-practice-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)}
+.v26-practice-card{min-height:215px;padding:28px 30px 24px;text-decoration:none;color:var(--text);background:transparent;display:flex;flex-direction:column;border-bottom:1px solid var(--border)}
+.v26-practice-card:nth-child(odd){border-right:1px solid var(--border)}
+.v26-practice-card:hover{background:linear-gradient(135deg,var(--accent-soft),transparent 70%)}
+.v26-practice-card.featured,.v26-practice-card.full{box-shadow:inset 0 1px var(--accent)}
 .v26-practice-card>span{font-size:8px;color:var(--accent-strong);text-transform:uppercase;letter-spacing:.13em}
-.v26-practice-card h2{font-family:var(--serif);font-weight:500;font-size:31px;margin:20px 0 10px;letter-spacing:-.02em}
+.v26-practice-card h2{font-family:var(--serif);font-weight:500;font-size:30px;margin:20px 0 10px;letter-spacing:-.02em}
 .v26-practice-card p{color:var(--muted);font-size:12px;line-height:1.65;max-width:470px}
 .v26-practice-card>div{margin-top:auto;display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:14px;font-size:10px}
 .v26-practice-card em{font-style:normal;color:var(--accent-strong)}
