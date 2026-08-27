@@ -4,6 +4,7 @@
   --bg-elevated:#281c17;
   --surface:#2c201b;
   --surface-soft:#32241e;
+  --surface-raised:var(--surface-soft);
   --text:#f0e5d8;
   --muted:#b6a397;
   --border:rgba(236,218,201,.14);
@@ -46,6 +47,7 @@ html[data-theme='light']{
   --bg-elevated:#f7f0e7;
   --surface:#eee2d5;
   --surface-soft:#e8dacb;
+  --surface-raised:var(--surface-soft);
   --text:#2b201b;
   --muted:#76665c;
   --border:rgba(57,42,34,.14);
