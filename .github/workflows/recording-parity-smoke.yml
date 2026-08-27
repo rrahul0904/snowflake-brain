@@ -24,8 +24,25 @@ jobs:
           grep -q 'NEW ZEALAND' frontend/components/globe.js
           grep -q 'AUSTRALIA' frontend/components/globe.js
           grep -q 'JAPAN & KOREA' frontend/components/globe.js
+          grep -q 'BRAZIL' frontend/components/globe.js
+          grep -q 'NETHERLANDS' frontend/components/globe.js
+          grep -q 'CANADA' frontend/components/globe.js
+          grep -q 'UNITED STATES' frontend/components/globe.js
+          grep -q 'MEXICO' frontend/components/globe.js
+          grep -q 'COSTA RICA' frontend/components/globe.js
+          grep -q 'MALAYSIA' frontend/components/globe.js
           grep -q 'rgba(128,166,211,.34)' frontend/components/globe.js
           grep -q '#ef9778' frontend/components/globe.js
+          ! grep -q 'drawProjectedLine' frontend/components/globe.js
+          ! grep -q 'rgba(154,176,205,.055)' frontend/components/globe.js
+      - name: Verify recording primary navigation
+        run: |
+          grep -q '\["#/curriculum", "Curriculum"\]' frontend/components/nav.js
+          grep -q '\["#/practice", "Practice"\]' frontend/components/nav.js
+          grep -q '\["#/reference", "Reference"\]' frontend/components/nav.js
+          grep -q '\["#/journal", "Journal"\]' frontend/components/nav.js
+          ! grep -q '\["#/adaptive", "Adaptive"\]' frontend/components/nav.js
+          grep -q 'Adaptive Readiness' frontend/components/nav.js
       - name: Verify parity surfaces
         run: |
           test -f frontend/styles/recording-feature-parity.css
@@ -33,6 +50,7 @@ jobs:
           grep -q '#/exam-guide' frontend/router-complete.js
           grep -q '#/terms' frontend/router-complete.js
           grep -q 'v26-testimonial-grid' frontend/components/home-extras.js
+          grep -q 'v26-exam-domain-row' frontend/views/info-v26.js
       - name: Block demo replacement
         run: |
           test -f frontend/components/globe.js
