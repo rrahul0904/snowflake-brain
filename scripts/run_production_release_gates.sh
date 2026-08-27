@@ -17,6 +17,7 @@ python scripts/test_vercel_production_database_boundary.py
 python scripts/test_cloud_only_production.py
 python scripts/test_production_startup_boundary.py
 python scripts/test_serverless_postgres_pool.py
+python scripts/test_production_migration_privileges.py
 python scripts/test_production_launch_gate.py
 
 echo "Production release gates: PASS"
