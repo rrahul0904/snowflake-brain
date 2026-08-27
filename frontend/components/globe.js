@@ -2,12 +2,22 @@ import { getGlobeActivity } from "../api.js";
 
 const DEG = Math.PI / 180;
 const WORLD_GEOMETRY_URL = "/static/assets/world-major-land.geojson";
-const ROTATION_PERIOD_MS = 56000;
+const ROTATION_PERIOD_MS = 78000;
 const AUTO_DEGREES_PER_MS = 360 / ROTATION_PERIOD_MS;
 
-function css(name, fallback) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-}
+const LANDMARKS = [
+  { label: "NEW ZEALAND", lat: -41.2, lon: 174.7, dx: -42, dy: -10 },
+  { label: "AUSTRALIA", lat: -25.3, lon: 133.8, dx: 38, dy: -8 },
+  { label: "SINGAPORE", lat: 1.35, lon: 103.82, dx: 44, dy: -2 },
+  { label: "INDIA", lat: 21.1, lon: 78.9, dx: 46, dy: 0 },
+  { label: "VIETNAM", lat: 14.05, lon: 108.28, dx: 44, dy: 4 },
+  { label: "PAKISTAN", lat: 30.4, lon: 69.35, dx: 44, dy: 8 },
+  { label: "TAIWAN", lat: 23.7, lon: 121.0, dx: 42, dy: -4 },
+  { label: "KYRGYZSTAN", lat: 41.2, lon: 74.8, dx: 50, dy: 6 },
+  { label: "JAPAN & KOREA", lat: 36.1, lon: 135.2, dx: -58, dy: 12 },
+  { label: "INDONESIA", lat: -2.5, lon: 118.0, dx: 48, dy: 10 },
+  { label: "PHILIPPINES", lat: 12.8, lon: 122.7, dx: 48, dy: -10 },
+];
 
 function project(latDeg, lonDeg, centerLatDeg, centerLonDeg, radius, center) {
   const lat = latDeg * DEG;
@@ -35,10 +45,8 @@ function polygonsFromGeometry(geometry) {
     const lats = outer.map((point) => point[1]);
     return {
       rings,
-      minLon: Math.min(...lons),
-      maxLon: Math.max(...lons),
-      minLat: Math.min(...lats),
-      maxLat: Math.max(...lats),
+      minLon: Math.min(...lons), maxLon: Math.max(...lons),
+      minLat: Math.min(...lats), maxLat: Math.max(...lats),
     };
   }).filter((polygon) => polygon.rings[0]?.length > 2);
 }
@@ -46,10 +54,7 @@ function polygonsFromGeometry(geometry) {
 function pointInRing(lon, lat, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
     const crosses = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / ((yj - yi) || 1e-12) + xi);
     if (crosses) inside = !inside;
   }
@@ -60,23 +65,17 @@ function isLand(lon, lat, polygons) {
   for (const polygon of polygons) {
     if (lat < polygon.minLat || lat > polygon.maxLat || lon < polygon.minLon || lon > polygon.maxLon) continue;
     if (!pointInRing(lon, lat, polygon.rings[0])) continue;
-    let inHole = false;
-    for (let h = 1; h < polygon.rings.length; h += 1) {
-      if (pointInRing(lon, lat, polygon.rings[h])) { inHole = true; break; }
-    }
-    if (!inHole) return true;
+    if (!polygon.rings.slice(1).some((ring) => pointInRing(lon, lat, ring))) return true;
   }
   return false;
 }
 
 function buildLandDots(polygons) {
   const dots = [];
-  const latStep = 2.75;
-  for (let lat = -79; lat <= 82; lat += latStep) {
-    const lonStep = 2.75 / Math.max(0.72, Math.cos(lat * DEG));
-    for (let lon = -180; lon < 180; lon += lonStep) {
-      if (isLand(lon, lat, polygons)) dots.push({ lat, lon });
-    }
+  const latStep = 2.35;
+  for (let lat = -78; lat <= 82; lat += latStep) {
+    const lonStep = 2.35 / Math.max(0.68, Math.cos(lat * DEG));
+    for (let lon = -180; lon < 180; lon += lonStep) if (isLand(lon, lat, polygons)) dots.push({ lat, lon });
   }
   return dots;
 }
@@ -95,30 +94,19 @@ function drawProjectedLine(ctx, points, projection, strokeStyle, lineWidth = 1) 
   };
   for (const coord of points) {
     const p = projection(coord[1], coord[0]);
-    if (p.visible) segment.push(p);
-    else flush();
+    if (p.visible) segment.push(p); else flush();
   }
   flush();
 }
 
-function drawGraticule(ctx, projection) {
-  const line = css("--v-globe-grid", "rgba(240,229,216,.06)");
-  for (let lat = -60; lat <= 60; lat += 30) {
-    const points = [];
-    for (let lon = -180; lon <= 180; lon += 4) points.push([lon, lat]);
-    drawProjectedLine(ctx, points, projection, line, 0.65);
-  }
-  for (let lon = -180; lon < 180; lon += 30) {
-    const points = [];
-    for (let lat = -88; lat <= 88; lat += 4) points.push([lon, lat]);
-    drawProjectedLine(ctx, points, projection, line, 0.65);
-  }
+function overlaps(a, b, pad = 5) {
+  return !(a.right + pad < b.left || b.right + pad < a.left || a.bottom + pad < b.top || b.bottom + pad < a.top);
 }
 
 export function renderActivityGlobe(container) {
   if (!container) return () => {};
   container.innerHTML = `
-    <figure class="v26-globe-wrap" role="img" aria-label="Rotating globe showing real world geography. Learner markers appear only when privacy-safe aggregated activity is available.">
+    <figure class="v26-globe-wrap" role="img" aria-label="Rotating dotted globe with geographic labels. Privacy-safe live learner activity is shown only when available.">
       <div class="v26-globe" data-globe>
         <canvas class="v26-globe-canvas" data-globe-canvas aria-hidden="true"></canvas>
         <div class="v26-globe-points" data-globe-points aria-hidden="true"></div>
@@ -137,8 +125,8 @@ export function renderActivityGlobe(container) {
   let landDots = [];
   let activity = [];
   let activityNodes = [];
-  let centerLon = -24;
-  let centerLat = 12;
+  let centerLon = 123;
+  let centerLat = -8;
   let size = 410;
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
   let dragging = false;
@@ -150,11 +138,11 @@ export function renderActivityGlobe(container) {
   let lastFrame = performance.now();
   let disposed = false;
 
-  const projection = (lat, lon) => project(lat, lon, centerLat, centerLon, size * 0.455, size / 2);
+  const projection = (lat, lon) => project(lat, lon, centerLat, centerLon, size * 0.43, size / 2);
 
   function resize() {
     const rect = globe.getBoundingClientRect();
-    size = Math.max(250, Math.round(rect.width || 410));
+    size = Math.max(260, Math.round(rect.width || 410));
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(size * dpr);
     canvas.height = Math.round(size * dpr);
@@ -166,72 +154,121 @@ export function renderActivityGlobe(container) {
 
   function drawSphere() {
     const center = size / 2;
-    const radius = size * 0.455;
+    const radius = size * 0.43;
     ctx.clearRect(0, 0, size, size);
-    const shade = ctx.createRadialGradient(center - radius * 0.34, center - radius * 0.34, radius * 0.05, center, center, radius);
-    shade.addColorStop(0, css("--v-globe-highlight", "rgba(240,229,216,.05)"));
-    shade.addColorStop(0.72, css("--v-globe-fill", "rgba(240,229,216,.02)"));
-    shade.addColorStop(1, css("--v-globe-edge", "rgba(0,0,0,.2)"));
+
+    ctx.save();
+    ctx.shadowColor = "rgba(128,166,211,.34)";
+    ctx.shadowBlur = Math.max(16, size * 0.045);
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(145,177,214,.17)";
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+    ctx.restore();
+
+    const shade = ctx.createRadialGradient(center - radius * 0.38, center - radius * 0.42, radius * 0.06, center, center, radius);
+    shade.addColorStop(0, "rgba(17,20,25,.94)");
+    shade.addColorStop(0.56, "rgba(8,10,13,.99)");
+    shade.addColorStop(0.84, "rgba(3,5,8,1)");
+    shade.addColorStop(1, "rgba(0,1,3,1)");
     ctx.beginPath();
     ctx.arc(center, center, radius, 0, Math.PI * 2);
     ctx.fillStyle = shade;
     ctx.fill();
+
     ctx.save();
     ctx.beginPath();
-    ctx.arc(center, center, radius - 0.5, 0, Math.PI * 2);
+    ctx.arc(center, center, radius - 1, 0, Math.PI * 2);
     ctx.clip();
-    drawGraticule(ctx, projection);
 
-    const dotColor = css("--v-globe-land-dot", "rgba(240,229,216,.5)");
-    ctx.fillStyle = dotColor;
-    const baseDot = Math.max(0.8, Math.min(1.45, size / 360));
+    const baseDot = Math.max(0.7, Math.min(1.18, size / 430));
     for (const dot of landDots) {
       const p = projection(dot.lat, dot.lon);
-      if (!p.visible || p.depth < 0.015) continue;
-      const alpha = Math.min(1, 0.22 + p.depth * 0.88);
-      ctx.globalAlpha = alpha;
+      if (!p.visible || p.depth < 0.02) continue;
+      ctx.globalAlpha = Math.min(0.78, 0.12 + p.depth * 0.64);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, baseDot * (0.76 + p.depth * 0.34), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, baseDot * (0.72 + p.depth * 0.30), 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(210,216,226,.9)";
       ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    const coastline = css("--v-globe-land-stroke", "rgba(226,168,124,.16)");
     for (const polygon of polygons) {
-      for (const ring of polygon.rings) drawProjectedLine(ctx, ring, projection, coastline, 0.45);
+      for (const ring of polygon.rings) drawProjectedLine(ctx, ring, projection, "rgba(154,176,205,.055)", 0.42);
     }
     ctx.restore();
+
+    const rim = ctx.createRadialGradient(center, center, radius * 0.74, center, center, radius * 1.04);
+    rim.addColorStop(0, "rgba(0,0,0,0)");
+    rim.addColorStop(0.88, "rgba(82,115,151,.015)");
+    rim.addColorStop(1, "rgba(118,151,192,.16)");
     ctx.beginPath();
-    ctx.arc(center, center, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = css("--v-globe-outline", "rgba(240,229,216,.16)");
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
+    ctx.arc(center, center, radius * 1.04, 0, Math.PI * 2);
+    ctx.fillStyle = rim;
+    ctx.fill();
+  }
+
+  function drawLabels() {
+    const candidates = LANDMARKS.map((item) => ({ item, p: projection(item.lat, item.lon) }))
+      .filter(({ p }) => p.visible && p.depth > 0.22)
+      .sort((a, b) => b.p.depth - a.p.depth);
+    const occupied = [];
+    ctx.save();
+    ctx.font = `${Math.max(7, Math.round(size / 58))}px Inter, ui-sans-serif, system-ui, sans-serif`;
+    ctx.textBaseline = "middle";
+    for (const { item, p } of candidates) {
+      const alpha = Math.min(1, 0.42 + p.depth * 0.68);
+      const labelX = p.x + item.dx;
+      const labelY = p.y + item.dy;
+      const width = ctx.measureText(item.label).width;
+      const left = item.dx >= 0 ? labelX + 8 : labelX - width - 8;
+      const box = { left, right: left + width, top: labelY - 7, bottom: labelY + 7 };
+      if (occupied.some((other) => overlaps(box, other, 6))) continue;
+      occupied.push(box);
+
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1.7, size / 180), 0, Math.PI * 2);
+      ctx.fillStyle = "#ef9778";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(4, size / 96), 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(239,151,120,.22)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const endX = item.dx >= 0 ? labelX + 4 : labelX - 4;
+      ctx.beginPath();
+      ctx.moveTo(p.x + (item.dx >= 0 ? 5 : -5), p.y);
+      ctx.lineTo(endX, labelY);
+      ctx.strokeStyle = "rgba(225,229,236,.34)";
+      ctx.lineWidth = 0.65;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(239,240,244,.92)";
+      ctx.fillText(item.label, left, labelY);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   function placeActivity() {
-    const visible = activity
-      .map((item, index) => ({ item, index, p: projection(item.lat, item.lon) }))
-      .filter((row) => row.p.visible && row.p.depth > 0.03)
-      .sort((a, b) => (b.item.count || 0) - (a.item.count || 0));
-    const labelled = new Set(visible.slice(0, 6).map((row) => row.index));
-    activityNodes.forEach((row, index) => {
+    activityNodes.forEach((row) => {
       const p = projection(row.item.lat, row.item.lon);
-      if (!p.visible || p.depth < 0.04) {
-        row.node.hidden = true;
-        return;
-      }
+      if (!p.visible || p.depth < 0.08) { row.node.hidden = true; return; }
       row.node.hidden = false;
       row.node.style.left = `${p.x}px`;
       row.node.style.top = `${p.y}px`;
-      row.node.style.opacity = String(Math.min(1, 0.38 + p.depth * 0.72));
-      row.node.style.transform = `translate(-50%,-50%) scale(${0.82 + p.depth * 0.22})`;
-      row.node.toggleAttribute("data-label", labelled.has(index) && p.depth > 0.34);
+      row.node.style.opacity = String(Math.min(1, 0.28 + p.depth * 0.62));
+      row.node.style.transform = `translate(-50%,-50%) scale(${0.72 + p.depth * 0.18})`;
     });
   }
 
   function draw() {
     if (!ctx) return;
     drawSphere();
+    drawLabels();
     placeActivity();
   }
 
@@ -250,8 +287,8 @@ export function renderActivityGlobe(container) {
     pointsRoot.innerHTML = "";
     activityNodes = activity.map((item) => {
       const node = document.createElement("span");
-      node.className = "v26-globe-point";
-      node.innerHTML = `<i></i><b>${item.label}</b><em>${item.count}</em>`;
+      node.className = "v26-globe-point v26-globe-point-live";
+      node.innerHTML = `<i></i>`;
       pointsRoot.appendChild(node);
       return { item, node };
     });
@@ -276,12 +313,6 @@ export function renderActivityGlobe(container) {
         ? `${activityResult.value.active_total} learners active in the last ${activityResult.value.window_minutes} minutes`
         : "Snowflake certification study, worldwide";
       container.querySelector(".v26-live-dot")?.classList.toggle("is-live", live);
-      globe.closest("figure")?.setAttribute(
-        "aria-label",
-        live
-          ? `Rotating real-world globe with ${activityResult.value.active_total} privacy-safe aggregated active learners in the last ${activityResult.value.window_minutes} minutes.`
-          : "Rotating real-world globe. No fabricated learner locations are shown when privacy-safe live activity is unavailable."
-      );
     }
     renderActivityNodes();
     draw();
@@ -296,23 +327,21 @@ export function renderActivityGlobe(container) {
     globe.classList.add("is-dragging");
     globe.setPointerCapture?.(pointerId);
   }
-
   function move(event) {
     if (!dragging || event.pointerId !== pointerId) return;
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
-    centerLon -= dx * 0.33;
-    centerLat = Math.max(-55, Math.min(55, centerLat + dy * 0.20));
+    centerLon -= dx * 0.31;
+    centerLat = Math.max(-52, Math.min(52, centerLat + dy * 0.18));
     lastX = event.clientX;
     lastY = event.clientY;
     draw();
   }
-
   function end(event) {
     if (!dragging || (event.pointerId != null && event.pointerId !== pointerId)) return;
     dragging = false;
     pointerId = null;
-    resumeAfter = performance.now() + 1800;
+    resumeAfter = performance.now() + 2200;
     globe.classList.remove("is-dragging");
   }
 
