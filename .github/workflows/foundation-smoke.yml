@@ -121,7 +121,8 @@ jobs:
           set -euo pipefail
           grep -q 'styles/recording-parity.css' frontend/index-v26.html
           grep -q 'styles/recording-parity-final.css' frontend/index-v26.html
-          grep -q 'v26-domain-card-grid' frontend/views/curriculum-v26.js
+          grep -q 'v26-curriculum-list' frontend/views/curriculum-v26.js
+          grep -q 'data-domain-toggle' frontend/views/curriculum-v26.js
           grep -q 'v26-readiness-panel' frontend/views/progress-v26.js
           grep -q 'v26-learning-command' frontend/views/progress-v26.js
           grep -q 'v26-confidence-scale' frontend/views/practice-v26.js
