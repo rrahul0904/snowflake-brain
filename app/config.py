@@ -14,12 +14,26 @@ BRAIN_DB = Path(
 # setting DATABASE_URL to PostgreSQL switches the shared database API to the
 # pooled PostgreSQL adapter. POSTGRES_TEST_ISOLATION is CI-only and gives each
 # test process a private schema while exercising the same PostgreSQL server.
+#
+# A Vercel production function must never silently select the local SQLite
+# implementation. Besides losing durable data on serverless instances, that
+# could make a deployment appear healthy while serving an empty database.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-DATABASE_BACKEND = (
-    "postgresql"
-    if DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
-    else "sqlite"
-)
+IS_VERCEL_PRODUCTION = os.getenv("VERCEL_ENV", "").strip().lower() == "production"
+IS_POSTGRES_URL = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
+
+if IS_VERCEL_PRODUCTION and not DATABASE_URL:
+    raise RuntimeError(
+        "Production database configuration error: DATABASE_URL is required when "
+        "VERCEL_ENV=production; SQLite fallback is disabled."
+    )
+if IS_VERCEL_PRODUCTION and not IS_POSTGRES_URL:
+    raise RuntimeError(
+        "Production database configuration error: DATABASE_URL must be a PostgreSQL "
+        "connection URL when VERCEL_ENV=production; SQLite fallback is disabled."
+    )
+
+DATABASE_BACKEND = "postgresql" if IS_POSTGRES_URL else "sqlite"
 DATABASE_SCHEMA = os.getenv("DATABASE_SCHEMA", "public").strip() or "public"
 DB_POOL_MIN_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "2")))
 DB_POOL_MAX_SIZE = max(DB_POOL_MIN_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "12")))
