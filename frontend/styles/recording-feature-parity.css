@@ -35,12 +35,18 @@ html[data-theme='dark'] body{background:var(--recording-ink)}
 .v26-home-extras>.v26-section{max-width:1060px;margin-left:auto;margin-right:auto}
 .v26-section-heading{max-width:680px}
 .v26-section-heading h2{font-family:var(--serif);font-weight:500;letter-spacing:-.025em}
-.v26-testimonials{padding-top:72px;padding-bottom:72px}
-.v26-testimonial-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);border-left:1px solid var(--border)}
-.v26-testimonial{min-height:210px;padding:22px;display:flex;flex-direction:column;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--surface) 46%,transparent)}
-.v26-testimonial p{font-family:var(--serif);font-size:19px;line-height:1.48;color:var(--text);margin:0 0 28px}
-.v26-testimonial footer{margin-top:auto;display:flex;justify-content:space-between;gap:14px;color:var(--muted);font-size:9px}
-.v26-testimonial footer strong{color:var(--accent-strong);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.v26-testimonials{padding-top:82px;padding-bottom:82px}
+.v26-testimonials .v26-section-heading{max-width:610px;margin-left:0;text-align:left}
+.v26-testimonial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:30px}
+.v26-testimonial{min-height:166px;padding:19px 20px 17px;display:flex;flex-direction:column;border:0;border-left:1px solid var(--recording-salmon);background:color-mix(in srgb,var(--surface) 65%,#211816 35%)}
+.v26-testimonial p{font-family:var(--sans);font-size:11px;line-height:1.62;color:var(--text);margin:0 0 24px}
+.v26-testimonial footer{margin-top:auto;display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.13em}
+.v26-testimonial footer strong{display:inline-flex;width:max-content;margin-bottom:10px;padding:4px 7px;background:color-mix(in srgb,var(--recording-salmon) 78%,transparent);color:#2a1712;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.14em}
+.v26-testimonial footer span{display:block;color:var(--muted)}
+.v26-faq-list{max-width:620px;margin:30px auto 0}
+.v26-faq{margin-bottom:16px;background:color-mix(in srgb,var(--surface) 68%,#211816 32%);border:0}
+.v26-faq summary{min-height:56px;padding:17px 18px;font-family:var(--serif);font-size:14px}
+.v26-faq>div{padding:0 18px 18px}
 
 .v26-study-shell{max-width:1200px;margin:0 auto}
 .v26-study-sidebar{background:color-mix(in srgb,var(--bg) 97%,transparent);border-right:1px solid var(--border)}
@@ -50,6 +56,11 @@ html[data-theme='dark'] body{background:var(--recording-ink)}
 .guide-page{max-width:880px}
 .v26-domain-block,.v26-task-list{background:transparent}
 .v26-task-rows>a,.v26-task-list>a{min-height:54px;padding-top:14px;padding-bottom:14px}
+.v26-domain-card-grid{gap:16px}
+.v26-domain-card{min-height:205px;background:color-mix(in srgb,var(--surface) 62%,#211816 38%);border:0;padding:24px}
+.v26-domain-card h2{font-family:var(--serif);font-size:20px;line-height:1.18;font-weight:500}
+.v26-domain-card>div span{color:var(--recording-salmon);font-family:var(--serif);font-size:19px}
+.v26-domain-task-rows>a{background:color-mix(in srgb,var(--surface) 62%,#211816 38%);border-color:transparent;margin-bottom:7px}
 
 .v26-reference-page,.v26-info-page{max-width:1060px;margin:0 auto}
 .v26-resource-grid{grid-template-columns:1fr 1fr;gap:10px}
@@ -70,4 +81,5 @@ html[data-theme='dark'] body{background:var(--recording-ink)}
   .v26-resource-grid{grid-template-columns:1fr}
   .v26-home-hero{min-height:660px;padding-top:58px}
   .v26-home-globe{margin-top:20px}
+  .v26-testimonials .v26-section-heading{text-align:center;margin-left:auto}
 }
