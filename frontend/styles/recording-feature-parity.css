@@ -72,6 +72,19 @@ html[data-theme='dark'] body{background:var(--recording-ink)}
 .v26-info-copy h2{font-family:var(--serif);font-size:28px;font-weight:500;margin:38px 0 12px}
 .v26-info-copy ul{color:var(--muted);line-height:1.8;padding-left:20px}
 .v26-info-copy a{color:var(--accent-strong)}
+.v26-exam-guide-page .v26-page-intro{max-width:720px;padding-bottom:34px}
+.v26-exam-guide-note{font-size:10px;color:var(--muted)}
+.v26-exam-domain-outline{max-width:720px}
+.v26-exam-domain-row{display:grid;grid-template-columns:32px minmax(0,1fr) 72px 54px;gap:12px;align-items:center;min-height:58px;border-bottom:1px solid var(--border)}
+.v26-exam-domain-row>span{font-family:var(--mono);font-size:9px;color:var(--muted)}
+.v26-exam-domain-row>strong{font-family:var(--serif);font-size:16px;font-weight:500;color:var(--text)}
+.v26-exam-domain-row>em{font-size:9px;font-style:normal;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.v26-exam-domain-row>b{font-family:var(--serif);font-size:18px;font-weight:500;color:var(--recording-salmon);text-align:right}
+.v26-how-to-prepare{margin-top:46px;padding:24px;background:color-mix(in srgb,var(--surface) 66%,#211816 34%);border:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.v26-how-to-prepare h2{margin:8px 0 12px;font-size:28px}
+.v26-how-to-prepare p:not(.v26-kicker){max-width:620px;font-size:11px;line-height:1.65;color:var(--muted)}
+.v26-how-to-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.v26-how-to-actions .v26-btn{min-height:36px;border-radius:0}
 
 .v26-footer-inner{max-width:1060px;margin:0 auto}
 .v26-footer-inner nav>div{gap:14px 20px}
@@ -82,4 +95,6 @@ html[data-theme='dark'] body{background:var(--recording-ink)}
   .v26-home-hero{min-height:660px;padding-top:58px}
   .v26-home-globe{margin-top:20px}
   .v26-testimonials .v26-section-heading{text-align:center;margin-left:auto}
+  .v26-exam-domain-row{grid-template-columns:28px minmax(0,1fr) 50px}
+  .v26-exam-domain-row>em{display:none}
 }
