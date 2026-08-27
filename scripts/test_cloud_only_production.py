@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fail CI if the Vercel production profile can fall back to local state.
+"""Fail CI if a hosted Vercel runtime can fall back to local/admin state.
 
-This intentionally allows SQLite, Docker and localhost in local/CI source
-paths.  It examines only the production Vercel contract plus its runtime
-configuration behavior.
+SQLite, Docker and localhost remain valid for explicit local/CI workflows. This
+gate examines only the Vercel deployment contract and imports ``app.config`` in
+both Preview and Production serverless environments.
 """
 
 from __future__ import annotations
@@ -40,17 +40,17 @@ def check_static_contract() -> None:
     env = vercel_env()
     forbidden = sorted(VARS_FORBIDDEN_IN_VERCEL & set(env))
     if forbidden:
-        fail(f"Vercel production env declares local/admin-only settings: {forbidden}")
+        fail(f"Vercel env declares local/admin-only settings: {forbidden}")
     for key, value in env.items():
         lowered = value.lower()
         if any(marker in lowered for marker in LOCAL_MARKERS):
-            fail(f"Vercel production env {key} contains a local persistence/runtime marker")
+            fail(f"Vercel env {key} contains a local persistence/runtime marker")
     if env.get("QUESTION_BANK_AUTO_IMPORT", "").lower() != "false":
-        fail("Vercel production must disable QUESTION_BANK_AUTO_IMPORT")
+        fail("Vercel must disable QUESTION_BANK_AUTO_IMPORT")
     if env.get("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "").lower() != "false":
-        fail("Vercel production must disable membership development overrides")
+        fail("Vercel must disable membership development overrides")
     if env.get("APP_BASE_URL") != "https://snowflakecertificationguide.vercel.app":
-        fail("Vercel production APP_BASE_URL must use the canonical HTTPS domain")
+        fail("Vercel APP_BASE_URL must use the canonical HTTPS domain")
 
     deploy_env = (ROOT / "deploy" / "production.env.example").read_text(encoding="utf-8").lower()
     if "private_question_bank_dir=" in deploy_env or "/private/question_bank" in deploy_env:
@@ -64,15 +64,26 @@ def check_static_contract() -> None:
             fail(f"{compose.name} must be explicitly marked development/CI only")
 
 
-def run_config_probe(database_url: str | None, extra: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+def run_config_probe(
+    vercel_environment: str,
+    database_url: str | None,
+    extra: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
-    environment.update({"VERCEL_ENV": "production", "QUESTION_BANK_AUTO_IMPORT": "false"})
-    environment.pop("DATABASE_URL", None)
+    environment.update(
+        {
+            "VERCEL": "1",
+            "VERCEL_ENV": vercel_environment,
+            "QUESTION_BANK_AUTO_IMPORT": "false",
+        }
+    )
+    for key in ("DATABASE_URL", "DATABASE_MIGRATION_URL", "BRAIN_DB", "PRIVATE_QUESTION_BANK_DIR"):
+        environment.pop(key, None)
     if database_url is not None:
         environment["DATABASE_URL"] = database_url
     environment.update(extra or {})
     return subprocess.run(
-        [sys.executable, "-c", "from app.config import DATABASE_BACKEND; print(DATABASE_BACKEND)"],
+        [sys.executable, "-c", "from app.config import DATABASE_BACKEND, IS_VERCEL_RUNTIME; print(DATABASE_BACKEND, IS_VERCEL_RUNTIME)"],
         cwd=ROOT,
         env=environment,
         capture_output=True,
@@ -82,30 +93,43 @@ def run_config_probe(database_url: str | None, extra: dict[str, str] | None = No
 
 
 def check_runtime_fail_closed() -> None:
-    missing = run_config_probe(None)
-    if missing.returncode == 0 or "DATABASE_URL is required" not in f"{missing.stdout}\n{missing.stderr}":
-        fail("production configuration accepted a missing DATABASE_URL")
-    local = run_config_probe("sqlite:///tmp/snowflake.sqlite")
-    if local.returncode == 0 or "must be a PostgreSQL connection URL" not in f"{local.stdout}\n{local.stderr}":
-        fail("production configuration accepted SQLite")
-    import_bank = run_config_probe(
-        "postgresql://runtime:password@example.test:5432/snowflake",
-        {"QUESTION_BANK_AUTO_IMPORT": "true"},
-    )
-    if import_bank.returncode == 0 or "QUESTION_BANK_AUTO_IMPORT" not in f"{import_bank.stdout}\n{import_bank.stderr}":
-        fail("production configuration accepted question-bank auto-import")
-    migration_secret = run_config_probe(
-        "postgresql://runtime:password@example.test:5432/snowflake",
-        {"DATABASE_MIGRATION_URL": "postgresql://migration:password@example.test:5432/snowflake"},
-    )
-    if migration_secret.returncode == 0 or "DATABASE_MIGRATION_URL must not" not in f"{migration_secret.stdout}\n{migration_secret.stderr}":
-        fail("production configuration accepted a migration credential in the Vercel runtime")
+    for vercel_environment in ("preview", "production"):
+        missing = run_config_probe(vercel_environment, None)
+        if missing.returncode == 0 or "DATABASE_URL is required" not in f"{missing.stdout}\n{missing.stderr}":
+            fail(f"Vercel {vercel_environment} accepted a missing DATABASE_URL")
+
+        local = run_config_probe(vercel_environment, "sqlite:///tmp/snowflake.sqlite")
+        if local.returncode == 0 or "must be a PostgreSQL connection URL" not in f"{local.stdout}\n{local.stderr}":
+            fail(f"Vercel {vercel_environment} accepted SQLite")
+
+        import_bank = run_config_probe(
+            vercel_environment,
+            "postgresql://runtime:password@example.test:5432/snowflake",
+            {"QUESTION_BANK_AUTO_IMPORT": "true"},
+        )
+        if import_bank.returncode == 0 or "QUESTION_BANK_AUTO_IMPORT" not in f"{import_bank.stdout}\n{import_bank.stderr}":
+            fail(f"Vercel {vercel_environment} accepted question-bank auto-import")
+
+        migration_secret = run_config_probe(
+            vercel_environment,
+            "postgresql://runtime:password@example.test:5432/snowflake",
+            {"DATABASE_MIGRATION_URL": "postgresql://migration:password@example.test:5432/snowflake"},
+        )
+        if migration_secret.returncode == 0 or "DATABASE_MIGRATION_URL must not" not in f"{migration_secret.stdout}\n{migration_secret.stderr}":
+            fail(f"Vercel {vercel_environment} accepted a migration credential in request-serving runtime")
+
+        valid = run_config_probe(
+            vercel_environment,
+            "postgresql://runtime:password@example.test:5432/snowflake",
+        )
+        if valid.returncode != 0 or valid.stdout.strip() != "postgresql True":
+            fail(f"Vercel {vercel_environment} rejected valid PostgreSQL runtime configuration: {valid.stdout}\n{valid.stderr}")
 
 
 def main() -> None:
     check_static_contract()
     check_runtime_fail_closed()
-    print("Cloud-only production contract: PASS (Vercel + managed PostgreSQL; no local runtime fallback)")
+    print("Cloud-only Vercel contract: PASS (Preview/Production use managed PostgreSQL and no local/admin fallback)")
 
 
 if __name__ == "__main__":
