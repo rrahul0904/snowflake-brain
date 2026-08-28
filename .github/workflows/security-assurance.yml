@@ -71,6 +71,7 @@ jobs:
       SECURITY_RATE_LIMIT_ENABLED: 'false'
       BILLING_ENABLED: 'false'
       GOOGLE_AUTH_ENABLED: 'false'
+      SECURITY_BASE_URL: http://127.0.0.1:8000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -90,6 +91,8 @@ jobs:
           done
           cat /tmp/snowflake-zap-server.log
           exit 1
+      - name: Probe hosted static and build exposure
+        run: python scripts/test_hosted_static_exposure.py
       - name: Run ZAP baseline against public application surface
         run: |
           docker run --rm --network host \
@@ -106,6 +109,7 @@ jobs:
         with:
           name: zap-baseline-report
           path: |
+            artifacts/hosted-static-exposure.json
             zap-report.json
             zap-report.html
             /tmp/snowflake-zap-server.log
