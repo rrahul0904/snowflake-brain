@@ -100,8 +100,17 @@ echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 
 echo "== Retired media UI guard =="
-if rg -n -i '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend --glob '!*.map'; then
+set +e
+MEDIA_MATCHES="$(grep -RniE --exclude='*.map' '/api/(courses|lessons|media)|#/academy|#/video|course-player|video-player|transcript-player' frontend 2>&1)"
+MEDIA_STATUS=$?
+set -e
+if [[ $MEDIA_STATUS -eq 0 ]]; then
+  printf '%s\n' "$MEDIA_MATCHES"
   echo "Retired course/media runtime identifiers remain in the active frontend." >&2
+  exit 1
+elif [[ $MEDIA_STATUS -ne 1 ]]; then
+  printf '%s\n' "$MEDIA_MATCHES" >&2
+  echo "Retired media UI guard could not complete; refusing to silently skip a security check." >&2
   exit 1
 fi
 
