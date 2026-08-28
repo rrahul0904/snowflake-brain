@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail CI if a hosted Vercel runtime can fall back to local/admin state.
+"""Fail CI if a hosted Vercel runtime can fall back to local/admin or insecure state.
 
 SQLite, Docker and localhost remain valid for explicit local/CI workflows. This
 gate examines only the Vercel deployment contract and imports ``app.config`` in
@@ -49,6 +49,9 @@ def check_static_contract() -> None:
         fail("Vercel must disable QUESTION_BANK_AUTO_IMPORT")
     if env.get("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "").lower() != "false":
         fail("Vercel must disable membership development overrides")
+    for key in ("AUTH_COOKIE_SECURE", "FORCE_HTTPS", "SECURITY_RATE_LIMIT_ENABLED"):
+        if env.get(key, "").lower() != "true":
+            fail(f"Vercel must enforce {key}=true")
     if env.get("APP_BASE_URL") != "https://snowflakecertificationguide.vercel.app":
         fail("Vercel APP_BASE_URL must use the canonical HTTPS domain")
 
@@ -75,6 +78,11 @@ def run_config_probe(
             "VERCEL": "1",
             "VERCEL_ENV": vercel_environment,
             "QUESTION_BANK_AUTO_IMPORT": "false",
+            "AUTH_COOKIE_SECURE": "true",
+            "FORCE_HTTPS": "true",
+            "SECURITY_RATE_LIMIT_ENABLED": "true",
+            "ALLOW_MEMBERSHIP_DEV_OVERRIDE": "false",
+            "APP_BASE_URL": "https://snowflakecertificationguide.vercel.app",
         }
     )
     for key in ("DATABASE_URL", "DATABASE_MIGRATION_URL", "BRAIN_DB", "PRIVATE_QUESTION_BANK_DIR"):
@@ -118,6 +126,21 @@ def check_runtime_fail_closed() -> None:
         if migration_secret.returncode == 0 or "DATABASE_MIGRATION_URL must not" not in f"{migration_secret.stdout}\n{migration_secret.stderr}":
             fail(f"Vercel {vercel_environment} accepted a migration credential in request-serving runtime")
 
+        for setting, insecure_value, expected in (
+            ("AUTH_COOKIE_SECURE", "false", "AUTH_COOKIE_SECURE must be true"),
+            ("FORCE_HTTPS", "false", "FORCE_HTTPS must be true"),
+            ("SECURITY_RATE_LIMIT_ENABLED", "false", "SECURITY_RATE_LIMIT_ENABLED must be true"),
+            ("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "true", "ALLOW_MEMBERSHIP_DEV_OVERRIDE must be false"),
+            ("APP_BASE_URL", "http://example.test", "APP_BASE_URL must use HTTPS"),
+        ):
+            insecure = run_config_probe(
+                vercel_environment,
+                "postgresql://runtime:password@example.test:5432/snowflake",
+                {setting: insecure_value},
+            )
+            if insecure.returncode == 0 or expected not in f"{insecure.stdout}\n{insecure.stderr}":
+                fail(f"Vercel {vercel_environment} accepted insecure {setting}={insecure_value!r}")
+
         valid = run_config_probe(
             vercel_environment,
             "postgresql://runtime:password@example.test:5432/snowflake",
@@ -129,7 +152,10 @@ def check_runtime_fail_closed() -> None:
 def main() -> None:
     check_static_contract()
     check_runtime_fail_closed()
-    print("Cloud-only Vercel contract: PASS (Preview/Production use managed PostgreSQL and no local/admin fallback)")
+    print(
+        "Cloud-only Vercel contract: PASS "
+        "(Preview/Production use managed PostgreSQL, secure hosted settings, and no local/admin fallback)"
+    )
 
 
 if __name__ == "__main__":
