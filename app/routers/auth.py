@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
 from ..account_lifecycle import account_status, mark_registration_unverified
@@ -47,10 +47,10 @@ class LoginRequest(BaseModel):
 def _public_candidate_with_lifecycle(candidate: dict) -> dict:
     payload = public_candidate(candidate)
     try:
-        status = account_status(int(candidate["id"]))
-        payload["email_verified"] = bool(status.get("email_verified"))
-        payload["email_verified_at"] = status.get("email_verified_at")
-        payload["password_login_enabled"] = bool(status.get("password_login_enabled"))
+        lifecycle = account_status(int(candidate["id"]))
+        payload["email_verified"] = bool(lifecycle.get("email_verified"))
+        payload["email_verified_at"] = lifecycle.get("email_verified_at")
+        payload["password_login_enabled"] = bool(lifecycle.get("password_login_enabled"))
     except Exception:
         # Identity should still be usable if lifecycle status is temporarily unavailable;
         # protected lifecycle APIs remain the source of truth for security changes.
@@ -124,11 +124,11 @@ def auth_sessions(request: Request, candidate: dict = Depends(require_candidate)
     }
 
 
-@router.delete("/auth/sessions/{session_id}")
-def auth_revoke_session(session_id: int, candidate: dict = Depends(require_candidate)) -> dict:
+@router.delete("/auth/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def auth_revoke_session(session_id: int, candidate: dict = Depends(require_candidate)) -> Response:
     if not revoke_candidate_session(candidate["id"], session_id):
         raise HTTPException(status_code=404, detail="Session not found")
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/auth/sessions/revoke-all")
