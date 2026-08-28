@@ -28,7 +28,7 @@ def main() -> None:
     hosted = load("hosted-runtime-security.json")
     static = load("hosted-static-exposure.json")
     bank = load("production-bank-inventory.json")
-    live_black_box = os.environ.get("LIVE_BLACK_BOX_STATUS", "blocked").strip().lower()
+    live = load("live-hostile-subscriber.json")
 
     blockers: list[str] = []
     if hosted.get("status") != "pass":
@@ -37,7 +37,7 @@ def main() -> None:
         blockers.append("hosted_static_exposure")
     if bank.get("status") != "pass":
         blockers.append("production_bank_inventory")
-    if live_black_box != "pass":
+    if live.get("status") != "pass" or not bool(live.get("live_bank_exercised")):
         blockers.append("live_black_box")
 
     payload = {
@@ -55,7 +55,8 @@ def main() -> None:
         "active_release_present": bool(bank.get("active_release_present", False)),
         "active_question_count": int(bank.get("active_release_question_count", 0) or 0),
         "pool_counts": bank.get("pool_counts", {}),
-        "production_black_box": live_black_box,
+        "production_black_box": live.get("status", "missing"),
+        "live_bank_exercised": bool(live.get("live_bank_exercised", False)),
         "known_critical": 0 if not blockers else None,
         "known_high": 0 if not blockers else None,
         "blocking_items": blockers,

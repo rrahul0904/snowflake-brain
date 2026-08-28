@@ -14,12 +14,11 @@ on:
         required: true
         default: true
         type: boolean
-      live_black_box_status:
-        description: "Set to pass only after the dedicated live hostile-subscriber run succeeds"
+      exercise_live_bank:
+        description: "Consume one legitimate question from the dedicated victim account for final bank isolation proof"
         required: true
-        default: "blocked"
-        type: choice
-        options: [blocked, pass]
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -37,7 +36,11 @@ jobs:
       DATABASE_SCHEMA: public
       REQUIRE_ACTIVE_BANK: ${{ github.event_name == 'workflow_dispatch' && inputs.require_active_bank || 'true' }}
       EXPECTED_ACTIVE_QUESTION_COUNT: "1200"
-      LIVE_BLACK_BOX_STATUS: ${{ github.event_name == 'workflow_dispatch' && inputs.live_black_box_status || 'blocked' }}
+      SECURITY_TEST_ATTACKER_EMAIL: ${{ secrets.PRODUCTION_SECURITY_ATTACKER_EMAIL }}
+      SECURITY_TEST_ATTACKER_PASSWORD: ${{ secrets.PRODUCTION_SECURITY_ATTACKER_PASSWORD }}
+      SECURITY_TEST_VICTIM_EMAIL: ${{ secrets.PRODUCTION_SECURITY_VICTIM_EMAIL }}
+      SECURITY_TEST_VICTIM_PASSWORD: ${{ secrets.PRODUCTION_SECURITY_VICTIM_PASSWORD }}
+      EXERCISE_LIVE_BANK: ${{ github.event_name == 'workflow_dispatch' && inputs.exercise_live_bank || 'true' }}
       RELEASE_MAIN_SHA: ${{ github.sha }}
       RELEASE_PR_NUMBER: "37"
     steps:
@@ -60,6 +63,15 @@ jobs:
             exit 1
           fi
           python scripts/report_production_bank_inventory.py
+      - name: Run low-impact live hostile-subscriber verification
+        run: |
+          if [[ -z "${SECURITY_TEST_ATTACKER_EMAIL:-}" || -z "${SECURITY_TEST_ATTACKER_PASSWORD:-}" || -z "${SECURITY_TEST_VICTIM_EMAIL:-}" || -z "${SECURITY_TEST_VICTIM_PASSWORD:-}" ]]; then
+            mkdir -p artifacts
+            printf '%s\n' '{"status":"blocked","live_bank_exercised":false,"reason":"dedicated_test_credentials_missing"}' > artifacts/live-hostile-subscriber.json
+            echo "Dedicated production attacker/victim account secrets are required" >&2
+            exit 1
+          fi
+          python scripts/test_live_hostile_subscriber.py
       - name: Build machine-readable security release report
         if: always()
         run: python scripts/build_security_release_report.py
@@ -72,6 +84,7 @@ jobs:
             artifacts/hosted-runtime-security.json
             artifacts/hosted-static-exposure.json
             artifacts/production-bank-inventory.json
+            artifacts/live-hostile-subscriber.json
             artifacts/security-release-report.json
           if-no-files-found: warn
           retention-days: 90
