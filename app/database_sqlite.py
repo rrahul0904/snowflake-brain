@@ -209,6 +209,9 @@ def run_migrations() -> None:
               selected TEXT NOT NULL DEFAULT '[]',
               correct INTEGER NOT NULL,
               mode TEXT DEFAULT 'practice',
+              candidate_id INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL,
+              response_time_ms INTEGER,
+              confidence INTEGER,
               attempted_at TEXT DEFAULT (datetime('now'))
             );
 
@@ -241,6 +244,8 @@ def run_migrations() -> None:
               question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
               selected_json TEXT NOT NULL DEFAULT '[]',
               correct INTEGER DEFAULT 0,
+              confidence INTEGER,
+              response_time_ms INTEGER,
               answered_at TEXT DEFAULT (datetime('now')),
               reviewed INTEGER DEFAULT 0,
               UNIQUE(session_id, question_id)
@@ -409,6 +414,10 @@ def run_migrations() -> None:
         _ensure_column(conn, "candidate_memberships", "plan_code", "TEXT NOT NULL DEFAULT 'free'")
         _ensure_column(conn, "candidate_sessions", "revoked_at", "TEXT")
         _ensure_column(conn, "question_attempts", "candidate_id", "INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL")
+        _ensure_column(conn, "question_attempts", "response_time_ms", "INTEGER")
+        _ensure_column(conn, "question_attempts", "confidence", "INTEGER")
+        _ensure_column(conn, "exam_session_answers", "response_time_ms", "INTEGER")
+        _ensure_column(conn, "exam_session_answers", "confidence", "INTEGER")
         _ensure_column(conn, "learning_events", "candidate_id", "INTEGER REFERENCES candidate_accounts(id) ON DELETE SET NULL")
         _ensure_column(conn, "exam_sessions", "duration_seconds", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "exam_sessions", "submitted_reason", "TEXT DEFAULT ''")
