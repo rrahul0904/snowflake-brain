@@ -40,10 +40,6 @@ def expect_denied(connection: psycopg.Connection, statement: object, label: str,
     try:
         connection.execute(statement, params or ())
     except psycopg.Error as exc:
-        # PostgreSQL uses SQLSTATE 42501 (insufficient_privilege) for both
-        # ordinary ACL denials and ownership-required operations. Accept only
-        # that authorization failure: syntax/runtime errors must still fail the
-        # security test instead of being mistaken for successful hardening.
         if getattr(exc, "sqlstate", None) == "42501":
             return
         raise
@@ -51,13 +47,6 @@ def expect_denied(connection: psycopg.Connection, statement: object, label: str,
 
 
 def table_acl(connection: psycopg.Connection, schema: str, table: str, grantee: str) -> set[tuple[str, str]]:
-    """Return effective table grant rows as (privilege_type, is_grantable).
-
-    PostgreSQL can accept a GRANT/REVOKE command from a non-owner with a warning
-    and make no ACL change. Security depends on the resulting ACL, not whether
-    the utility command emitted an exception, so the integration test compares
-    effective grants before and after those commands.
-    """
     rows = connection.execute(
         """
         SELECT privilege_type, is_grantable
@@ -71,9 +60,13 @@ def table_acl(connection: psycopg.Connection, schema: str, table: str, grantee: 
 
 
 def public_has_select(connection: psycopg.Connection, schema: str, table: str) -> bool:
+    # has_table_privilege accepts a relation name as a value parameter. Passing
+    # the fully qualified relation string avoids mixing PostgreSQL format()
+    # directives such as %I with psycopg's %s placeholder parser.
+    qualified = f'"{schema.replace(chr(34), chr(34) * 2)}"."{table.replace(chr(34), chr(34) * 2)}"'
     row = connection.execute(
-        "SELECT has_table_privilege('public', format('%I.%I', %s, %s), 'SELECT')",
-        (schema, table),
+        "SELECT has_table_privilege('public', %s, 'SELECT')",
+        (qualified,),
     ).fetchone()
     return bool(row and row[0])
 
@@ -196,94 +189,27 @@ def main() -> None:
             runtime.execute("DELETE FROM feedback_submissions WHERE title='role test'")
 
             expect_denied(runtime, "UPDATE questions SET explanation='forbidden' WHERE 1=0", "question-bank UPDATE")
-            expect_denied(
-                runtime,
-                "INSERT INTO schema_migrations(version,name) VALUES ('forbidden','forbidden')",
-                "schema migration ledger INSERT",
-            )
-            expect_denied(
-                runtime,
-                "UPDATE question_bank_releases SET notes='forbidden' WHERE 1=0",
-                "release governance UPDATE",
-            )
-            expect_denied(
-                runtime,
-                "UPDATE question_editorial_policies SET enforcement_enabled=0 WHERE 1=0",
-                "editorial policy UPDATE",
-            )
+            expect_denied(runtime, "INSERT INTO schema_migrations(version,name) VALUES ('forbidden','forbidden')", "schema migration ledger INSERT")
+            expect_denied(runtime, "UPDATE question_bank_releases SET notes='forbidden' WHERE 1=0", "release governance UPDATE")
+            expect_denied(runtime, "UPDATE question_editorial_policies SET enforcement_enabled=0 WHERE 1=0", "editorial policy UPDATE")
 
-            expect_denied(
-                runtime,
-                sql.SQL("CREATE TABLE {}.runtime_must_not_create(id int)").format(sql.Identifier(schema)),
-                "CREATE TABLE",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("ALTER TABLE {}.feedback_submissions ADD COLUMN forbidden int").format(sql.Identifier(schema)),
-                "ALTER TABLE",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("DROP TABLE {}.feedback_submissions").format(sql.Identifier(schema)),
-                "DROP TABLE",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("TRUNCATE TABLE {}.feedback_submissions").format(sql.Identifier(schema)),
-                "TRUNCATE TABLE",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(f"runtime_schema_{suffix}")),
-                "CREATE SCHEMA",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("CREATE FUNCTION {}.runtime_must_not_create_fn() RETURNS integer LANGUAGE SQL AS 'SELECT 1'").format(
-                    sql.Identifier(schema)
-                ),
-                "CREATE FUNCTION",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("ALTER FUNCTION {}.{}() RENAME TO forbidden_rename").format(
-                    sql.Identifier(schema), sql.Identifier(migration_function)
-                ),
-                "ALTER FUNCTION",
-            )
-            expect_denied(
-                runtime,
-                sql.SQL("DROP FUNCTION {}.{}()").format(
-                    sql.Identifier(schema), sql.Identifier(migration_function)
-                ),
-                "DROP FUNCTION",
-            )
+            expect_denied(runtime, sql.SQL("CREATE TABLE {}.runtime_must_not_create(id int)").format(sql.Identifier(schema)), "CREATE TABLE")
+            expect_denied(runtime, sql.SQL("ALTER TABLE {}.feedback_submissions ADD COLUMN forbidden int").format(sql.Identifier(schema)), "ALTER TABLE")
+            expect_denied(runtime, sql.SQL("DROP TABLE {}.feedback_submissions").format(sql.Identifier(schema)), "DROP TABLE")
+            expect_denied(runtime, sql.SQL("TRUNCATE TABLE {}.feedback_submissions").format(sql.Identifier(schema)), "TRUNCATE TABLE")
+            expect_denied(runtime, sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(f"runtime_schema_{suffix}")), "CREATE SCHEMA")
+            expect_denied(runtime, sql.SQL("CREATE FUNCTION {}.runtime_must_not_create_fn() RETURNS integer LANGUAGE SQL AS 'SELECT 1'").format(sql.Identifier(schema)), "CREATE FUNCTION")
+            expect_denied(runtime, sql.SQL("ALTER FUNCTION {}.{}() RENAME TO forbidden_rename").format(sql.Identifier(schema), sql.Identifier(migration_function)), "ALTER FUNCTION")
+            expect_denied(runtime, sql.SQL("DROP FUNCTION {}.{}()").format(sql.Identifier(schema), sql.Identifier(migration_function)), "DROP FUNCTION")
             expect_denied(runtime, "CREATE ROLE runtime_forbidden_child", "CREATE ROLE")
-            expect_denied(
-                runtime,
-                sql.SQL("SET ROLE {}").format(sql.Identifier(migration_role)),
-                "SET ROLE migration role",
-            )
+            expect_denied(runtime, sql.SQL("SET ROLE {}").format(sql.Identifier(migration_role)), "SET ROLE migration role")
 
-            # GRANT/REVOKE are special PostgreSQL utility commands: without grant
-            # option/ownership they may return success with a WARNING while making
-            # no ACL change. Prove the effective ACL cannot be escalated rather
-            # than relying on transport-level error semantics.
             grants_before = table_acl(runtime, schema, "feedback_submissions", runtime_role)
-            require(
-                not any(privilege == "SELECT" and grantable == "YES" for privilege, grantable in grants_before),
-                "runtime SELECT unexpectedly carries grant option",
-            )
+            require(not any(privilege == "SELECT" and grantable == "YES" for privilege, grantable in grants_before), "runtime SELECT unexpectedly carries grant option")
             require(not public_has_select(runtime, schema, "feedback_submissions"), "PUBLIC already has SELECT on candidate state")
-            runtime.execute(
-                sql.SQL("GRANT SELECT ON {}.feedback_submissions TO PUBLIC").format(sql.Identifier(schema))
-            )
+            runtime.execute(sql.SQL("GRANT SELECT ON {}.feedback_submissions TO PUBLIC").format(sql.Identifier(schema)))
             require(not public_has_select(runtime, schema, "feedback_submissions"), "runtime role granted candidate-state SELECT to PUBLIC")
-            runtime.execute(
-                sql.SQL("REVOKE SELECT ON {}.feedback_submissions FROM {}").format(
-                    sql.Identifier(schema), sql.Identifier(runtime_role)
-                )
-            )
+            runtime.execute(sql.SQL("REVOKE SELECT ON {}.feedback_submissions FROM {}").format(sql.Identifier(schema), sql.Identifier(runtime_role)))
             grants_after = table_acl(runtime, schema, "feedback_submissions", runtime_role)
             require(grants_after == grants_before, "runtime role changed its own table ACL without ownership/grant option")
 
@@ -291,29 +217,16 @@ def main() -> None:
 
         with psycopg.connect(migration_url, autocommit=True) as migrator:
             migrator.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
-            migrator.execute(
-                sql.SQL("CREATE TABLE {}.future_governance_probe (id bigint PRIMARY KEY, value text NOT NULL)").format(
-                    sql.Identifier(schema)
-                )
-            )
+            migrator.execute(sql.SQL("CREATE TABLE {}.future_governance_probe (id bigint PRIMARY KEY, value text NOT NULL)").format(sql.Identifier(schema)))
         grant_runtime_privileges()
         status = assert_production_schema_ready()
         require(status.get("status") == "ok", f"future read-only table broke runtime verifier: {status}")
         with psycopg.connect(runtime_url, autocommit=True) as runtime:
             runtime.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
             runtime.execute(sql.SQL("SELECT * FROM {}.future_governance_probe").format(sql.Identifier(schema)))
-            expect_denied(
-                runtime,
-                sql.SQL("INSERT INTO {}.future_governance_probe(id,value) VALUES (1,'forbidden')").format(
-                    sql.Identifier(schema)
-                ),
-                "future-table INSERT",
-            )
+            expect_denied(runtime, sql.SQL("INSERT INTO {}.future_governance_probe(id,value) VALUES (1,'forbidden')").format(sql.Identifier(schema)), "future-table INSERT")
 
-        print(
-            "Production role separation: PASS "
-            "(candidate DML works; bank/governance writes, DDL, ACL escalation, role escalation and server-program execution denied)"
-        )
+        print("Production role separation: PASS (candidate DML works; bank/governance writes, DDL, ACL escalation, role escalation and server-program execution denied)")
     finally:
         close_pool()
         with psycopg.connect(admin_url, autocommit=True) as admin:
