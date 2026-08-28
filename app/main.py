@@ -160,15 +160,24 @@ app.include_router(credentials.router, prefix="/api")
 app.include_router(google_auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 
+
+# Keep the API namespace fail-closed for every common HTTP method. These
+# fallbacks are registered after every real API router so concrete routes match
+# first; only unknown/retired API paths reach this handler. This prevents the
+# SPA catch-all from turning retired endpoints into HTTP 200 HTML and prevents
+# method-specific 405 responses from revealing ambiguous route semantics.
+_API_FALLBACK_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
+
+
+@app.api_route("/api", methods=_API_FALLBACK_METHODS, include_in_schema=False)
+@app.api_route("/api/{full_path:path}", methods=_API_FALLBACK_METHODS, include_in_schema=False)
+def api_not_found(full_path: str = "") -> None:
+    raise HTTPException(status_code=404, detail="Not found")
+
+
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str) -> FileResponse:
-    # API namespaces fail closed. Without this guard an authenticated request to
-    # a retired/unknown /api path can fall through to the SPA catch-all and
-    # receive index-v26.html with HTTP 200, masking route retirement and making
-    # API probes ambiguous. Only non-API navigation paths may receive the SPA.
-    if full_path == "api" or full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="Not found")
     return FileResponse(FRONTEND_DIR / "index-v26.html")
