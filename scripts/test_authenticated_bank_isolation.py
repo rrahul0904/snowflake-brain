@@ -159,10 +159,6 @@ def synthetic_bank() -> dict:
 
 def main() -> None:
     run_migrations()
-    # Match the normal non-Vercel application startup path: credential/talent
-    # tables are additive runtime schema for SQLite and versioned in PostgreSQL.
-    # Exercising the real initializer keeps this hostile-subscriber test aligned
-    # with production code instead of fabricating a credential table locally.
     ensure_talent_schema()
     bank = synthetic_bank()
     validation = validate_question_bank_payload(bank, source_name="authenticated-isolation.json")
@@ -362,7 +358,7 @@ def main() -> None:
     check(attacker.delete(f"/api/auth/sessions/{secondary_session_id}").status_code == 404, "attacker can revoke victim session")
     check(secondary.get("/api/skills/map").status_code == 200, "attacker denial changed victim session")
     owner_revoke = victim.delete(f"/api/auth/sessions/{secondary_session_id}")
-    check(owner_revoke.status_code == 204, owner_revoke.text)
+    check(owner_revoke.status_code == 200 and owner_revoke.json().get("ok") is True, owner_revoke.text)
     check(secondary.get("/api/skills/map").status_code == 401, "revoked session remains usable")
 
     print(
