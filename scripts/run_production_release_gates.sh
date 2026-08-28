@@ -2,6 +2,7 @@
 set -euo pipefail
 
 python -m compileall -q app scripts
+python scripts/test_tracked_secret_scan.py
 
 # Existing certification, auth, billing, release, entitlement, learning and
 # frontend contracts.
