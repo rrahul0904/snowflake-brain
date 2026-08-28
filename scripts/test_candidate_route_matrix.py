@@ -14,6 +14,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from fastapi.routing import APIRoute
+
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -52,14 +54,29 @@ FORBIDDEN_RETIRED_PATHS = {
 }
 
 
+def public_request_path(route: APIRoute) -> str:
+    """Normalize Starlette 1.6 APIRouter templates to actual request URLs.
+
+    Included routers expose route.path without the app-level `/api` prefix even
+    though clients request `/api/...`. App-declared health/ready/metrics routes
+    already contain `/api` and are left unchanged.
+    """
+    path = route.path
+    if path.startswith("/api"):
+        return path
+    return f"/api{path}"
+
+
 def main() -> None:
     actual: set[tuple[str, str]] = set()
     all_paths: set[str] = set()
     for route in app.routes:
-        path = getattr(route, "path", "")
-        methods = getattr(route, "methods", None) or set()
-        if not path.startswith("/api/"):
+        if not isinstance(route, APIRoute):
             continue
+        if route.name == "serve_spa":
+            continue
+        path = public_request_path(route)
+        methods = route.methods or set()
         all_paths.add(path)
         for method in methods:
             if method in {"HEAD", "OPTIONS"}:
