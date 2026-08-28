@@ -51,9 +51,14 @@ FRONTEND_PATHS = (
     "/static/router-complete.js",
     "/static/api.js",
 )
+# Build private-key sentinels from fragments so this defensive probe does not
+# itself contain a complete credential marker that the tracked-secret gate must
+# correctly reject everywhere else in the repository.
+_PRIVATE_KEY_MARKER = b"-----BEGIN " + b"PRIVATE KEY-----"
+_RSA_PRIVATE_KEY_MARKER = b"-----BEGIN RSA " + b"PRIVATE KEY-----"
 BODY_MARKERS = (
-    b"-----BEGIN PRIVATE KEY-----",
-    b"-----BEGIN RSA PRIVATE KEY-----",
+    _PRIVATE_KEY_MARKER,
+    _RSA_PRIVATE_KEY_MARKER,
     b"DATABASE_MIGRATION_URL=postgres",
     b"STRIPE_SECRET_KEY=sk_",
     b"GOOGLE_OIDC_CLIENT_SECRET=",
