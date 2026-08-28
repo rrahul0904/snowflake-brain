@@ -34,6 +34,7 @@ from app.database import connect, run_migrations  # noqa: E402
 from app.main import app  # noqa: E402
 from app.question_bank import import_question_bank_payload, validate_question_bank_payload  # noqa: E402
 from app.skill_brain import flatten_skills  # noqa: E402
+from app.talent_schema import ensure_talent_schema  # noqa: E402
 
 
 PASSWORD = "candidate-password"
@@ -113,8 +114,6 @@ def assert_no_answer_material(value: object, label: str) -> None:
 
 def synthetic_bank() -> dict:
     questions: list[dict] = []
-    # Enough inventory to exercise Free, daily quota and a 30-question weekly
-    # mock while preserving all 19 task statements.
     pools = {"free": 5, "practice": 4, "diagnostic": 3, "mock_reserved": 2}
     for skill in flatten_skills("snowpro-core"):
         for pool, count in pools.items():
@@ -160,6 +159,11 @@ def synthetic_bank() -> dict:
 
 def main() -> None:
     run_migrations()
+    # Match the normal non-Vercel application startup path: credential/talent
+    # tables are additive runtime schema for SQLite and versioned in PostgreSQL.
+    # Exercising the real initializer keeps this hostile-subscriber test aligned
+    # with production code instead of fabricating a credential table locally.
+    ensure_talent_schema()
     bank = synthetic_bank()
     validation = validate_question_bank_payload(bank, source_name="authenticated-isolation.json")
     check(validation["valid"], f"synthetic bank invalid: {validation}")
@@ -176,7 +180,6 @@ def main() -> None:
     attacker_id = int(attacker_state["candidate"]["id"])
     check(attacker_id != victim_id, "attacker and victim identities collapsed")
 
-    # ---------------- Question delivery / bank inventory ----------------
     check(attacker.get("/api/questions").status_code == 403, "authenticated candidate can enumerate bulk questions")
     check(attacker.get("/api/practice-tests/arbitrary/questions").status_code == 403, "authenticated candidate can bulk-read a test")
     practice_inventory = attacker.get("/api/practice-tests")
@@ -203,7 +206,6 @@ def main() -> None:
     assert_private_no_store(guessed, "denied guessed question")
     check("explanation" not in guessed.text.lower() and "correct_json" not in guessed.text.lower(), "denial leaks answer metadata")
 
-    # Knowing a victim question ID must not authorize grading or attempt writes.
     attacker_attempt = attacker.post(
         f"/api/questions/{victim_question}/attempt",
         json={"selected": [1], "mode": "drill", "confidence": 5, "response_time_ms": 500},
@@ -225,14 +227,11 @@ def main() -> None:
     check(resources.json().get("mapping_strategy") == "candidate_delivery_only", "skill resource boundary not explicit")
     assert_no_answer_material(resources.json(), "skill resources")
 
-    # Raw adaptive ID inventory and evidence-administration endpoints are not
-    # candidate APIs. Adaptive priorities are consumed only inside startQuiz.
     check(attacker.get("/api/intelligence/adaptive/question-ids?limit=100").status_code == 404, "adaptive question IDs are enumerable")
     check(attacker.get("/api/intelligence/evidence-audit").status_code == 404, "candidate can reach evidence audit admin API")
     check(attacker.post("/api/intelligence/evidence-review", json={"question_id": victim_question, "skill_id": victim_skill, "reviewed": True}).status_code == 404, "candidate can mutate evidence review state")
     check(attacker.post("/api/intelligence/reindex-skill-map").status_code == 404, "candidate can reindex administrative question mapping")
 
-    # ---------------- Horizontal candidate isolation ----------------
     victim_bookmark = victim.post(f"/api/questions/{victim_question}/bookmark", json={})
     check(victim_bookmark.status_code == 200, victim_bookmark.text)
     victim_note = victim.post(f"/api/questions/{victim_question}/notes", json={"body": "victim-only-note"})
@@ -247,8 +246,6 @@ def main() -> None:
         response = getattr(attacker, method)(path, **({"json": body} if body is not None else {}))
         check(response.status_code == 404, f"attacker crossed question state ownership via {method.upper()} {path}: {response.status_code}")
 
-    # Create victim learning evidence and prove attacker cannot patch the victim's
-    # mistake simply by knowing the served question ID.
     attempt = victim.post(
         f"/api/questions/{victim_question}/attempt",
         json={"selected": [0], "mode": "drill", "confidence": 5, "response_time_ms": 900},
@@ -263,8 +260,6 @@ def main() -> None:
     )
     check(attacker_patch.status_code == 404, "attacker can mutate another candidate's mistake notebook")
 
-    # Query-string candidate_id injection must be ignored; the dependency-derived
-    # candidate remains authoritative for progress and study-plan reads.
     progress_update = victim.post(
         "/api/skills/task-progress",
         json={"track_id": "snowpro-core", "skill_id": victim_skill, "completed": True},
@@ -288,8 +283,6 @@ def main() -> None:
     check(attacker_plan.json().get("preferences", {}).get("daily_minutes") != 73, "candidate_id query injection exposed victim study plan")
     assert_private_no_store(attacker_plan, "study plan")
 
-    # Seed a victim-owned credential without contacting an external provider, then
-    # prove UID knowledge does not grant list/delete/reverify access.
     credential_uid = f"cred-{uuid4()}"
     with connect() as conn:
         conn.execute(
@@ -320,7 +313,6 @@ def main() -> None:
     victim_credentials = victim.get("/api/credentials")
     check(credential_uid in json.dumps(victim_credentials.json()), "victim credential disappeared after attacker operations")
 
-    # ---------------- Server-authoritative entitlement ----------------
     too_many = attacker.post(
         "/api/certification-quiz/start",
         json={"track_id": "snowpro-core", "mode": "drill", "count": 21, "plan_code": "premium_500", "is_premium": True},
@@ -335,7 +327,6 @@ def main() -> None:
     check(premium_mock_forge.status_code == 403, f"client-supplied premium state bypassed server entitlement: {premium_mock_forge.status_code}")
     check(attacker.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "admin-mock"}).status_code == 422, "unknown mock mode accepted")
 
-    # ---------------- Mock ownership / answer hiding ----------------
     weekly = victim.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "weekly-mock"})
     check(weekly.status_code == 200 and len(weekly.json().get("questions") or []) == 30, weekly.text)
     assert_private_no_store(weekly, "weekly mock start")
@@ -359,7 +350,6 @@ def main() -> None:
     assert_private_no_store(own_session, "mock resume")
     assert_no_answer_material(own_session.json().get("questions") or [], "pre-submit mock resume questions")
 
-    # ---------------- Session ownership and revocation ----------------
     secondary = TestClient(app)
     login(secondary, victim_email)
     sessions = victim.get("/api/auth/sessions")
