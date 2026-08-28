@@ -358,7 +358,7 @@ def main() -> None:
     check(attacker.delete(f"/api/auth/sessions/{secondary_session_id}").status_code == 404, "attacker can revoke victim session")
     check(secondary.get("/api/skills/map").status_code == 200, "attacker denial changed victim session")
     owner_revoke = victim.delete(f"/api/auth/sessions/{secondary_session_id}")
-    check(owner_revoke.status_code == 200 and owner_revoke.json().get("ok") is True, owner_revoke.text)
+    check(owner_revoke.status_code == 204, owner_revoke.text)
     check(secondary.get("/api/skills/map").status_code == 401, "revoked session remains usable")
 
     print(
