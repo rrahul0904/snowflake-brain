@@ -49,7 +49,27 @@ FORBIDDEN_PRE_SUBMIT_KEYS = {
     "correct_rationale",
     "distractor_rationales",
     "distractor_rationales_json",
+    "expected_answer",
+    "grading",
+    "score_key",
+    "editorial_answer",
+    "sme_notes",
+    "review_notes",
 }
+FORBIDDEN_PRE_SUBMIT_FRAGMENTS = (
+    "correct_answer",
+    "correct_option",
+    "answer_key",
+    "solution",
+    "explanation",
+    "rationale",
+    "expected_answer",
+    "grading",
+    "score_key",
+    "editorial_answer",
+    "sme_note",
+    "review_note",
+)
 
 
 def check(condition: object, message: str) -> None:
@@ -82,7 +102,7 @@ def assert_no_answer_material(value: object, label: str) -> None:
         if isinstance(node, dict):
             for key, child in node.items():
                 lowered = str(key).lower()
-                if lowered in FORBIDDEN_PRE_SUBMIT_KEYS:
+                if lowered in FORBIDDEN_PRE_SUBMIT_KEYS or any(fragment in lowered for fragment in FORBIDDEN_PRE_SUBMIT_FRAGMENTS):
                     raise AssertionError(f"{label} leaks answer-bearing key {path}.{key}")
                 walk(child, f"{path}.{key}")
         elif isinstance(node, list):
@@ -182,6 +202,21 @@ def main() -> None:
     check(guessed.status_code == 404, "known question ID grants another candidate access")
     assert_private_no_store(guessed, "denied guessed question")
     check("explanation" not in guessed.text.lower() and "correct_json" not in guessed.text.lower(), "denial leaks answer metadata")
+
+    # Knowing a victim question ID must not authorize grading or attempt writes.
+    attacker_attempt = attacker.post(
+        f"/api/questions/{victim_question}/attempt",
+        json={"selected": [1], "mode": "drill", "confidence": 5, "response_time_ms": 500},
+    )
+    check(attacker_attempt.status_code == 404, "known question ID lets attacker write victim learning evidence")
+    assert_private_no_store(attacker_attempt, "denied cross-candidate attempt")
+    attacker_grade = attacker.post(
+        "/api/quiz/grade",
+        json={"answers": [{"question_id": victim_question, "selected": [1]}]},
+    )
+    check(attacker_grade.status_code == 404, "known question ID lets attacker use grade endpoint as answer oracle")
+    assert_private_no_store(attacker_grade, "denied cross-candidate grade")
+    check("explanation" not in attacker_grade.text.lower() and "correct" not in attacker_grade.text.lower(), "grade denial leaks answer metadata")
 
     resources = victim.get(f"/api/skills/{victim_skill}/resources?track_id=snowpro-core&limit=50")
     check(resources.status_code == 200, resources.text)
@@ -342,7 +377,7 @@ def main() -> None:
 
     print(
         "Authenticated bank isolation: PASS "
-        "(answers hidden, no raw bank/admin ID inventory, server entitlements, candidate ownership, session revocation)"
+        "(answers hidden, no raw bank/admin ID inventory, grade/attempt oracles blocked, server entitlements, candidate ownership, session revocation)"
     )
 
 
