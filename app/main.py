@@ -165,4 +165,10 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str) -> FileResponse:
+    # API namespaces fail closed. Without this guard an authenticated request to
+    # a retired/unknown /api path can fall through to the SPA catch-all and
+    # receive index-v26.html with HTTP 200, masking route retirement and making
+    # API probes ambiguous. Only non-API navigation paths may receive the SPA.
+    if full_path == "api" or full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not found")
     return FileResponse(FRONTEND_DIR / "index-v26.html")
