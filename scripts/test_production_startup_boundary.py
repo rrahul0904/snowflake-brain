@@ -20,6 +20,11 @@ def run_boundary(vercel_environment: str) -> None:
             "VERCEL_ENV": vercel_environment,
             "DATABASE_URL": "postgresql://runtime:password@example.test:5432/snowflake",
             "QUESTION_BANK_AUTO_IMPORT": "false",
+            "AUTH_COOKIE_SECURE": "true",
+            "FORCE_HTTPS": "true",
+            "SECURITY_RATE_LIMIT_ENABLED": "true",
+            "ALLOW_MEMBERSHIP_DEV_OVERRIDE": "false",
+            "APP_BASE_URL": "https://snowflakecertificationguide.vercel.app",
         }
     )
     environment.pop("DATABASE_MIGRATION_URL", None)
