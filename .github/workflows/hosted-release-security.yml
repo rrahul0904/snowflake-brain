@@ -1,0 +1,77 @@
+name: Hosted Release Security
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Preview or production HTTPS base URL"
+        required: true
+        default: "https://snowflakecertificationguide.vercel.app"
+      require_active_bank:
+        description: "Fail unless an active production question release exists"
+        required: true
+        default: true
+        type: boolean
+      live_black_box_status:
+        description: "Set to pass only after the dedicated live hostile-subscriber run succeeds"
+        required: true
+        default: "blocked"
+        type: choice
+        options: [blocked, pass]
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-release-security:
+    name: hosted-release-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SECURITY_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || 'https://snowflakecertificationguide.vercel.app' }}
+      SOAK_REQUESTS: "20"
+      EXPECTED_DATABASE_BACKEND: postgresql
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      DATABASE_SCHEMA: public
+      REQUIRE_ACTIVE_BANK: ${{ github.event_name == 'workflow_dispatch' && inputs.require_active_bank || 'true' }}
+      EXPECTED_ACTIVE_QUESTION_COUNT: "1200"
+      LIVE_BLACK_BOX_STATUS: ${{ github.event_name == 'workflow_dispatch' && inputs.live_black_box_status || 'blocked' }}
+      RELEASE_MAIN_SHA: ${{ github.sha }}
+      RELEASE_PR_NUMBER: "37"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Soak hosted liveness/readiness and security headers
+        run: python scripts/test_hosted_runtime_security.py
+      - name: Probe hosted static/build/private-file exposure
+        run: python scripts/test_hosted_static_exposure.py
+      - name: Verify active production bank counts without reading question content
+        run: |
+          if [[ -z "${DATABASE_URL:-}" ]]; then
+            echo "PRODUCTION_DATABASE_URL GitHub secret is required for release inventory verification" >&2
+            exit 1
+          fi
+          python scripts/report_production_bank_inventory.py
+      - name: Build machine-readable security release report
+        if: always()
+        run: python scripts/build_security_release_report.py
+      - name: Upload hosted release security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-release-security-${{ github.sha }}
+          path: |
+            artifacts/hosted-runtime-security.json
+            artifacts/hosted-static-exposure.json
+            artifacts/production-bank-inventory.json
+            artifacts/security-release-report.json
+          if-no-files-found: warn
+          retention-days: 90
