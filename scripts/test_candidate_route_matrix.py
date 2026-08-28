@@ -14,8 +14,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fastapi.routing import APIRoute
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -31,6 +29,8 @@ from app.main import app  # noqa: E402
 ARTIFACT = ROOT / "artifacts" / "candidate-authorization-matrix.json"
 EXPECTED: dict[tuple[str, str], str] = {
     ("GET", "/api/questions/{question_id}"): "served-question-only",
+    ("POST", "/api/questions/{question_id}/attempt"): "served-question-candidate-state",
+    ("POST", "/api/quiz/grade"): "served-question-only",
     ("GET", "/api/questions/{question_id}/bookmark"): "served-question-candidate-state",
     ("POST", "/api/questions/{question_id}/bookmark"): "served-question-candidate-state",
     ("GET", "/api/questions/{question_id}/notes"): "served-question-candidate-state",
@@ -52,36 +52,26 @@ FORBIDDEN_RETIRED_PATHS = {
     "/api/intelligence/evidence-review",
     "/api/intelligence/reindex-skill-map",
 }
-
-
-def public_request_path(route: APIRoute) -> str:
-    """Normalize Starlette 1.6 APIRouter templates to actual request URLs.
-
-    Included routers expose route.path without the app-level `/api` prefix even
-    though clients request `/api/...`. App-declared health/ready/metrics routes
-    already contain `/api` and are left unchanged.
-    """
-    path = route.path
-    if path.startswith("/api"):
-        return path
-    return f"/api{path}"
+HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
 
 
 def main() -> None:
+    # OpenAPI is the canonical client-facing route document and already contains
+    # include_router prefixes. Using it avoids Starlette-internal route-template
+    # differences across framework versions.
+    schema = app.openapi()
+    paths = schema.get("paths") or {}
     actual: set[tuple[str, str]] = set()
     all_paths: set[str] = set()
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
+    for path, operations in paths.items():
+        if not str(path).startswith("/api/"):
             continue
-        if route.name == "serve_spa":
+        all_paths.add(str(path))
+        if not isinstance(operations, dict):
             continue
-        path = public_request_path(route)
-        methods = route.methods or set()
-        all_paths.add(path)
-        for method in methods:
-            if method in {"HEAD", "OPTIONS"}:
-                continue
-            actual.add((method, path))
+        for method in operations:
+            if method.lower() in HTTP_METHODS:
+                actual.add((method.upper(), str(path)))
 
     missing = sorted(f"{method} {path}" for (method, path) in EXPECTED if (method, path) not in actual)
     retired_present = sorted(FORBIDDEN_RETIRED_PATHS & all_paths)
