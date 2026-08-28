@@ -47,13 +47,13 @@ else:
         return None
 
 
-def _converge_sqlite_runtime_columns() -> None:
+def _converge_sqlite_runtime_schema() -> None:
     """Keep the lightweight SQLite compatibility schema aligned with runtime writes.
 
     Production schema changes are versioned PostgreSQL migrations. SQLite is only
     the local/CI compatibility path, but every runtime write exercised there must
-    still have a converged column contract so security regressions cannot be hidden
-    by a stale test schema.
+    still have a converged schema so security regressions cannot be hidden by a
+    stale test database.
     """
     if DATABASE_BACKEND != "sqlite":
         return
@@ -67,6 +67,13 @@ def _converge_sqlite_runtime_columns() -> None:
             if column not in columns:
                 conn.execute(f"ALTER TABLE question_attempts ADD COLUMN {column} {declaration}")
         conn.commit()
+
+    # Credential/talent tables are part of the normal local application schema
+    # and are required by the hostile-subscriber ownership suite. Import lazily
+    # here to avoid a module cycle: talent_schema itself uses database.connect.
+    from .talent_schema import ensure_talent_schema
+
+    ensure_talent_schema()
 
 
 @contextmanager
@@ -83,7 +90,7 @@ def run_migrations() -> None:
     started = time.perf_counter()
     try:
         _raw_run_migrations()
-        _converge_sqlite_runtime_columns()
+        _converge_sqlite_runtime_schema()
     except Exception as exc:
         duration = (time.perf_counter() - started) * 1000
         record_db_operation("MIGRATION", duration, ok=False, backend=DATABASE_BACKEND)
