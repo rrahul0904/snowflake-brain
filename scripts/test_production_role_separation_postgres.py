@@ -66,17 +66,18 @@ def main() -> None:
     with psycopg.connect(admin_url, autocommit=True) as admin:
         admin.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(runtime_role)))
         admin.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(migration_role)))
+        # PostgreSQL utility statements such as CREATE ROLE do not accept a bind
+        # placeholder for PASSWORD. sql.Literal performs Psycopg quoting/escaping
+        # while keeping generated credentials out of logs and source text.
         admin.execute(
-            sql.SQL("CREATE ROLE {} LOGIN PASSWORD %s NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS").format(
-                sql.Identifier(runtime_role)
-            ),
-            (runtime_password,),
+            sql.SQL(
+                "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
+            ).format(sql.Identifier(runtime_role), sql.Literal(runtime_password))
         )
         admin.execute(
-            sql.SQL("CREATE ROLE {} LOGIN PASSWORD %s NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS").format(
-                sql.Identifier(migration_role)
-            ),
-            (migration_password,),
+            sql.SQL(
+                "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
+            ).format(sql.Identifier(migration_role), sql.Literal(migration_password))
         )
         admin.execute(
             sql.SQL("GRANT CONNECT ON DATABASE {} TO {}, {}").format(
