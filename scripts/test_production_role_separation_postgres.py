@@ -16,7 +16,7 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
-from psycopg import errors, sql
+from psycopg import sql
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +39,14 @@ def role_dsn(admin_url: str, role: str, password: str) -> str:
 def expect_denied(connection: psycopg.Connection, statement: object, label: str, params: tuple | None = None) -> None:
     try:
         connection.execute(statement, params or ())
-    except (errors.InsufficientPrivilege, errors.NotOwner):
-        return
+    except psycopg.Error as exc:
+        # PostgreSQL uses SQLSTATE 42501 (insufficient_privilege) for both
+        # ordinary ACL denials and ownership-required operations. Accept only
+        # that authorization failure: syntax/runtime errors must still fail the
+        # security test instead of being mistaken for successful hardening.
+        if getattr(exc, "sqlstate", None) == "42501":
+            return
+        raise
     raise AssertionError(f"Runtime role unexpectedly performed privileged operation: {label}")
 
 
