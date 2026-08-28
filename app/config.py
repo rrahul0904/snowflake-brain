@@ -134,7 +134,19 @@ AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
 SECURITY_RATE_LIMIT_ENABLED = os.getenv("SECURITY_RATE_LIMIT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 
+# Hosted request-serving runtimes must fail closed if deployment settings drift
+# to an insecure state. Local/test environments remain configurable so the same
+# application can be exercised over HTTP in isolated CI.
+if IS_VERCEL_RUNTIME and not AUTH_COOKIE_SECURE:
+    raise RuntimeError("Vercel security configuration error: AUTH_COOKIE_SECURE must be true")
+if IS_VERCEL_RUNTIME and not FORCE_HTTPS:
+    raise RuntimeError("Vercel security configuration error: FORCE_HTTPS must be true")
+if IS_VERCEL_RUNTIME and not SECURITY_RATE_LIMIT_ENABLED:
+    raise RuntimeError("Vercel security configuration error: SECURITY_RATE_LIMIT_ENABLED must be true")
+
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8010").rstrip("/")
+if IS_VERCEL_RUNTIME and not APP_BASE_URL.lower().startswith("https://"):
+    raise RuntimeError("Vercel security configuration error: APP_BASE_URL must use HTTPS")
 
 GOOGLE_AUTH_ENABLED = os.getenv("GOOGLE_AUTH_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 GOOGLE_OIDC_CLIENT_ID = os.getenv("GOOGLE_OIDC_CLIENT_ID", "").strip()
@@ -154,6 +166,8 @@ STRIPE_PRICE_PREMIUM_500 = os.getenv("STRIPE_PRICE_PREMIUM_500", "").strip()
 STRIPE_PRICE_EXAM_PACK = os.getenv("STRIPE_PRICE_EXAM_PACK", "").strip()
 BILLING_PAST_DUE_GRACE_DAYS = max(0, int(os.getenv("BILLING_PAST_DUE_GRACE_DAYS", "3")))
 ALLOW_MEMBERSHIP_DEV_OVERRIDE = os.getenv("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "false").lower() in {"1", "true", "yes", "on"}
+if IS_VERCEL_RUNTIME and ALLOW_MEMBERSHIP_DEV_OVERRIDE:
+    raise RuntimeError("Vercel security configuration error: ALLOW_MEMBERSHIP_DEV_OVERRIDE must be false")
 
 # No display/programmatic advertising is supported. These settings only enable
 # editorial Amazon Associates links inside the authenticated Resources page.
