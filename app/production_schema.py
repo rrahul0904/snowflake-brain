@@ -94,15 +94,18 @@ def expected_migration_versions() -> set[str]:
 
 
 def _table_privileges(conn: Any, schema: str, table: str) -> dict[str, bool]:
+    # PostgreSQL cannot infer the data type of parameters passed only through
+    # format('%I', ...). Explicit text casts keep the query parameterized while
+    # allowing has_table_privilege() to resolve the safely quoted relation name.
     row = conn.execute(
         """
-        SELECT has_table_privilege(current_user, format('%I.%I', ?, ?), 'SELECT') AS can_select,
-               has_table_privilege(current_user, format('%I.%I', ?, ?), 'INSERT') AS can_insert,
-               has_table_privilege(current_user, format('%I.%I', ?, ?), 'UPDATE') AS can_update,
-               has_table_privilege(current_user, format('%I.%I', ?, ?), 'DELETE') AS can_delete,
-               has_table_privilege(current_user, format('%I.%I', ?, ?), 'TRUNCATE') AS can_truncate,
-               has_table_privilege(current_user, format('%I.%I', ?, ?), 'REFERENCES') AS can_references,
-               has_table_privilege(current_user, format('%I.%I', ?, ?), 'TRIGGER') AS can_trigger
+        SELECT has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'SELECT') AS can_select,
+               has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'INSERT') AS can_insert,
+               has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'UPDATE') AS can_update,
+               has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'DELETE') AS can_delete,
+               has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'TRUNCATE') AS can_truncate,
+               has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'REFERENCES') AS can_references,
+               has_table_privilege(current_user, format('%I.%I', ?::text, ?::text), 'TRIGGER') AS can_trigger
         """,
         (schema, table, schema, table, schema, table, schema, table, schema, table, schema, table, schema, table),
     ).fetchone()
@@ -184,7 +187,7 @@ def _privilege_status(conn: Any, schema: str, tables: set[str]) -> dict[str, Any
     missing_sequence_usage: list[str] = []
     for sequence in sequence_rows:
         row = conn.execute(
-            "SELECT has_sequence_privilege(current_user, format('%I.%I', ?, ?), 'USAGE') AS ok",
+            "SELECT has_sequence_privilege(current_user, format('%I.%I', ?::text, ?::text), 'USAGE') AS ok",
             (schema, sequence),
         ).fetchone()
         if not row or not bool(row.get("ok")):
