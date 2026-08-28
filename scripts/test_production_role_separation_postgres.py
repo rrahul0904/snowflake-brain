@@ -50,6 +50,34 @@ def expect_denied(connection: psycopg.Connection, statement: object, label: str,
     raise AssertionError(f"Runtime role unexpectedly performed privileged operation: {label}")
 
 
+def table_acl(connection: psycopg.Connection, schema: str, table: str, grantee: str) -> set[tuple[str, str]]:
+    """Return effective table grant rows as (privilege_type, is_grantable).
+
+    PostgreSQL can accept a GRANT/REVOKE command from a non-owner with a warning
+    and make no ACL change. Security depends on the resulting ACL, not whether
+    the utility command emitted an exception, so the integration test compares
+    effective grants before and after those commands.
+    """
+    rows = connection.execute(
+        """
+        SELECT privilege_type, is_grantable
+        FROM information_schema.role_table_grants
+        WHERE table_schema=%s AND table_name=%s AND grantee=%s
+        ORDER BY privilege_type, is_grantable
+        """,
+        (schema, table, grantee),
+    ).fetchall()
+    return {(str(row[0]), str(row[1])) for row in rows}
+
+
+def public_has_select(connection: psycopg.Connection, schema: str, table: str) -> bool:
+    row = connection.execute(
+        "SELECT has_table_privilege('public', format('%I.%I', %s, %s), 'SELECT')",
+        (schema, table),
+    ).fetchone()
+    return bool(row and row[0])
+
+
 def main() -> None:
     admin_url = os.environ.get("ROLE_TEST_ADMIN_URL", "").strip()
     if not admin_url.lower().startswith(("postgresql://", "postgres://")):
@@ -72,9 +100,6 @@ def main() -> None:
     with psycopg.connect(admin_url, autocommit=True) as admin:
         admin.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(runtime_role)))
         admin.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(migration_role)))
-        # PostgreSQL utility statements such as CREATE ROLE do not accept a bind
-        # placeholder for PASSWORD. sql.Literal performs Psycopg quoting/escaping
-        # while keeping generated credentials out of logs and source text.
         admin.execute(
             sql.SQL(
                 "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
@@ -162,7 +187,6 @@ def main() -> None:
                     f"runtime role inherits dangerous predefined role {dangerous_role}",
                 )
 
-            # Positive proof on an approved candidate/runtime state table.
             runtime.execute(
                 "INSERT INTO feedback_submissions(title,category,description,route,track_id) VALUES ('role test','other','','#/home','snowpro-core')"
             )
@@ -171,7 +195,6 @@ def main() -> None:
             runtime.execute("UPDATE feedback_submissions SET description='ok' WHERE title='role test'")
             runtime.execute("DELETE FROM feedback_submissions WHERE title='role test'")
 
-            # Question-bank definitions and migration/release governance are read-only.
             expect_denied(runtime, "UPDATE questions SET explanation='forbidden' WHERE 1=0", "question-bank UPDATE")
             expect_denied(
                 runtime,
@@ -189,7 +212,6 @@ def main() -> None:
                 "editorial policy UPDATE",
             )
 
-            # DDL and schema elevation are denied.
             expect_denied(
                 runtime,
                 sql.SQL("CREATE TABLE {}.runtime_must_not_create(id int)").format(sql.Identifier(schema)),
@@ -242,22 +264,31 @@ def main() -> None:
                 sql.SQL("SET ROLE {}").format(sql.Identifier(migration_role)),
                 "SET ROLE migration role",
             )
-            expect_denied(
-                runtime,
-                sql.SQL("GRANT SELECT ON {}.feedback_submissions TO PUBLIC").format(sql.Identifier(schema)),
-                "GRANT table privilege",
+
+            # GRANT/REVOKE are special PostgreSQL utility commands: without grant
+            # option/ownership they may return success with a WARNING while making
+            # no ACL change. Prove the effective ACL cannot be escalated rather
+            # than relying on transport-level error semantics.
+            grants_before = table_acl(runtime, schema, "feedback_submissions", runtime_role)
+            require(
+                not any(privilege == "SELECT" and grantable == "YES" for privilege, grantable in grants_before),
+                "runtime SELECT unexpectedly carries grant option",
             )
-            expect_denied(
-                runtime,
+            require(not public_has_select(runtime, schema, "feedback_submissions"), "PUBLIC already has SELECT on candidate state")
+            runtime.execute(
+                sql.SQL("GRANT SELECT ON {}.feedback_submissions TO PUBLIC").format(sql.Identifier(schema))
+            )
+            require(not public_has_select(runtime, schema, "feedback_submissions"), "runtime role granted candidate-state SELECT to PUBLIC")
+            runtime.execute(
                 sql.SQL("REVOKE SELECT ON {}.feedback_submissions FROM {}").format(
                     sql.Identifier(schema), sql.Identifier(runtime_role)
-                ),
-                "REVOKE table privilege",
+                )
             )
+            grants_after = table_acl(runtime, schema, "feedback_submissions", runtime_role)
+            require(grants_after == grants_before, "runtime role changed its own table ACL without ownership/grant option")
+
             expect_denied(runtime, "COPY (SELECT 1) TO PROGRAM 'true'", "COPY TO PROGRAM")
 
-        # A future table is safe-by-default. After ACL reconciliation it is
-        # readable but not writable until explicitly added to RUNTIME_WRITE_TABLES.
         with psycopg.connect(migration_url, autocommit=True) as migrator:
             migrator.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
             migrator.execute(
@@ -281,7 +312,7 @@ def main() -> None:
 
         print(
             "Production role separation: PASS "
-            "(candidate DML works; bank/governance writes, DDL, role escalation and server-program execution denied)"
+            "(candidate DML works; bank/governance writes, DDL, ACL escalation, role escalation and server-program execution denied)"
         )
     finally:
         close_pool()
