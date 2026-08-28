@@ -14,6 +14,7 @@ python scripts/test_content_freshness_pipeline.py
 python scripts/test_question_editorial_maturity.py
 python scripts/test_adaptive_readiness_intelligence.py
 python scripts/test_adaptive_frontend_contract.py
+python scripts/test_candidate_route_matrix.py
 python scripts/test_authenticated_bank_isolation.py
 python scripts/test_vercel_production_database_boundary.py
 python scripts/test_cloud_only_production.py
