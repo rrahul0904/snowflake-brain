@@ -47,6 +47,28 @@ else:
         return None
 
 
+def _converge_sqlite_runtime_columns() -> None:
+    """Keep the lightweight SQLite compatibility schema aligned with runtime writes.
+
+    Production schema changes are versioned PostgreSQL migrations. SQLite is only
+    the local/CI compatibility path, but every runtime write exercised there must
+    still have a converged column contract so security regressions cannot be hidden
+    by a stale test schema.
+    """
+    if DATABASE_BACKEND != "sqlite":
+        return
+    required = {
+        "response_time_ms": "INTEGER",
+        "confidence": "INTEGER",
+    }
+    with _raw_connect() as conn:
+        columns = {str(row["name"]) for row in conn.execute("PRAGMA table_info(question_attempts)")}
+        for column, declaration in required.items():
+            if column not in columns:
+                conn.execute(f"ALTER TABLE question_attempts ADD COLUMN {column} {declaration}")
+        conn.commit()
+
+
 @contextmanager
 def connect() -> Iterator[Any]:
     with _raw_connect() as raw:
@@ -61,6 +83,7 @@ def run_migrations() -> None:
     started = time.perf_counter()
     try:
         _raw_run_migrations()
+        _converge_sqlite_runtime_columns()
     except Exception as exc:
         duration = (time.perf_counter() - started) * 1000
         record_db_operation("MIGRATION", duration, ok=False, backend=DATABASE_BACKEND)
