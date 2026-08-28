@@ -3,8 +3,8 @@
 
 Creates separate migration/runtime roles against the disposable CI database,
 runs repository migrations, reconciles the production ACL, proves approved
-candidate-state DML succeeds, and proves DDL plus question-bank/migration-ledger
-writes fail.
+candidate-state DML succeeds, and proves DDL, privilege escalation, server-side
+program execution, plus question-bank/migration-ledger writes fail.
 """
 
 from __future__ import annotations
@@ -55,6 +55,7 @@ def main() -> None:
     schema = f"role_sep_{suffix}"
     runtime_password = secrets.token_urlsafe(18)
     migration_password = secrets.token_urlsafe(18)
+    migration_function = f"migration_only_fn_{suffix}"
 
     parsed = urlsplit(admin_url)
     database_name = parsed.path.lstrip("/")
@@ -109,6 +110,14 @@ def main() -> None:
         require(not status.get("unsafe_runtime_capabilities"), f"unsafe runtime capabilities detected: {status}")
         require(not status.get("excessive_runtime_write"), f"governance table writes detected: {status}")
 
+        with psycopg.connect(migration_url, autocommit=True) as migrator:
+            migrator.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
+            migrator.execute(
+                sql.SQL("CREATE FUNCTION {}.{}() RETURNS integer LANGUAGE SQL AS 'SELECT 1'").format(
+                    sql.Identifier(schema), sql.Identifier(migration_function)
+                )
+            )
+
         with psycopg.connect(runtime_url, autocommit=True) as runtime:
             runtime.execute(sql.SQL("SET search_path TO {}, public").format(sql.Identifier(schema)))
             role_state = runtime.execute(
@@ -136,6 +145,15 @@ def main() -> None:
 
             member = runtime.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (migration_role,)).fetchone()
             require(member is not None and not bool(member[0]), "runtime role can inherit/set the migration role")
+            for dangerous_role in ("pg_execute_server_program", "pg_read_server_files", "pg_write_server_files"):
+                dangerous_member = runtime.execute(
+                    "SELECT pg_has_role(current_user, %s, 'MEMBER')",
+                    (dangerous_role,),
+                ).fetchone()
+                require(
+                    dangerous_member is not None and not bool(dangerous_member[0]),
+                    f"runtime role inherits dangerous predefined role {dangerous_role}",
+                )
 
             # Positive proof on an approved candidate/runtime state table.
             runtime.execute(
@@ -147,11 +165,7 @@ def main() -> None:
             runtime.execute("DELETE FROM feedback_submissions WHERE title='role test'")
 
             # Question-bank definitions and migration/release governance are read-only.
-            expect_denied(
-                runtime,
-                "UPDATE questions SET explanation='forbidden' WHERE 1=0",
-                "question-bank UPDATE",
-            )
+            expect_denied(runtime, "UPDATE questions SET explanation='forbidden' WHERE 1=0", "question-bank UPDATE")
             expect_denied(
                 runtime,
                 "INSERT INTO schema_migrations(version,name) VALUES ('forbidden','forbidden')",
@@ -186,9 +200,54 @@ def main() -> None:
             )
             expect_denied(
                 runtime,
+                sql.SQL("TRUNCATE TABLE {}.feedback_submissions").format(sql.Identifier(schema)),
+                "TRUNCATE TABLE",
+            )
+            expect_denied(
+                runtime,
                 sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(f"runtime_schema_{suffix}")),
                 "CREATE SCHEMA",
             )
+            expect_denied(
+                runtime,
+                sql.SQL("CREATE FUNCTION {}.runtime_must_not_create_fn() RETURNS integer LANGUAGE SQL AS 'SELECT 1'").format(
+                    sql.Identifier(schema)
+                ),
+                "CREATE FUNCTION",
+            )
+            expect_denied(
+                runtime,
+                sql.SQL("ALTER FUNCTION {}.{}() RENAME TO forbidden_rename").format(
+                    sql.Identifier(schema), sql.Identifier(migration_function)
+                ),
+                "ALTER FUNCTION",
+            )
+            expect_denied(
+                runtime,
+                sql.SQL("DROP FUNCTION {}.{}()").format(
+                    sql.Identifier(schema), sql.Identifier(migration_function)
+                ),
+                "DROP FUNCTION",
+            )
+            expect_denied(runtime, "CREATE ROLE runtime_forbidden_child", "CREATE ROLE")
+            expect_denied(
+                runtime,
+                sql.SQL("SET ROLE {}").format(sql.Identifier(migration_role)),
+                "SET ROLE migration role",
+            )
+            expect_denied(
+                runtime,
+                sql.SQL("GRANT SELECT ON {}.feedback_submissions TO PUBLIC").format(sql.Identifier(schema)),
+                "GRANT table privilege",
+            )
+            expect_denied(
+                runtime,
+                sql.SQL("REVOKE SELECT ON {}.feedback_submissions FROM {}").format(
+                    sql.Identifier(schema), sql.Identifier(runtime_role)
+                ),
+                "REVOKE table privilege",
+            )
+            expect_denied(runtime, "COPY (SELECT 1) TO PROGRAM 'true'", "COPY TO PROGRAM")
 
         # A future table is safe-by-default. After ACL reconciliation it is
         # readable but not writable until explicitly added to RUNTIME_WRITE_TABLES.
@@ -213,7 +272,10 @@ def main() -> None:
                 "future-table INSERT",
             )
 
-        print("Production role separation: PASS (candidate DML works; bank/governance writes and DDL denied)")
+        print(
+            "Production role separation: PASS "
+            "(candidate DML works; bank/governance writes, DDL, role escalation and server-program execution denied)"
+        )
     finally:
         close_pool()
         with psycopg.connect(admin_url, autocommit=True) as admin:
