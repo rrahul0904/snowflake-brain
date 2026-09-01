@@ -1,23 +1,38 @@
 {
-  "as_of": "2026-09-01T02:10:00Z",
+  "as_of": "2026-09-01T03:37:00Z",
   "production_url": "https://snowflakecertificationguide.vercel.app",
   "repository": "rrahul0904/snowflake-brain",
   "pr": 37,
-  "baseline_hardening_sha": "323df9a839ddd8060493e96184a40434d55c522f",
+  "reconciled_hardening_sha": "8d0fd9a3f649e5ddcf5a6fc5005db5d277968fd3",
+  "evidence_refresh_commit": "9f41ce01b3d012577fcfa7a431da23b7c684a5ea",
   "merge_sha": "",
-  "vercel_deployment_id": "dpl_Db4MkL4bNCBPgrKCmhQZQmgbv7aN",
-  "vercel_git_sha": "c37a9a6c9546fae691d90383672563518a355493",
+  "production_vercel_deployment_id": "dpl_Db4MkL4bNCBPgrKCmhQZQmgbv7aN",
+  "production_vercel_git_sha": "c37a9a6c9546fae691d90383672563518a355493",
+  "preview_vercel_deployment_id": "dpl_7PW5GGAp85CPB93BYdzTFV9LSGU4",
+  "preview_vercel_git_sha": "8d0fd9a3f649e5ddcf5a6fc5005db5d277968fd3",
   "health": "pass_current_production",
   "readiness": "pass_current_production",
+  "preview_health": "fail_function_invocation_failed",
+  "preview_readiness": "fail_function_invocation_failed",
   "database_backend": "postgresql",
+  "neon_project": "round-sunset-09172961",
+  "neon_branch": "br-raspy-credit-afssvp59",
   "runtime_role_verified": false,
   "hardened_preview_ready": false,
   "active_question_bank": false,
   "question_count": 0,
   "question_count_verified_current_session": false,
   "private_bank_source_available": true,
+  "private_bank_deployment_source_ready": false,
   "private_bank_expected_count": 1200,
   "private_bank_version": "2026-08-14-beta-1200-v2",
+  "private_bank_sha256": "da57f636a57180631448fda79cfdcad2acf8e38ae2f381ea891a8cea91e704c5",
+  "expected_pool_counts": {
+    "free": 216,
+    "practice": 504,
+    "mock_reserved": 360,
+    "diagnostic": 120
+  },
   "stripe_enabled": false,
   "stripe_catalog_test": true,
   "stripe_catalog_live": true,
@@ -25,21 +40,26 @@
   "stripe_account_payouts_enabled": false,
   "stripe_test_e2e": false,
   "stripe_live_e2e": false,
-  "stripe_webhook_configured": false,
-  "stripe_customer_portal_configured": false,
+  "stripe_webhook_test_configured": false,
+  "stripe_webhook_live_configured": false,
+  "stripe_customer_portal_test_configured": false,
+  "stripe_customer_portal_live_configured": false,
   "google_provider_enabled": true,
   "google_auth_verified": false,
   "email_delivery_verified": false,
   "hostile_subscriber_test": false,
-  "security_gates": "ci_green_on_baseline_head_hosted_evidence_pending",
+  "security_gates": "all_observed_pr_ci_green_on_8d0fd9a_hosted_evidence_pending",
   "independent_pr_approval": false,
+  "pr_merged": false,
   "production_go": false,
   "blockers": [
     "hardened_preview_function_invocation_failed",
     "least_privilege_hosted_database_runtime_credential_not_provisioned_and_redeployed",
-    "active_production_question_bank_not_imported_or_count_verified",
+    "private_bank_file_not_available_to_release_job_via_private_https_source",
+    "active_production_question_bank_not_imported_promoted_and_count_verified",
     "stripe_live_account_not_activated_for_charges_and_payouts",
-    "stripe_webhook_secret_not_configured",
+    "stripe_test_webhook_signing_secret_not_configured",
+    "stripe_live_webhook_signing_secret_not_configured",
     "stripe_customer_portal_not_configured",
     "production_billing_disabled",
     "stripe_test_e2e_not_completed",
@@ -51,42 +71,32 @@
     "exact_merged_sha_not_deployed",
     "post_merge_production_soak_not_completed"
   ],
+  "ci": {
+    "head_sha": "8d0fd9a3f649e5ddcf5a6fc5005db5d277968fd3",
+    "certification_guide_smoke": "success",
+    "security_assurance": "success",
+    "v26_visual_parity": "success",
+    "postgresql_production_smoke": "success",
+    "recording_feature_parity_smoke": "success",
+    "v26_demo_upgrade_smoke": "success",
+    "authenticated_bank_isolation": "success",
+    "adaptive_readiness_smoke": "success",
+    "account_lifecycle_smoke": "success",
+    "verified_credentials_smoke": "success",
+    "production_launch_gate": "success"
+  },
   "stripe": {
     "test": {
-      "premium_20": {
-        "product_id": "prod_VB3DNMyhVMALsX",
-        "price_id": "price_1UAh71RB8OGmEnBwrmYTR1Bl"
-      },
-      "premium_40": {
-        "product_id": "prod_VB3Do4NXObP1L2",
-        "price_id": "price_1UAh76RB8OGmEnBwqxrrUSZD"
-      },
-      "premium_100": {
-        "product_id": "prod_VB3DKepgNdi3nu",
-        "price_id": "price_1UAh7CRB8OGmEnBwbzIoly62"
-      },
-      "exam_pack_35": {
-        "product_id": "prod_VB3D1UFE5zzkNP",
-        "price_id": "price_1UAh7HRB8OGmEnBwHAumtGCn"
-      }
+      "premium_20": {"product_id": "prod_VB3DNMyhVMALsX", "price_id": "price_1UAh71RB8OGmEnBwrmYTR1Bl"},
+      "premium_40": {"product_id": "prod_VB3Do4NXObP1L2", "price_id": "price_1UAh76RB8OGmEnBwqxrrUSZD"},
+      "premium_100": {"product_id": "prod_VB3DKepgNdi3nu", "price_id": "price_1UAh7CRB8OGmEnBwbzIoly62"},
+      "exam_pack_35": {"product_id": "prod_VB3D1UFE5zzkNP", "price_id": "price_1UAh7HRB8OGmEnBwHAumtGCn"}
     },
     "live": {
-      "premium_20": {
-        "product_id": "prod_VB3Ehclc0A7sfo",
-        "price_id": "price_1UAh7tRB8OGmEnBw4IELJdNO"
-      },
-      "premium_40": {
-        "product_id": "prod_VB3EMJfxgJTb1r",
-        "price_id": "price_1UAh7zRB8OGmEnBwnR4LS5n1"
-      },
-      "premium_100": {
-        "product_id": "prod_VB3EBbsPfYvwl5",
-        "price_id": "price_1UAh85RB8OGmEnBwLBW2xid9"
-      },
-      "exam_pack_35": {
-        "product_id": "prod_VB3E8V0honEYpJ",
-        "price_id": "price_1UAh8CRB8OGmEnBwyYbQDzyK"
-      }
+      "premium_20": {"product_id": "prod_VB3Ehclc0A7sfo", "price_id": "price_1UAh7tRB8OGmEnBw4IELJdNO"},
+      "premium_40": {"product_id": "prod_VB3EMJfxgJTb1r", "price_id": "price_1UAh7zRB8OGmEnBwnR4LS5n1"},
+      "premium_100": {"product_id": "prod_VB3EBbsPfYvwl5", "price_id": "price_1UAh85RB8OGmEnBwLBW2xid9"},
+      "exam_pack_35": {"product_id": "prod_VB3E8V0honEYpJ", "price_id": "price_1UAh8CRB8OGmEnBwyYbQDzyK"}
     }
   }
 }
