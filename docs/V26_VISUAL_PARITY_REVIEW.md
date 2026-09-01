@@ -235,3 +235,84 @@ None of these require rebuilding the architecture again.
 **READY FOR USER VISUAL REVIEW**
 
 Do **not** merge PR #6 yet. Present the current rendered screenshots to the user, collect any final visual adjustments, rerun both smoke and Chromium capture, and only then move the PR out of draft.
+
+---
+
+## 2026-09-01 — Reverse-engineering completeness acceptance
+
+This dated section does not replace the historical review above. It records the later completeness wave performed after the V26 product acquired production identity, entitlement, learning-intelligence, credential, and release-governance features.
+
+### New public acceptance scope
+
+The V26 Visual Parity workflow now also executes:
+
+`scripts/capture_reverse_engineering_public_pages.py`
+
+This clean-room browser matrix captures the following guest/public routes:
+
+- Home
+- Certifications
+- SnowPro Core exam guide
+- SnowPro Advanced: Data Engineer exam guide
+- SnowPro Advanced: Architect exam guide
+- Content Integrity
+- Membership
+- About
+- Terms
+- Privacy
+
+For each route it captures:
+
+- 1440×1000
+- 1024×900
+- 768×900
+- 390×844
+
+in both:
+
+- light theme
+- dark theme
+
+This adds **80 public screenshots** to the existing authenticated V26 capture and fails on browser console/page errors or horizontal overflow.
+
+### Public/private content assertion
+
+The same browser pass deep-links anonymously into `#/curriculum?track_id=snowpro-core` and requires the authentication gate. It fails if the study navigation or curriculum list renders for the guest. Public certification facts therefore do not relax the protected study-content boundary.
+
+### Completeness-specific visual contracts
+
+The browser matrix additionally requires:
+
+- certification fact cards to render for the focused certification catalog;
+- visible separation between official certification existence and Snowflake Brain study-guide availability;
+- source verification on exam-guide pages;
+- a visible link to the official Snowflake certification page;
+- active Content Integrity copy including independence/no-dump language;
+- no horizontal overflow at the four required viewports;
+- light/dark theme application on every public route.
+
+The existing authenticated capture continues to cover curriculum, expanded domain, lesson, progress, drill setup, build exercises, diagnostic setup, Quick Reference, Glossary, Mock, Reference, Journal, interrupted sitting, exam player, answered/flagged state, feedback, and mobile exam/navigation behavior.
+
+### Product differences explicitly accepted
+
+The 2026-09-01 coverage matrix records these intentional differences rather than treating them as parity defects:
+
+1. Signed-in home retains a Snowflake-native prep command center because Due Today, mistakes, readiness, and exam pacing are actionable learner state.
+2. Real projected geography and privacy-thresholded aggregate activity replace fabricated learner/city social proof.
+3. Deterministic lab hints, validation, expected output, and solutions replace an open-ended AI Build Coach.
+4. Targeted drill and persisted mock remediation replace a duplicated result-page retry mode.
+5. Testimonials and pass-rate social proof remain absent until real, consented candidate evidence exists.
+6. Coming-soon certification waitlists remain future marketing-consent scope; verified exam facts are public now.
+
+### Machine-verifiable completeness evidence
+
+Canonical evidence is now split between:
+
+- `docs/REVERSE_ENGINEERING_COVERAGE_MATRIX.md`
+- `artifacts/reverse-engineering-coverage.json`
+- `scripts/test_reverse_engineering_completeness.py`
+- `.github/workflows/reverse-engineering-completeness.yml`
+
+The CI gate rejects unexplained P0/P1 `MISSING_TO_IMPLEMENT`, `PARTIAL`, `TODO`, `PLACEHOLDER`, `UNKNOWN`, or `MAYBE` states.
+
+This is a **reverse-engineering completeness** designation only. It does not override production deployment, private-bank SME approval, Stripe account readiness, hosted security evidence, or independent GitHub approval requirements.
