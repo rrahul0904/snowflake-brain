@@ -25,6 +25,12 @@ TRACK_ID = os.environ.get("SECURITY_TRACK_ID", "snowpro-core")
 REQUIRE_ACTIVE_BANK = os.environ.get("REQUIRE_ACTIVE_BANK", "false").strip().lower() in {"1", "true", "yes", "on"}
 EXPECTED_ACTIVE_QUESTION_COUNT = max(0, int(os.environ.get("EXPECTED_ACTIVE_QUESTION_COUNT", "0")))
 KNOWN_POOLS = ("free", "practice", "diagnostic", "mock_reserved")
+EXPECTED_POOL_COUNTS = {
+    "free": max(0, int(os.environ.get("EXPECTED_FREE_QUESTION_COUNT", "0"))),
+    "practice": max(0, int(os.environ.get("EXPECTED_PRACTICE_QUESTION_COUNT", "0"))),
+    "diagnostic": max(0, int(os.environ.get("EXPECTED_DIAGNOSTIC_QUESTION_COUNT", "0"))),
+    "mock_reserved": max(0, int(os.environ.get("EXPECTED_MOCK_RESERVED_QUESTION_COUNT", "0"))),
+}
 
 
 def scalar(conn, statement: str, params: tuple = ()) -> int:
@@ -85,6 +91,19 @@ def main() -> None:
     if EXPECTED_ACTIVE_QUESTION_COUNT and active_release_questions != EXPECTED_ACTIVE_QUESTION_COUNT:
         findings.append("active_release_expected_count_mismatch")
 
+    unexpected_pools = sorted(set(pool_counts) - set(KNOWN_POOLS))
+    if unexpected_pools:
+        findings.append("active_release_unexpected_pool")
+    for pool, expected_count in EXPECTED_POOL_COUNTS.items():
+        if expected_count and int(pool_counts.get(pool, 0)) != expected_count:
+            findings.append(f"active_release_{pool}_expected_count_mismatch")
+    if EXPECTED_ACTIVE_QUESTION_COUNT and any(EXPECTED_POOL_COUNTS.values()):
+        expected_pool_total = sum(EXPECTED_POOL_COUNTS.values())
+        if expected_pool_total != EXPECTED_ACTIVE_QUESTION_COUNT:
+            findings.append("configured_expected_pool_total_mismatch")
+        if sum(int(pool_counts.get(pool, 0)) for pool in KNOWN_POOLS) != active_release_questions:
+            findings.append("active_release_pool_total_mismatch")
+
     payload = {
         "status": "pass" if not findings else "fail",
         "track_id": TRACK_ID,
@@ -94,6 +113,7 @@ def main() -> None:
         "active_release_declared_question_count": declared_release_count,
         "pool_counts": pool_counts,
         "expected_active_question_count": EXPECTED_ACTIVE_QUESTION_COUNT,
+        "expected_pool_counts": EXPECTED_POOL_COUNTS,
         "finding_count": len(findings),
         "findings": findings,
     }
