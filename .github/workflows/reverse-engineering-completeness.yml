@@ -1,0 +1,47 @@
+name: Reverse Engineering Completeness
+
+on:
+  pull_request:
+    paths:
+      - 'artifacts/reverse-engineering-coverage.json'
+      - 'config/certification_catalog.json'
+      - 'config/snowflake_lab_challenges.json'
+      - 'app/security.py'
+      - 'frontend/**'
+      - 'docs/**'
+      - 'scripts/test_reverse_engineering_completeness.py'
+      - 'scripts/audit_private_bank_quality.py'
+      - '.github/workflows/reverse-engineering-completeness.yml'
+  push:
+    branches:
+      - main
+      - security/production-bank-hardening-v1
+      - reverse-engineering-completeness-v1
+    paths:
+      - 'artifacts/reverse-engineering-coverage.json'
+      - 'config/certification_catalog.json'
+      - 'config/snowflake_lab_challenges.json'
+      - 'app/security.py'
+      - 'frontend/**'
+      - 'docs/**'
+      - 'scripts/test_reverse_engineering_completeness.py'
+      - 'scripts/audit_private_bank_quality.py'
+      - '.github/workflows/reverse-engineering-completeness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reverse-engineering-completeness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate reverse-engineering coverage
+        run: python scripts/test_reverse_engineering_completeness.py
+      - name: Verify private-bank auditor never needs repository corpus
+        run: python scripts/audit_private_bank_quality.py /tmp/intentionally-absent-private-bank.json || test $? -eq 2
