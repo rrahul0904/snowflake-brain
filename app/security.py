@@ -21,21 +21,25 @@ SYSTEM_PROBE_API_EXACT = {
 }
 # Metrics has its own bearer-token authorization and deliberately is not a
 # SYSTEM_PROBE endpoint: when HTTPS is forced, metrics scraping must use HTTPS.
+# Certification catalog is public product/exam metadata only. It deliberately
+# contains no lessons, task bodies, private-bank IDs, question wording, answers,
+# candidate state, or entitlement data.
 PUBLIC_API_EXACT = SYSTEM_PROBE_API_EXACT | {
     "/api/activity/globe",
     "/api/feedback",
     "/api/metrics",
+    "/api/skills/catalog",
 }
 PUBLIC_API_PREFIXES = (
     "/api/auth/",
     "/api/billing/",
 )
 # Only marketing/informational modules and the secure account-action module are
-# readable before authentication. The latter contains no study content; it must
-# load publicly so email verification/change-email/password-reset links can work
-# when the candidate is signed out or all sessions have been revoked.
+# readable before authentication. `certifications.js` renders the public,
+# source-verified catalog only; it does not import curriculum or question data.
 PUBLIC_STATIC_VIEWS = {
     "/static/views/home-v26.js",
+    "/static/views/certifications.js",
     "/static/views/membership-v26.js",
     "/static/views/info-v26.js",
     "/static/views/account-action-v26.js",
