@@ -5,9 +5,10 @@ This administrative script is intended for an approved GitHub Actions job. It:
 - discovers the four Snowflake Certification Guide products by metadata;
 - validates their exact price contract in the selected Stripe mode;
 - creates one dedicated Stripe webhook when no matching endpoint exists;
+- creates/validates an app-specific Customer Portal configuration;
 - captures the one-time webhook signing secret only in process memory;
-- immediately upserts Stripe credentials and resolved price IDs into the chosen
-  Vercel environment as sensitive values; and
+- immediately upserts Stripe credentials, Portal configuration, and resolved
+  price IDs into the chosen Vercel environment as sensitive values; and
 - never prints API keys, webhook signing secrets, or full provider responses.
 
 An existing matching webhook cannot reveal its signing secret. In that case the
@@ -32,6 +33,7 @@ STRIPE_API_BASE = "https://api.stripe.com/v1"
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "").strip()
 STRIPE_MODE = os.environ.get("STRIPE_MODE", "test").strip().lower()
 STRIPE_WEBHOOK_URL = os.environ.get("STRIPE_WEBHOOK_URL", "").strip()
+STRIPE_PORTAL_RETURN_URL = os.environ.get("STRIPE_PORTAL_RETURN_URL", "").strip()
 EXISTING_WEBHOOK_SECRET = os.environ.get("EXISTING_STRIPE_WEBHOOK_SECRET", "").strip()
 VERCEL_TOKEN = os.environ.get("VERCEL_TOKEN", "").strip()
 VERCEL_PROJECT_ID = os.environ.get("VERCEL_PROJECT_ID", "prj_2SLKmOpeMM8ogNkXfNYHu7IyjYab").strip()
@@ -166,6 +168,59 @@ def reconcile_webhook(client: httpx.Client) -> tuple[str, bool]:
     return secret, True
 
 
+def validate_portal_configuration(configuration: dict[str, Any]) -> None:
+    expected_live = STRIPE_MODE == "live"
+    require(bool(configuration.get("active")), "Stripe Customer Portal configuration is inactive")
+    require(bool(configuration.get("livemode")) == expected_live, "Stripe Customer Portal mode mismatch")
+    features = configuration.get("features") or {}
+    payment = features.get("payment_method_update") or {}
+    cancellation = features.get("subscription_cancel") or {}
+    subscription_update = features.get("subscription_update") or {}
+    history = features.get("invoice_history") or {}
+    require(bool(payment.get("enabled")), "Stripe Customer Portal must allow payment-method updates")
+    require(bool(cancellation.get("enabled")), "Stripe Customer Portal must allow subscription cancellation")
+    require(cancellation.get("mode") == "at_period_end", "Stripe Customer Portal cancellation must occur at period end")
+    require(not bool(subscription_update.get("enabled")), "Stripe Customer Portal plan switching must remain disabled at launch")
+    require(bool(history.get("enabled")), "Stripe Customer Portal must expose invoice history")
+
+
+def reconcile_portal_configuration(client: httpx.Client) -> tuple[str, bool]:
+    payload = stripe_request(client, "GET", "/billing_portal/configurations", params={"active": "true", "limit": "100"})
+    configurations = payload.get("data") or []
+    require(isinstance(configurations, list), "Stripe Customer Portal configuration payload is invalid")
+    matching = []
+    for configuration in configurations:
+        if not isinstance(configuration, dict):
+            continue
+        metadata = configuration.get("metadata") or {}
+        if metadata.get("app") == "snowflake-brain" and metadata.get("environment") == STRIPE_MODE:
+            matching.append(configuration)
+    require(len(matching) <= 1, "Multiple app-specific Stripe Customer Portal configurations exist for this mode")
+    if matching:
+        validate_portal_configuration(matching[0])
+        portal_id = str(matching[0].get("id") or "").strip()
+        require(bool(portal_id), "Existing Stripe Customer Portal configuration has no ID")
+        return portal_id, False
+
+    form: list[tuple[str, str]] = [
+        ("features[payment_method_update][enabled]", "true"),
+        ("features[subscription_cancel][enabled]", "true"),
+        ("features[subscription_cancel][mode]", "at_period_end"),
+        ("features[subscription_cancel][proration_behavior]", "none"),
+        ("features[subscription_update][enabled]", "false"),
+        ("features[invoice_history][enabled]", "true"),
+        ("features[customer_update][enabled]", "false"),
+        ("default_return_url", STRIPE_PORTAL_RETURN_URL),
+        ("metadata[app]", "snowflake-brain"),
+        ("metadata[environment]", STRIPE_MODE),
+    ]
+    created = stripe_request(client, "POST", "/billing_portal/configurations", data=form)
+    validate_portal_configuration(created)
+    portal_id = str(created.get("id") or "").strip()
+    require(bool(portal_id), "Stripe did not return a Customer Portal configuration ID")
+    return portal_id, True
+
+
 def upsert_vercel_env(client: httpx.Client, key: str, value: str) -> None:
     query = urlencode({"upsert": "true", "teamId": VERCEL_TEAM_ID})
     url = f"https://api.vercel.com/v10/projects/{VERCEL_PROJECT_ID}/env?{query}"
@@ -196,6 +251,7 @@ def main() -> None:
     require(VERCEL_TARGET in {"preview", "production"}, "VERCEL_TARGET must be preview or production")
     require(bool(STRIPE_API_KEY), "STRIPE_API_KEY is required")
     require(bool(STRIPE_WEBHOOK_URL) and STRIPE_WEBHOOK_URL.startswith("https://"), "STRIPE_WEBHOOK_URL must be an HTTPS URL")
+    require(bool(STRIPE_PORTAL_RETURN_URL) and STRIPE_PORTAL_RETURN_URL.startswith("https://"), "STRIPE_PORTAL_RETURN_URL must be an HTTPS URL")
     require(bool(VERCEL_TOKEN), "VERCEL_TOKEN is required")
     require(bool(VERCEL_PROJECT_ID) and bool(VERCEL_TEAM_ID), "Vercel project/team identifiers are required")
     require(not (STRIPE_MODE == "test" and VERCEL_TARGET == "production"), "Test Stripe credentials must never be installed in Vercel Production")
@@ -207,10 +263,12 @@ def main() -> None:
             require(account["charges_enabled"], "Live Stripe billing cannot be enabled until charges are enabled")
         catalog = discover_catalog(stripe_client)
         webhook_secret, webhook_created = reconcile_webhook(stripe_client)
+        portal_configuration_id, portal_created = reconcile_portal_configuration(stripe_client)
 
     with httpx.Client(timeout=30.0) as vercel_client:
         upsert_vercel_env(vercel_client, "STRIPE_SECRET_KEY", STRIPE_API_KEY)
         upsert_vercel_env(vercel_client, "STRIPE_WEBHOOK_SECRET", webhook_secret)
+        upsert_vercel_env(vercel_client, "STRIPE_PORTAL_CONFIGURATION_ID", portal_configuration_id)
         for key, value in sorted(catalog.items()):
             upsert_vercel_env(vercel_client, key, value)
         upsert_vercel_env(vercel_client, "BILLING_ENABLED", "true" if ENABLE_BILLING else "false")
@@ -223,6 +281,7 @@ def main() -> None:
                 "stripe_mode": STRIPE_MODE,
                 "vercel_target": VERCEL_TARGET,
                 "webhook_created": webhook_created,
+                "portal_configuration_created": portal_created,
                 "required_events": WEBHOOK_EVENTS,
                 "resolved_plan_keys": sorted(catalog),
                 "billing_enabled": ENABLE_BILLING,
