@@ -166,6 +166,25 @@ STRIPE_PRICE_PREMIUM_250 = os.getenv("STRIPE_PRICE_PREMIUM_250", "").strip()
 STRIPE_PRICE_PREMIUM_500 = os.getenv("STRIPE_PRICE_PREMIUM_500", "").strip()
 STRIPE_PRICE_EXAM_PACK = os.getenv("STRIPE_PRICE_EXAM_PACK", "").strip()
 BILLING_PAST_DUE_GRACE_DAYS = max(0, int(os.getenv("BILLING_PAST_DUE_GRACE_DAYS", "3")))
+
+if IS_VERCEL_RUNTIME and BILLING_ENABLED:
+    required_billing_settings = {
+        "STRIPE_SECRET_KEY": STRIPE_SECRET_KEY,
+        "STRIPE_WEBHOOK_SECRET": STRIPE_WEBHOOK_SECRET,
+        "STRIPE_PORTAL_CONFIGURATION_ID": STRIPE_PORTAL_CONFIGURATION_ID,
+        "STRIPE_PRICE_PREMIUM_100": STRIPE_PRICE_PREMIUM_100,
+        "STRIPE_PRICE_PREMIUM_250": STRIPE_PRICE_PREMIUM_250,
+        "STRIPE_PRICE_PREMIUM_500": STRIPE_PRICE_PREMIUM_500,
+        "STRIPE_PRICE_EXAM_PACK": STRIPE_PRICE_EXAM_PACK,
+    }
+    missing_billing_settings = sorted(key for key, value in required_billing_settings.items() if not value)
+    if missing_billing_settings:
+        raise RuntimeError(
+            "Vercel billing configuration error: BILLING_ENABLED=true requires the complete Stripe "
+            "secret, webhook, app-specific Customer Portal, and four-plan catalog contract; missing: "
+            + ", ".join(missing_billing_settings)
+        )
+
 ALLOW_MEMBERSHIP_DEV_OVERRIDE = os.getenv("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "false").lower() in {"1", "true", "yes", "on"}
 if IS_VERCEL_RUNTIME and ALLOW_MEMBERSHIP_DEV_OVERRIDE:
     raise RuntimeError("Vercel security configuration error: ALLOW_MEMBERSHIP_DEV_OVERRIDE must be false")
