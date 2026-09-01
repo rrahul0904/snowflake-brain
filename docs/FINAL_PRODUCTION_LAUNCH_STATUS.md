@@ -10,7 +10,7 @@ Production Vercel project: `snowflakecertificationguide` (`prj_2SLKmOpeMM8ogNkXf
 
 PR: #37 — Harden production PostgreSQL runtime boundary
 
-Baseline hardening SHA inspected during this reconciliation: `323df9a839ddd8060493e96184a40434d55c522f`
+Current hardening SHA verified during this reconciliation: `8d0fd9a3f649e5ddcf5a6fc5005db5d277968fd3`
 
 Production/main SHA currently serving the canonical alias: `c37a9a6c9546fae691d90383672563518a355493`
 
@@ -18,32 +18,35 @@ Production/main SHA currently serving the canonical alias: `c37a9a6c9546fae691d9
 
 # PRODUCTION NO-GO
 
-The current production deployment is healthy, but the final hardened commercial launch is not complete. Do not merge or promote PR #37 until the remaining infrastructure and approval gates below are closed.
+Repository CI is fully green on the exact current hardening head, and the existing production deployment is healthy. The final hardened commercial launch is still blocked by secret-bearing infrastructure activation, the governed production bank release, Stripe account activation/configuration, live end-to-end evidence, and independent PR approval. Do not merge or promote PR #37 until those gates are genuinely closed.
 
 | Area | Expected | Current | Status | Evidence | Blocker | Required action |
 |---|---|---|---|---|---|---|
-| Canonical production | `/`, `/api/health`, `/api/ready` healthy | Production responds successfully; readiness reports PostgreSQL `public` schema ready | PASS for current production | Live Vercel checks on 2026-09-01 | This is the pre-PR production SHA | Re-run after final merge and require exact SHA match |
-| Production SHA | Exact merged PR #37 SHA on canonical alias | `c37a9a6...` from `main` | BLOCKED | Vercel deployment `dpl_Db4MkL4bNCBPgrKCmhQZQmgbv7aN` | PR #37 not merged | Merge only after all release gates and independent approval |
-| Hardened preview | PR #37 head serves successfully | Build is `READY`, but `/api/ready` returns `500 FUNCTION_INVOCATION_FAILED` | BLOCKED | Preview deployment `dpl_9SyMieYwzN7fMG8HhNNr9YWrHGYt` for baseline head `323df9a...` | Hosted `DATABASE_URL` has not yet been rotated to the dedicated least-privilege role | Run `Provision Hosted Runtime Credential`, then force a fresh preview deployment |
-| PostgreSQL runtime role | Dedicated `snowflake_app_runtime`, no owner/DDL privileges | Provisioning/reconciliation code exists and CI role-separation tests pass; hosted preview still fails closed | BLOCKED | `scripts/provision_hosted_runtime.py`, `scripts/migrate_production.py`, PostgreSQL Production Smoke | Secret-bearing provisioning workflow has not been executed against hosted env | Supply GitHub secrets, dispatch workflow, redeploy, verify live runtime role |
-| CI/security checks | Required PR checks green | Certification Guide Smoke, Security Assurance, V26 Visual Parity, PostgreSQL Production Smoke, Recording Feature Parity, V26 Demo Upgrade, Authenticated Bank Isolation, Adaptive Readiness, Account Lifecycle, Verified Credentials, Production Launch Gate all green on baseline hardening head | PASS | GitHub Actions for `323df9a...` | New commits must re-run the same checks | Keep branch green through final merge |
-| PR review | No unresolved blocking threads + independent human approval | Sole P1 runtime-grant thread is resolved; no independent APPROVED review recorded | BLOCKED | PR #37 review thread state | Independent approval required by release rule | Obtain a real human approval; do not manufacture approval |
-| Private question bank source | Approved private 1,200-question COF-C03 bank available outside Git/static assets | Private corpus is available outside GitHub and is not committed to the public repo | READY FOR IMPORT | Private bank version `2026-08-14-beta-1200-v2`, track `snowpro-core` | Secure production import/release has not been executed/verified | Use `question_bank_admin.py` through deployment-only DB access; never copy corpus into repo/static build |
-| Active production question bank | 1,200 active release questions | Last release evidence in PR reports 0 questions/no active release; not re-verified against managed DB in this session | BLOCKED | PR #37 release blocker + count-only inventory tooling | Managed DB import/release still required | Validate/import private file, create release, promote QA → SME approved → staging, activate, run count-only inventory expecting 1,200 |
-| Stripe catalog — test | Four configured plans with exact amounts | All four test-mode products/prices created and verified | PASS | Stripe catalog reconciliation 2026-09-01 | Vercel test/preview secrets not installed yet | Map test price IDs in the intended test environment and run `scripts/verify_stripe_catalog.py` |
-| Stripe catalog — live | Four separate live-mode products/prices | All four live-mode products/prices created and verified | PASS | Stripe catalog reconciliation 2026-09-01 | Live account itself cannot charge yet | Complete Stripe account activation before live billing cutover |
-| Stripe account readiness | Live charges/payouts enabled, onboarding complete | Charges disabled, payouts disabled, account details not fully submitted | BLOCKED | Stripe account capability/status read | Stripe onboarding/TOS/verification requirements remain | Complete required Stripe Dashboard onboarding and verification |
-| Stripe webhook | Production endpoint configured with signing secret stored only in Vercel | No Snowflake Certification Guide webhook endpoint is configured | BLOCKED | Stripe webhook endpoint inventory | No safe secret handoff to Vercel has occurred yet | Create endpoint only when its signing secret can immediately be stored as encrypted `STRIPE_WEBHOOK_SECRET` |
-| Stripe Customer Portal | Active portal configuration | No portal configuration exists in test or live mode | BLOCKED | Stripe portal configuration inventory | Dashboard configuration required | Activate/configure Customer Portal, cancellation behavior, payment-method updates, and allowed plan changes |
-| Production billing API | `enabled=true`, provider `stripe`, four plans | `/api/billing/config` returns billing disabled | BLOCKED | Live API check 2026-09-01 | Stripe/Vercel billing secrets and price IDs not installed; Stripe account not activated | Configure Vercel secrets only after webhook/account readiness; redeploy; verify config |
-| Google authentication | Production OIDC enabled and E2E verified | Provider reports Google enabled | PARTIAL | `/api/auth/providers` | Full browser login/linking lifecycle not executed in this reconciliation | Run dedicated production test candidate E2E |
-| Production email | Real delivery provider, no dev outbox | Not verified | BLOCKED | Release checklist | Delivery configuration/evidence absent | Verify webhook delivery mode, action base URL, verification/recovery/change-email flows |
-| Observability | Production alerts/metrics configured and redacted | App reports observability ready; live external alert destinations not independently verified | PARTIAL | `/api/ready` | Secret-backed alert destinations not inspected | Verify env names/config and test sanitized failure alerts |
-| Hosted hostile-subscriber test | Dedicated attacker/victim accounts pass against real active bank | CI isolation test green; live test blocked until active production inventory and dedicated accounts exist | BLOCKED | Authenticated Bank Isolation CI + hosted release workflow | Real bank and production test credentials unavailable | Run hosted release security workflow after bank activation |
-| Final soak | Minimum 20 consecutive health/readiness cycles on exact merged production SHA | Not applicable yet | BLOCKED | Release rule | Exact merged SHA not deployed | Run after merge/promotion; inspect runtime logs for DB/socket/startup-mutation failures |
-| Rollback | DB/release/deployment rollback documented and executable | Existing bank release rollback and PostgreSQL backup tooling exist | PARTIAL | `question_bank_admin.py`, backup/release tooling | Final cutover rollback evidence not yet captured | Record exact pre-launch deployment/release IDs and rehearse restore/rollback path |
+| Canonical production | `/api/health` and `/api/ready` healthy | Both return `200`; readiness reports PostgreSQL/public schema ready | PASS for current production | Live checks 2026-09-01 | This is still the pre-PR production SHA | Re-run after final merge and require exact SHA match |
+| Production SHA | Exact merged PR #37 SHA on canonical alias | `c37a9a6c...` from `main` | BLOCKED | Vercel deployment `dpl_Db4MkL4bNCBPgrKCmhQZQmgbv7aN` | PR #37 not merged | Merge only after every release gate and independent approval |
+| Hardened preview | Exact PR head serves successfully | Deployment `dpl_7PW5GGAp85CPB93BYdzTFV9LSGU4` is build `READY`, but `/api/health` fails with `500 FUNCTION_INVOCATION_FAILED` during application startup | BLOCKED | Exact preview SHA `8d0fd9a...`; Vercel runtime logs show startup RuntimeError/fail-closed behavior | Hosted `DATABASE_URL` has not been converged to the dedicated least-privilege runtime role | Run `Provision Hosted Runtime Credential`, redeploy exact head, then verify health/readiness soak |
+| PostgreSQL runtime role | Dedicated `snowflake_app_runtime`, no owner/DDL privileges | Provisioning/reconciliation code and role-separation tests pass; hosted Preview still fails closed | BLOCKED | `scripts/provision_hosted_runtime.py`, `scripts/migrate_production.py`, green PostgreSQL Production Smoke | Secret-bearing provisioning workflow has not been executed against hosted env | Ensure `PRODUCTION_DATABASE_MIGRATION_URL` + `VERCEL_TOKEN`, dispatch provisioning workflow, redeploy |
+| Managed PostgreSQL project | Active production Neon project resolved | `snowflake-certification-guide-production` / `round-sunset-09172961`, main branch `br-raspy-credit-afssvp59` | IDENTIFIED | Neon project metadata | Final release inventory must still be produced by the controlled release job | Use deployment-only release workflow for write/import operations |
+| CI/security checks | All required exact-head checks green | Certification Guide Smoke, Security Assurance, V26 Visual Parity, PostgreSQL Production Smoke, Recording Feature Parity, V26 Demo Upgrade, Authenticated Bank Isolation, Adaptive Readiness, Account Lifecycle, Verified Credentials, and Production Launch Gate all succeeded | PASS | GitHub Actions for `8d0fd9a...` | Any subsequent branch commit retriggers checks | Keep exact final head green before merge |
+| PR review | No blocking thread + independent approval | Existing P1 thread resolved; only automated COMMENTED review exists; no independent `APPROVED` review | BLOCKED | PR #37 review state | Independent approval required by release rule | Obtain legitimate human approval; do not self-approve |
+| Private question bank source | Approved private 1,200-question COF-C03 artifact available outside Git/static assets | File Library contains `snowpro_core_cof_c03_private_bank_1200_beta_v2.json`; manifest confirms SHA-256 and 1,200 questions | READY, NOT DEPLOYABLE YET | Private bank + coverage manifest | GitHub Actions requires an approved private HTTPS source; File Library is not directly consumable by the release workflow | Place the approved file in private authenticated HTTPS storage and set release-job source secrets |
+| Private bank integrity | Exact reviewed version/count/pools | Version `2026-08-14-beta-1200-v2`; 1,200 total; free 216, practice 504, mock_reserved 360, diagnostic 120 | PASS FOR SOURCE | Coverage manifest | Production import/release not executed | Preserve pinned hash and exact pool counts through activation |
+| Active production question bank | Active immutable 1,200-question release | Last release evidence reports no active production release; not promoted/activated in this convergence session | BLOCKED | PR #37 operational blocker + count-only inventory workflow | Controlled import and governance progression still required | `import_to_qa` → human/SME approval → `promote_sme` → `promote_staging` → `activate`, then inventory gate |
+| Stripe catalog — test | Four intended plans only | Four Snowflake test-mode products remain active with expected mapped Price IDs | PASS | Stripe product inventory 2026-09-01 | App test/Preview secret configuration and webhook E2E remain | Configure signing secret + test price mappings only in the intended test environment |
+| Stripe catalog — live | Four separate live plans | Four Snowflake live-mode products remain active with expected mapped Price IDs | PASS | Stripe product inventory 2026-09-01 | Live account cannot charge yet | Complete Stripe account activation before live billing cutover |
+| Stripe account readiness | Live charges/payouts enabled, onboarding complete | `charges_enabled=false`, `payouts_enabled=false`; account onboarding/TOS/verification still incomplete | BLOCKED | Stripe live account read 2026-09-01 | Human Stripe onboarding is required | Complete Stripe Dashboard requirements; do not fabricate verification data |
+| Stripe webhook — test | Dedicated Snowflake test endpoint + signing secret in test secret store | No Snowflake Certification Guide webhook exists; existing test endpoints belong to other applications | BLOCKED | Stripe webhook inventory | No safe signing-secret handoff to Vercel is available through connected tools | Create only when secret can immediately be stored as encrypted `STRIPE_WEBHOOK_SECRET` |
+| Stripe webhook — live | Dedicated Snowflake live endpoint + production signing secret | No live webhook endpoints configured | BLOCKED | Stripe live webhook inventory | Same secret-handoff requirement plus live account activation | Create during controlled live cutover and immediately install encrypted signing secret |
+| Stripe Customer Portal | Active safe portal configuration | No active Portal configuration exists in either test or live mode | BLOCKED | Stripe portal configuration inventory | Current connected Stripe API surface exposes read-only portal configuration | Configure in Stripe Dashboard or another authorized write path, then verify app portal session |
+| Production billing API | `enabled=true`, provider `stripe`, four plans after all payment gates | `/api/billing/config` returns `enabled=false`; `/api/auth/providers` shows billing disabled | BLOCKED BY DESIGN | Live API check 2026-09-01 | Webhook/Portal/account/live-secret gates incomplete | Keep `BILLING_ENABLED=false` until all test/live prerequisites are satisfied |
+| Google authentication | Production OIDC enabled and E2E verified | Provider reports Google enabled | PARTIAL | `/api/auth/providers` | Full browser candidate lifecycle has not been executed in this reconciliation | Run dedicated production Google sign-in/link/logout/re-login E2E |
+| Production email | Real delivery provider, no development outbox | Not independently verified | BLOCKED | Release checklist | Real delivery configuration/evidence absent | Verify production webhook mailer and registration/reset/email-change lifecycle |
+| Observability | Production alerts/metrics connected and redacted | Application readiness reports observability ready; external alert destinations not independently verified | PARTIAL | `/api/ready` | Secret-backed destinations unavailable to this session | Verify actual production alert destinations and sanitized synthetic alert delivery |
+| Hosted hostile-subscriber test | Dedicated attacker/victim accounts pass against real active bank | CI isolation is green; live hosted proof remains blocked | BLOCKED | Green Authenticated Bank Isolation CI | Active production bank and dedicated live test credentials required | Run hosted release security after bank activation/runtime convergence |
+| Final soak | 20+ health/readiness cycles on exact merged production SHA | Not applicable yet | BLOCKED | Release rule | Exact merged SHA not deployed | Run after merge/promotion and inspect runtime logs |
+| Rollback | Deployment/database/bank/billing rollback documented | Existing release rollback, backup tooling, and billing-disable switch exist | PARTIAL | Repository runbooks | Final cutover IDs/evidence not yet captured | Record exact pre-cutover deployment/release identifiers before production promotion |
 
-## Stripe catalog created during final-launch implementation
+## Verified Stripe catalog
 
 ### Test mode
 
@@ -67,25 +70,26 @@ These IDs are non-secret identifiers. API keys, webhook signing secrets, databas
 
 ## Exact remaining launch sequence
 
-1. Complete Stripe account activation/verification in Stripe Dashboard.
-2. Configure the Stripe Customer Portal.
+1. Complete Stripe account activation/TOS/verification in Stripe Dashboard.
+2. Configure safe Stripe Customer Portal behavior.
 3. Ensure GitHub Actions has `PRODUCTION_DATABASE_MIGRATION_URL` and `VERCEL_TOKEN` without exposing values.
-4. Dispatch `Provision Hosted Runtime Credential` with `snowflake_app_runtime`.
-5. Redeploy PR #37 preview and require stable `/api/ready`.
-6. Securely make the private 1,200-question JSON available to an approved deployment-only job.
-7. Validate/import the bank with `scripts/question_bank_admin.py`.
-8. Create a named release from that exact source, promote QA → SME approved → staging, then activate it.
-9. Run `scripts/report_production_bank_inventory.py` with `REQUIRE_ACTIVE_BANK=true` and `EXPECTED_ACTIVE_QUESTION_COUNT=1200`.
-10. Create Stripe test webhook; immediately store its one-time signing secret in the test/preview secret store; configure test price IDs.
-11. Run full Stripe test-mode checkout/webhook/portal lifecycle.
-12. Create Stripe live webhook only when its signing secret can immediately be installed as encrypted production configuration.
-13. Configure production live price IDs and `BILLING_ENABLED=true`, then redeploy and verify `/api/billing/config`.
-14. Verify production email delivery and Google OIDC with dedicated test candidates.
-15. Run hosted release security + live hostile-subscriber verification against real active inventory.
+4. Dispatch `Provision Hosted Runtime Credential` using `snowflake_app_runtime`.
+5. Redeploy the exact PR #37 head and require stable `/api/health` + `/api/ready`.
+6. Put the already-approved private 1,200-question file behind authenticated private HTTPS storage and configure the release-job source secrets.
+7. Run `Production Question Bank Release` with `import_to_qa`.
+8. Complete genuine human/SME content approval, then `promote_sme`, `promote_staging`, and `activate`.
+9. Require count-only inventory: total 1,200 and exact 216/504/360/120 pool counts with no unclassified items.
+10. Create/configure Stripe test webhook only when its signing secret can immediately enter the encrypted test/Preview secret store.
+11. Configure test Price IDs and run subscription + Exam Pack test-mode checkout/webhook/Portal E2E.
+12. After Stripe live account activation, create live webhook and immediately install its signing secret in encrypted production configuration.
+13. Configure live Price IDs and enable `BILLING_ENABLED=true` only after the payment gates pass; redeploy and verify `/api/billing/config`.
+14. Verify Google OIDC and production email delivery using dedicated candidate accounts.
+15. Run hosted release security + live hostile-subscriber verification against the real active bank.
 16. Obtain independent PR approval.
-17. Merge PR #37.
-18. Require Vercel production deployment Git SHA to equal the exact merged `main` SHA.
-19. Run 20+ production readiness cycles, core E2E acceptance, billing lifecycle, and log inspection.
-20. Declare GO only if `artifacts/final-production-release-report.json` contains no blockers.
+17. Reconcile exact final-head CI after any infrastructure-supporting documentation/code commits.
+18. Merge PR #37 only when all required gates are green.
+19. Require Vercel production Git SHA to equal the exact merged `main` SHA.
+20. Run 20+ production health/readiness cycles, core E2E acceptance, billing lifecycle verification, and runtime-log inspection.
+21. Declare GO only when `artifacts/final-production-release-report.json` contains no blockers.
 
 Until every blocking item above is closed, the correct release decision remains **PRODUCTION NO-GO**.
