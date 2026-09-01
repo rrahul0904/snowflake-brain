@@ -36,6 +36,9 @@ echo "== Production mock exam contract =="
 echo "== V26 functional and visual contract =="
 "$PYTHON_BIN" scripts/smoke_v26.py
 
+echo "== Reverse-engineering completeness =="
+"$PYTHON_BIN" scripts/test_reverse_engineering_completeness.py
+
 echo "== Candidate authentication and membership =="
 "$PYTHON_BIN" scripts/test_auth_membership.py
 
