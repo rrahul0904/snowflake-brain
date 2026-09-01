@@ -8,7 +8,7 @@ const certificationItems = [
   ["#/reference", "Reference"],
   ["#/journal", "Journal"],
 ];
-const guestItems = [["#/membership", "Membership"], ["#/about", "About"]];
+const guestItems = [["#/certifications", "Certifications"], ["#/membership", "Membership"], ["#/about", "About"]];
 const homeItems = certificationItems.filter(([href]) => ["#/reference", "#/journal"].includes(href));
 
 const aliases = new Map([
