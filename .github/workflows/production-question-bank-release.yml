@@ -44,7 +44,10 @@ jobs:
       QUESTION_BANK_AUTO_IMPORT: "false"
       PRIVATE_BANK_SOURCE_URL: ${{ secrets.PRODUCTION_PRIVATE_BANK_SOURCE_URL }}
       PRIVATE_BANK_SOURCE_TOKEN: ${{ secrets.PRODUCTION_PRIVATE_BANK_SOURCE_TOKEN }}
-      PRIVATE_BANK_EXPECTED_SHA256: ${{ secrets.PRODUCTION_PRIVATE_BANK_SHA256 }}
+      # Integrity hash of snowpro_core_cof_c03_private_bank_1200_beta_v2.json.
+      # The hash is non-secret and intentionally pinned in source control so a
+      # compromised/private source URL cannot silently replace release content.
+      PRIVATE_BANK_EXPECTED_SHA256: da57f636a57180631448fda79cfdcad2acf8e38ae2f381ea891a8cea91e704c5
       REQUIRE_ACTIVE_BANK: "true"
       EXPECTED_ACTIVE_QUESTION_COUNT: "1200"
     steps:
@@ -72,7 +75,6 @@ jobs:
         run: |
           set -euo pipefail
           [[ -n "${PRIVATE_BANK_SOURCE_URL:-}" ]] || { echo "PRODUCTION_PRIVATE_BANK_SOURCE_URL is required" >&2; exit 1; }
-          [[ -n "${PRIVATE_BANK_EXPECTED_SHA256:-}" ]] || { echo "PRODUCTION_PRIVATE_BANK_SHA256 is required" >&2; exit 1; }
           umask 077
           headers=()
           if [[ -n "${PRIVATE_BANK_SOURCE_TOKEN:-}" ]]; then
