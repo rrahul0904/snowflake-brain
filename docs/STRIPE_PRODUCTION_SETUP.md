@@ -88,7 +88,7 @@ STRIPE_PRICE_EXAM_PACK=price_1UAh7HRB8OGmEnBwHAumtGCn
 
 ### Production/live mapping
 
-Do not install this until the Stripe account is activated, the live webhook exists, and its signing secret can be stored safely.
+Do not enable live billing until the Stripe account is activated, the live webhook exists, the Customer Portal is configured, and test-mode E2E is green.
 
 ```text
 BILLING_ENABLED=true
@@ -124,16 +124,45 @@ invoice.payment_failed
 
 The backend already verifies Stripe signatures, applies a five-minute timestamp tolerance, records event payload hashes, treats a processed event ID idempotently, rejects replay of an event ID with a different payload, rejects unknown subscription price mappings, and derives entitlements server-side.
 
+### Secret-safe automated provisioning
+
+Use:
+
+```text
+.github/workflows/provision-stripe-billing.yml
+scripts/provision_stripe_billing.py
+```
+
+The workflow deliberately separates Stripe test/Preview from Stripe live/Production. It discovers the four Snowflake products from Stripe metadata, validates their USD amounts and recurring/one-time contract, creates the dedicated webhook if none exists, retains the one-time webhook signing secret only in process memory, and immediately upserts the Stripe API key, webhook secret, resolved Price IDs, and `BILLING_ENABLED` state into the selected Vercel environment as sensitive values.
+
+Required GitHub Actions secrets:
+
+```text
+VERCEL_TOKEN
+STRIPE_TEST_SECRET_KEY
+STRIPE_LIVE_SECRET_KEY
+```
+
+For a rerun against an already-created endpoint, provide the matching signing secret through the appropriate approved secret-store value consumed as `EXISTING_STRIPE_WEBHOOK_SECRET`; the script fails closed rather than creating duplicate webhooks when the existing signing secret is unavailable.
+
+Rules:
+
+- test Stripe credentials may target Vercel Preview only;
+- live Stripe credentials may target Vercel Production only;
+- live `enable_billing=true` is rejected unless Stripe reports live charges enabled;
+- the script never prints provider keys, webhook signing secrets, or Vercel tokens;
+- production billing should remain disabled during initial live secret installation until every release gate is green.
+
 ### Safe webhook cutover
 
-1. Confirm the deployment secret store is ready.
-2. Create the Stripe webhook endpoint.
-3. Copy the one-time signing secret directly to encrypted `STRIPE_WEBHOOK_SECRET`.
-4. Do not paste the signing secret into GitHub, documentation, issue comments, logs, or chat transcripts.
-5. Redeploy the intended environment so the server receives the new secret.
-6. Send/trigger test events and require HTTP 2xx.
-7. Confirm duplicate delivery is idempotent.
-8. Confirm invalid/expired signatures are rejected.
+1. Confirm the required GitHub/Vercel secret store is ready.
+2. Dispatch `Provision Stripe Billing` in test mode against the approved Preview HTTPS webhook URL with billing initially disabled if the runtime is not yet ready.
+3. Redeploy Preview after environment reconciliation.
+4. Enable test billing only for the controlled test environment and run the complete test lifecycle.
+5. Complete Stripe live account activation and Customer Portal configuration.
+6. Dispatch the same workflow in live mode against the canonical production webhook URL with billing still disabled for initial secret installation.
+7. Only after all payment and release gates pass, rerun the live workflow with `enable_billing=true` and redeploy Production.
+8. Confirm invalid/expired signatures are rejected and duplicate delivery remains idempotent.
 
 ## Customer Portal
 
@@ -144,7 +173,7 @@ Recommended launch behavior:
 - allow payment-method updates;
 - allow subscription cancellation;
 - prefer cancel-at-period-end for standard cancellation;
-- allow appropriate upgrades/downgrades only among the three subscription prices;
+- allow appropriate upgrades/downgrades only among the three subscription prices if plan switching is enabled;
 - do not expose the one-time Exam Pack as a subscription switch target;
 - send the customer back to `https://snowflakecertificationguide.vercel.app/#/membership`.
 
@@ -204,10 +233,10 @@ Do not enable production billing until all are proven using dedicated test candi
 
 Only after test-mode acceptance, Stripe account activation, production DB/runtime hardening, and the private bank release are green:
 
-1. Create and install the dedicated live webhook secret.
-2. Install the four live Price IDs.
+1. Install/reconcile the dedicated live webhook through the secret-safe workflow.
+2. Verify the four discovered live Price IDs.
 3. Set `APP_BASE_URL=https://snowflakecertificationguide.vercel.app`.
-4. Set `BILLING_ENABLED=true`.
+4. Set `BILLING_ENABLED=true` only through the controlled live provisioning run after Stripe reports charges enabled.
 5. Redeploy the exact release candidate.
 6. Require `/api/billing/config` to report Stripe enabled with all four plans.
 7. Execute one controlled real payment only under the approved release test procedure.
