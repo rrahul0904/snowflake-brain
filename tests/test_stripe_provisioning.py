@@ -49,6 +49,21 @@ def _prices(*, livemode: bool = False) -> dict[str, dict]:
     }
 
 
+def _portal(*, livemode: bool = False) -> dict:
+    return {
+        "id": "portal-snowflake",
+        "active": True,
+        "livemode": livemode,
+        "metadata": {"app": "snowflake-brain", "environment": "live" if livemode else "test"},
+        "features": {
+            "payment_method_update": {"enabled": True},
+            "subscription_cancel": {"enabled": True, "mode": "at_period_end", "proration_behavior": "none"},
+            "subscription_update": {"enabled": False},
+            "invoice_history": {"enabled": True},
+        },
+    }
+
+
 def test_catalog_discovery_enforces_exact_test_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(provision, "STRIPE_MODE", "test")
     prices = _prices(livemode=False)
@@ -133,3 +148,22 @@ def test_existing_webhook_is_reused_only_with_secret(monkeypatch: pytest.MonkeyP
 
     assert secret == "secret-from-approved-store"
     assert created is False
+
+
+def test_existing_app_portal_is_reused_when_launch_policy_is_safe(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(provision, "STRIPE_MODE", "test")
+    with patch.object(provision, "stripe_request", return_value={"data": [_portal(livemode=False)]}):
+        portal_id, created = provision.reconcile_portal_configuration(object())
+
+    assert portal_id == "portal-snowflake"
+    assert created is False
+
+
+def test_portal_rejects_plan_switching_at_launch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(provision, "STRIPE_MODE", "test")
+    unsafe = _portal(livemode=False)
+    unsafe["features"]["subscription_update"]["enabled"] = True
+
+    with patch.object(provision, "stripe_request", return_value={"data": [unsafe]}):
+        with pytest.raises(RuntimeError, match="plan switching must remain disabled"):
+            provision.reconcile_portal_configuration(object())
