@@ -1,0 +1,154 @@
+name: Production Question Bank Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Explicit release action"
+        required: true
+        default: "import_to_qa"
+        type: choice
+        options:
+          - import_to_qa
+          - promote_sme
+          - promote_staging
+          - activate
+          - inventory_only
+      release_key:
+        description: "Auditable release key"
+        required: true
+        default: "cofc03-2026-08-14-beta-1200-v2"
+      actor:
+        description: "Human/operator identity recorded in release audit events"
+        required: true
+        default: "release-operator"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-question-bank-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: production-question-bank-${{ inputs.action }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # This is a deployment-only administrative job. The request-serving Vercel
+      # runtime must continue to receive its separate least-privilege DATABASE_URL.
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_MIGRATION_URL }}
+      DATABASE_MIGRATION_URL: ${{ secrets.PRODUCTION_DATABASE_MIGRATION_URL }}
+      DATABASE_SCHEMA: public
+      QUESTION_BANK_AUTO_IMPORT: "false"
+      PRIVATE_BANK_SOURCE_URL: ${{ secrets.PRODUCTION_PRIVATE_BANK_SOURCE_URL }}
+      PRIVATE_BANK_SOURCE_TOKEN: ${{ secrets.PRODUCTION_PRIVATE_BANK_SOURCE_TOKEN }}
+      PRIVATE_BANK_EXPECTED_SHA256: ${{ secrets.PRODUCTION_PRIVATE_BANK_SHA256 }}
+      REQUIRE_ACTIVE_BANK: "true"
+      EXPECTED_ACTIVE_QUESTION_COUNT: "1200"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Require deployment-only database credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${DATABASE_URL:-}" ]] || { echo "PRODUCTION_DATABASE_MIGRATION_URL is required" >&2; exit 1; }
+
+      - name: Download private bank ephemerally
+        if: ${{ inputs.action == 'import_to_qa' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${PRIVATE_BANK_SOURCE_URL:-}" ]] || { echo "PRODUCTION_PRIVATE_BANK_SOURCE_URL is required" >&2; exit 1; }
+          [[ -n "${PRIVATE_BANK_EXPECTED_SHA256:-}" ]] || { echo "PRODUCTION_PRIVATE_BANK_SHA256 is required" >&2; exit 1; }
+          umask 077
+          headers=()
+          if [[ -n "${PRIVATE_BANK_SOURCE_TOKEN:-}" ]]; then
+            headers=(-H "Authorization: Bearer ${PRIVATE_BANK_SOURCE_TOKEN}")
+          fi
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            "${headers[@]}" "${PRIVATE_BANK_SOURCE_URL}" -o /tmp/snowpro-private-bank.json
+          actual_sha="$(sha256sum /tmp/snowpro-private-bank.json | awk '{print $1}')"
+          [[ "${actual_sha}" == "${PRIVATE_BANK_EXPECTED_SHA256}" ]] || {
+            echo "Private bank SHA-256 mismatch" >&2
+            rm -f /tmp/snowpro-private-bank.json
+            exit 1
+          }
+          echo "Private bank source downloaded and hash verified without exposing content."
+
+      - name: Validate private bank
+        if: ${{ inputs.action == 'import_to_qa' }}
+        run: python scripts/question_bank_admin.py validate /tmp/snowpro-private-bank.json
+
+      - name: Import private bank
+        if: ${{ inputs.action == 'import_to_qa' }}
+        run: python scripts/question_bank_admin.py import /tmp/snowpro-private-bank.json
+
+      - name: Create exact-source draft release
+        if: ${{ inputs.action == 'import_to_qa' }}
+        run: >-
+          python scripts/question_bank_admin.py release-create
+          "${{ inputs.release_key }}"
+          --source /tmp/snowpro-private-bank.json
+          --actor "${{ inputs.actor }}"
+          --notes "Secure production import; private source hash verified by workflow"
+
+      - name: Promote imported release to QA passed
+        if: ${{ inputs.action == 'import_to_qa' }}
+        run: >-
+          python scripts/question_bank_admin.py release-promote
+          "${{ inputs.release_key }}" qa_passed
+          --actor "${{ inputs.actor }}"
+
+      - name: Destroy ephemeral bank file
+        if: ${{ always() && inputs.action == 'import_to_qa' }}
+        shell: bash
+        run: |
+          rm -f /tmp/snowpro-private-bank.json
+          echo "Ephemeral private bank source removed."
+
+      - name: Require deliberate SME approval action
+        if: ${{ inputs.action == 'promote_sme' }}
+        run: >-
+          python scripts/question_bank_admin.py release-promote
+          "${{ inputs.release_key }}" sme_approved
+          --actor "${{ inputs.actor }}"
+
+      - name: Promote SME-approved release to staging
+        if: ${{ inputs.action == 'promote_staging' }}
+        run: >-
+          python scripts/question_bank_admin.py release-promote
+          "${{ inputs.release_key }}" staging
+          --actor "${{ inputs.actor }}"
+
+      - name: Activate staging release
+        if: ${{ inputs.action == 'activate' }}
+        run: >-
+          python scripts/question_bank_admin.py release-activate
+          "${{ inputs.release_key }}"
+          --actor "${{ inputs.actor }}"
+
+      - name: Verify count-only active production inventory
+        if: ${{ inputs.action == 'activate' || inputs.action == 'inventory_only' }}
+        run: python scripts/report_production_bank_inventory.py
+
+      - name: Upload count-only inventory evidence
+        if: ${{ always() && (inputs.action == 'activate' || inputs.action == 'inventory_only') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-bank-inventory-${{ github.sha }}
+          path: artifacts/production-bank-inventory.json
+          if-no-files-found: warn
+          retention-days: 90
