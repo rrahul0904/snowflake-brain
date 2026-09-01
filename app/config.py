@@ -159,6 +159,7 @@ GOOGLE_OIDC_FLOW_MINUTES = max(3, int(os.getenv("GOOGLE_OIDC_FLOW_MINUTES", "10"
 BILLING_ENABLED = os.getenv("BILLING_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_PORTAL_CONFIGURATION_ID = os.getenv("STRIPE_PORTAL_CONFIGURATION_ID", "").strip()
 STRIPE_API_BASE = os.getenv("STRIPE_API_BASE", "https://api.stripe.com").rstrip("/")
 STRIPE_PRICE_PREMIUM_100 = os.getenv("STRIPE_PRICE_PREMIUM_100", "").strip()
 STRIPE_PRICE_PREMIUM_250 = os.getenv("STRIPE_PRICE_PREMIUM_250", "").strip()
