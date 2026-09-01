@@ -91,9 +91,6 @@ def stripe_request(client: httpx.Client, method: str, path: str, *, data: Any = 
 
 def account_state(client: httpx.Client) -> dict[str, bool]:
     payload = stripe_request(client, "GET", "/account")
-    livemode = bool(payload.get("livemode", False))
-    expected_live = STRIPE_MODE == "live"
-    require(livemode == expected_live, "Stripe API key mode does not match STRIPE_MODE")
     return {
         "charges_enabled": bool(payload.get("charges_enabled")),
         "payouts_enabled": bool(payload.get("payouts_enabled")),
@@ -105,6 +102,7 @@ def discover_catalog(client: httpx.Client) -> dict[str, str]:
     products = payload.get("data") or []
     require(isinstance(products, list), "Stripe products payload is invalid")
     resolved: dict[str, str] = {}
+    expected_live = STRIPE_MODE == "live"
 
     for contract in PLAN_CONTRACTS:
         matches = []
@@ -115,9 +113,11 @@ def discover_catalog(client: httpx.Client) -> dict[str, str]:
             if metadata.get("app") == "snowflake-brain" and metadata.get("plan") == contract.plan:
                 matches.append(product)
         require(len(matches) == 1, f"Expected exactly one active Stripe product for {contract.plan}; found {len(matches)}")
+        require(bool(matches[0].get("livemode")) == expected_live, f"Stripe product mode mismatch for {contract.plan}")
         price_id = str(matches[0].get("default_price") or "").strip()
         require(bool(price_id), f"Stripe product for {contract.plan} has no default price")
         price = stripe_request(client, "GET", f"/prices/{price_id}")
+        require(bool(price.get("livemode")) == expected_live, f"Stripe price mode mismatch for {contract.plan}")
         require(bool(price.get("active")), f"Stripe price for {contract.plan} is inactive")
         require(str(price.get("currency") or "").lower() == "usd", f"Stripe price currency mismatch for {contract.plan}")
         require(int(price.get("unit_amount") or -1) == contract.unit_amount, f"Stripe price amount mismatch for {contract.plan}")
@@ -136,9 +136,13 @@ def reconcile_webhook(client: httpx.Client) -> tuple[str, bool]:
     payload = stripe_request(client, "GET", "/webhook_endpoints", params={"limit": "100"})
     endpoints = payload.get("data") or []
     require(isinstance(endpoints, list), "Stripe webhook endpoint payload is invalid")
+    expected_live = STRIPE_MODE == "live"
     matching = [
         row for row in endpoints
-        if isinstance(row, dict) and row.get("url") == STRIPE_WEBHOOK_URL and row.get("status") == "enabled"
+        if isinstance(row, dict)
+        and row.get("url") == STRIPE_WEBHOOK_URL
+        and row.get("status") == "enabled"
+        and bool(row.get("livemode")) == expected_live
     ]
     require(len(matching) <= 1, "Multiple enabled Stripe webhooks already target the Snowflake billing URL")
 
@@ -156,18 +160,19 @@ def reconcile_webhook(client: httpx.Client) -> tuple[str, bool]:
     form.append(("description", f"Snowflake Certification Guide billing webhook ({STRIPE_MODE})"))
     form.extend(("enabled_events[]", event) for event in WEBHOOK_EVENTS)
     created = stripe_request(client, "POST", "/webhook_endpoints", data=form)
+    require(bool(created.get("livemode")) == expected_live, "New Stripe webhook mode does not match requested mode")
     secret = str(created.get("secret") or "").strip()
     require(bool(secret), "Stripe did not return a webhook signing secret for the newly created endpoint")
     return secret, True
 
 
-def upsert_vercel_env(client: httpx.Client, key: str, value: str, *, sensitive: bool = True) -> None:
+def upsert_vercel_env(client: httpx.Client, key: str, value: str) -> None:
     query = urlencode({"upsert": "true", "teamId": VERCEL_TEAM_ID})
     url = f"https://api.vercel.com/v10/projects/{VERCEL_PROJECT_ID}/env?{query}"
     body = {
         "key": key,
         "value": value,
-        "type": "sensitive" if sensitive else "plain",
+        "type": "sensitive",
         "target": [VERCEL_TARGET],
         "comment": f"Snowflake Certification Guide Stripe {STRIPE_MODE} billing configuration",
     }
@@ -208,7 +213,7 @@ def main() -> None:
         upsert_vercel_env(vercel_client, "STRIPE_WEBHOOK_SECRET", webhook_secret)
         for key, value in sorted(catalog.items()):
             upsert_vercel_env(vercel_client, key, value)
-        upsert_vercel_env(vercel_client, "BILLING_ENABLED", "true" if ENABLE_BILLING else "false", sensitive=False)
+        upsert_vercel_env(vercel_client, "BILLING_ENABLED", "true" if ENABLE_BILLING else "false")
 
     # Deliberately exclude API keys, webhook signing secrets, and Vercel tokens.
     print(
