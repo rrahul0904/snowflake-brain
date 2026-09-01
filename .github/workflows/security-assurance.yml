@@ -24,7 +24,7 @@ jobs:
       - name: Compile secret-bearing provisioning automation
         run: python -m py_compile scripts/provision_hosted_runtime.py scripts/provision_stripe_billing.py
       - name: Run security unit tests
-        run: pytest -q tests/test_security_units.py
+        run: pytest -q tests/test_security_units.py tests/test_stripe_provisioning.py
       - name: Run adversarial HTTP checks
         run: python scripts/test_security_adversarial.py
       - name: Verify private question-bank integrity contract
