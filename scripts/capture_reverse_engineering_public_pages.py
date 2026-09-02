@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 import re
 import time
@@ -48,14 +49,35 @@ def slug(value: str) -> str:
 
 def page_metrics(page: Page) -> dict:
     return page.evaluate(
-        """() => ({
-          scrollWidth: document.documentElement.scrollWidth,
-          clientWidth: document.documentElement.clientWidth,
-          bodyScrollWidth: document.body?.scrollWidth || 0,
-          viewId: document.querySelector('#view-root')?.dataset?.viewId || '',
-          routeOk: document.querySelector('#view-root')?.dataset?.routeOk || '',
-          url: location.href,
-        })"""
+        """() => {
+          const clientWidth = document.documentElement.clientWidth;
+          const offenders = [...document.querySelectorAll('body *')]
+            .map((node) => {
+              const rect = node.getBoundingClientRect();
+              return {
+                tag: node.tagName.toLowerCase(),
+                id: node.id || '',
+                classes: typeof node.className === 'string' ? node.className.slice(0, 180) : '',
+                left: Math.round(rect.left),
+                right: Math.round(rect.right),
+                width: Math.round(rect.width),
+                scrollWidth: Number(node.scrollWidth || 0),
+                clientWidth: Number(node.clientWidth || 0),
+              };
+            })
+            .filter((row) => row.right > clientWidth + 2 || row.left < -2 || row.scrollWidth > row.clientWidth + 2)
+            .sort((a, b) => Math.max(b.right - clientWidth, b.scrollWidth - b.clientWidth) - Math.max(a.right - clientWidth, a.scrollWidth - a.clientWidth))
+            .slice(0, 12);
+          return {
+            scrollWidth: document.documentElement.scrollWidth,
+            clientWidth,
+            bodyScrollWidth: document.body?.scrollWidth || 0,
+            viewId: document.querySelector('#view-root')?.dataset?.viewId || '',
+            routeOk: document.querySelector('#view-root')?.dataset?.routeOk || '',
+            url: location.href,
+            offenders,
+          };
+        }"""
     )
 
 
@@ -74,6 +96,7 @@ def diagnostic_failure(page: Page, *, width: int, height: int, theme: str, name:
         f"scrollWidth={metrics.get('scrollWidth')} clientWidth={metrics.get('clientWidth')} "
         f"bodyScrollWidth={metrics.get('bodyScrollWidth')} viewId={metrics.get('viewId')} "
         f"routeOk={metrics.get('routeOk')} url={metrics.get('url')} "
+        f"offenders={json.dumps(metrics.get('offenders') or [], separators=(',', ':'))} "
         f"screenshot={failure_path}",
         flush=True,
     )
@@ -83,7 +106,7 @@ def assert_no_horizontal_overflow(page: Page, label: str) -> None:
     metrics = page_metrics(page)
     if metrics["scrollWidth"] > metrics["clientWidth"] + 2:
         raise AssertionError(
-            f"horizontal overflow: {label} scrollWidth={metrics['scrollWidth']} clientWidth={metrics['clientWidth']}"
+            f"horizontal overflow: {label} scrollWidth={metrics['scrollWidth']} clientWidth={metrics['clientWidth']} offenders={json.dumps(metrics.get('offenders') or [], separators=(',', ':'))}"
         )
 
 
