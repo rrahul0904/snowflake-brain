@@ -20,12 +20,18 @@ os.environ.pop("DATABASE_MIGRATION_URL", None)
 os.environ.pop("VERCEL", None)
 os.environ.pop("VERCEL_ENV", None)
 
+from fastapi import HTTPException  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
 
-from app.auth import require_candidate  # noqa: E402
 from app.database import connect, run_migrations  # noqa: E402
 from app.main import app  # noqa: E402
 from app.mock_replay import append_event, record_answer_event, replay_payload  # noqa: E402
+from app.routers.question_bank_runtime import (  # noqa: E402
+    SessionReplayEvent,
+    get_candidate_mock_replay,
+    post_candidate_mock_replay_event,
+)
 from app.skill_brain import flatten_skills  # noqa: E402
 from app.task_review import due_task_reviews, get_task_review, mark_task_reviewed, reset_task_review, schedule_task_review  # noqa: E402
 
@@ -123,46 +129,73 @@ def test_task_review(c1: int, c2: int, skill: dict[str, str]) -> None:
 
 
 def test_mounted_mock_replay_api_active(c1: int, c2: int, session_id: int) -> None:
-    app.dependency_overrides[require_candidate] = lambda: {"id": c1}
+    post_route = next(
+        (
+            route
+            for route in app.routes
+            if getattr(route, "path", None) == "/api/mock/sessions/{session_id}/events"
+            and "POST" in (getattr(route, "methods", set()) or set())
+        ),
+        None,
+    )
+    replay_route = next(
+        (
+            route
+            for route in app.routes
+            if getattr(route, "path", None) == "/api/mock/sessions/{session_id}/replay"
+            and "GET" in (getattr(route, "methods", set()) or set())
+        ),
+        None,
+    )
+    must(post_route is not None, "candidate Mock Replay event endpoint is not mounted under /api")
+    must(replay_route is not None, "candidate Mock Replay read endpoint is not mounted under /api")
+
+    # The application security middleware must reject anonymous access before the
+    # route handler is allowed to mutate replay state.
+    with TestClient(app) as client:
+        anonymous = client.post(
+            f"/api/mock/sessions/{session_id}/events",
+            json={"event_type": "question_viewed", "question_id": "conv-q1", "metadata": {"position": 1}},
+        )
+    must(anonymous.status_code == 401, f"anonymous replay event write was not authentication-gated: {anonymous.status_code}")
+
+    payload = SessionReplayEvent(
+        event_type="question_viewed",
+        question_id="conv-q1",
+        metadata={
+            "position": 1,
+            "question": "must never persist",
+            "correct_answer": [0],
+            "explanation": "must never persist",
+        },
+    )
+    result = post_candidate_mock_replay_event(session_id, payload, {"id": c1})
+    must(result.get("ok") is True, "owned active-session replay event write failed")
+
     try:
-        with TestClient(app) as client:
-            response = client.post(
-                f"/api/mock/sessions/{session_id}/events",
-                json={
-                    "event_type": "question_viewed",
-                    "question_id": "conv-q1",
-                    "metadata": {
-                        "position": 1,
-                        "question": "must never persist",
-                        "correct_answer": [0],
-                        "explanation": "must never persist",
-                    },
-                },
-            )
-            must(response.status_code == 200, f"mounted replay event endpoint failed: {response.status_code} {response.text}")
+        SessionReplayEvent(event_type="answer_changed", question_id="conv-q1", metadata={})
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError("candidate replay event model accepted a server-managed answer event")
 
-            forged = client.post(
-                f"/api/mock/sessions/{session_id}/events",
-                json={"event_type": "answer_changed", "question_id": "conv-q1", "metadata": {}},
-            )
-            must(forged.status_code == 422, "client event allowlist accepted a server-managed answer event")
+    try:
+        post_candidate_mock_replay_event(session_id, payload, {"id": c2})
+    except HTTPException as exc:
+        must(exc.status_code in {403, 404}, f"cross-candidate replay event write returned unexpected status: {exc.status_code}")
+    else:
+        raise AssertionError("cross-candidate replay event write was not denied")
 
-            app.dependency_overrides[require_candidate] = lambda: {"id": c2}
-            stolen = client.post(
-                f"/api/mock/sessions/{session_id}/events",
-                json={"event_type": "question_viewed", "question_id": "conv-q1", "metadata": {"position": 1}},
-            )
-            must(stolen.status_code in {403, 404}, f"cross-candidate replay event write was not denied: {stolen.status_code}")
-
-        with connect() as conn:
-            persisted = [json.loads(row["metadata_json"] or "{}") for row in conn.execute(
+    with connect() as conn:
+        persisted = [
+            json.loads(row["metadata_json"] or "{}")
+            for row in conn.execute(
                 "SELECT metadata_json FROM exam_session_events WHERE session_id=? ORDER BY id",
                 (session_id,),
-            )]
-        forbidden = {"question", "correct_answer", "correct", "explanation", "answer_key"}
-        must(all(not (forbidden & set(item)) for item in persisted), f"mounted replay API leaked private/oracle metadata: {persisted}")
-    finally:
-        app.dependency_overrides.pop(require_candidate, None)
+            )
+        ]
+    forbidden = {"question", "correct_answer", "correct", "explanation", "answer_key"}
+    must(all(not (forbidden & set(item)) for item in persisted), f"mounted replay API leaked private/oracle metadata: {persisted}")
 
 
 def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
@@ -205,10 +238,13 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
         else:
             raise AssertionError("client was allowed to forge a server-managed answer-change event")
 
-        persisted = [json.loads(row["metadata_json"] or "{}") for row in conn.execute(
-            "SELECT metadata_json FROM exam_session_events WHERE session_id=? ORDER BY id",
-            (session_id,),
-        )]
+        persisted = [
+            json.loads(row["metadata_json"] or "{}")
+            for row in conn.execute(
+                "SELECT metadata_json FROM exam_session_events WHERE session_id=? ORDER BY id",
+                (session_id,),
+            )
+        ]
         forbidden = {"question", "correct_answer", "correct", "explanation", "answer_key"}
         must(all(not (forbidden & set(item)) for item in persisted), f"replay metadata leaked private/oracle fields: {persisted}")
 
@@ -249,23 +285,19 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
 
 
 def test_mounted_mock_replay_api_submitted(c1: int, session_id: int) -> None:
-    app.dependency_overrides[require_candidate] = lambda: {"id": c1}
+    payload = SessionReplayEvent(event_type="session_resumed", metadata={})
     try:
-        with TestClient(app) as client:
-            response = client.post(
-                f"/api/mock/sessions/{session_id}/events",
-                json={"event_type": "session_resumed", "metadata": {}},
-            )
-            must(response.status_code == 409, f"submitted mock accepted a new replay event: {response.status_code}")
+        post_candidate_mock_replay_event(session_id, payload, {"id": c1})
+    except HTTPException as exc:
+        must(exc.status_code == 409, f"submitted mock replay event returned unexpected status: {exc.status_code}")
+    else:
+        raise AssertionError("submitted mock accepted a new replay event")
 
-            replay = client.get(f"/api/mock/sessions/{session_id}/replay")
-            must(replay.status_code == 200, f"mounted replay read endpoint failed after submission: {replay.status_code} {replay.text}")
-            serialized = replay.text.lower()
-            must("synthetic ci question" not in serialized, "mounted replay endpoint leaked question text")
-            must("synthetic explanation" not in serialized, "mounted replay endpoint leaked explanation text")
-            must("correct_positions" not in serialized and "correct answer" not in serialized, "mounted replay endpoint leaked an answer oracle")
-    finally:
-        app.dependency_overrides.pop(require_candidate, None)
+    replay = get_candidate_mock_replay(session_id, {"id": c1})
+    serialized = json.dumps(replay).lower()
+    must("synthetic ci question" not in serialized, "mounted replay endpoint leaked question text")
+    must("synthetic explanation" not in serialized, "mounted replay endpoint leaked explanation text")
+    must("correct_positions" not in serialized and "correct answer" not in serialized, "mounted replay endpoint leaked an answer oracle")
 
 
 def test_ui_contract() -> None:
