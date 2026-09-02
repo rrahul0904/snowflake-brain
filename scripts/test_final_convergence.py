@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 # Configure an isolated SQLite database before importing application modules.
 _tmp = tempfile.TemporaryDirectory(prefix="snowflake-final-convergence-")
@@ -18,8 +23,6 @@ os.environ.pop("VERCEL_ENV", None)
 from app.database import connect, run_migrations  # noqa: E402
 from app.mock_replay import append_event, record_answer_event, replay_payload  # noqa: E402
 from app.task_review import due_task_reviews, get_task_review, mark_task_reviewed, reset_task_review, schedule_task_review  # noqa: E402
-
-ROOT = Path(__file__).resolve().parent.parent
 
 
 def must(condition: bool, message: str) -> None:
