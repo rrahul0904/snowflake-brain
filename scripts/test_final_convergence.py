@@ -22,6 +22,7 @@ os.environ.pop("VERCEL_ENV", None)
 
 from app.database import connect, run_migrations  # noqa: E402
 from app.mock_replay import append_event, record_answer_event, replay_payload  # noqa: E402
+from app.skill_brain import flatten_skills  # noqa: E402
 from app.task_review import due_task_reviews, get_task_review, mark_task_reviewed, reset_task_review, schedule_task_review  # noqa: E402
 
 
@@ -30,8 +31,9 @@ def must(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-def seed() -> tuple[int, int, int]:
+def seed() -> tuple[int, int, int, dict[str, str]]:
     run_migrations()
+    skill = flatten_skills("snowpro-core")[0]
     with connect() as conn:
         def candidate(email: str) -> int:
             cursor = conn.execute(
@@ -46,7 +48,7 @@ def seed() -> tuple[int, int, int]:
         c1 = candidate("convergence-1@example.com")
         c2 = candidate("convergence-2@example.com")
         conn.execute(
-            "INSERT INTO certification_tracks(id,title,exam_code,description,position) VALUES ('snowpro-core','SnowPro Core','COF-C03','test',1)"
+            "INSERT OR IGNORE INTO certification_tracks(id,title,exam_code,description,position) VALUES ('snowpro-core','SnowPro Core','COF-C03','test',1)"
         )
         conn.execute(
             "INSERT INTO practice_tests(id,track_id,title,exam_code,source_kind,question_count,is_legacy) VALUES ('conv-test','snowpro-core','Convergence Test','COF-C03','canonical',1,0)"
@@ -58,7 +60,8 @@ def seed() -> tuple[int, int, int]:
             """
         )
         conn.execute(
-            "INSERT INTO question_skill_map(question_id,track_id,domain_id,skill_id,confidence,reviewed) VALUES ('conv-q1','snowpro-core','domain-1','skill-1',1.0,1)"
+            "INSERT INTO question_skill_map(question_id,track_id,domain_id,skill_id,confidence,reviewed) VALUES (?,?,?,?,1.0,1)",
+            ("conv-q1", "snowpro-core", skill["domain_id"], skill["id"]),
         )
         cursor = conn.execute(
             """
@@ -75,29 +78,44 @@ def seed() -> tuple[int, int, int]:
             """,
             (session_id,),
         )
-        return c1, c2, session_id
+        return c1, c2, session_id, skill
 
 
-def test_task_review(c1: int, c2: int) -> None:
+def test_task_review(c1: int, c2: int, skill: dict[str, str]) -> None:
+    skill_id = skill["id"]
     with connect() as conn:
-        first = schedule_task_review(conn, c1, "snowpro-core", "skill-1")
-        duplicate = schedule_task_review(conn, c1, "snowpro-core", "skill-1")
-        must(first["skill_id"] == "skill-1", "task review was not scheduled")
+        first = schedule_task_review(conn, c1, "snowpro-core", skill_id)
+        duplicate = schedule_task_review(conn, c1, "snowpro-core", skill_id)
+        must(first["skill_id"] == skill_id, "task review was not scheduled")
         must(duplicate["created_at"] == first["created_at"], "duplicate task scheduling should be idempotent")
-        must(get_task_review(conn, c2, "snowpro-core", "skill-1") is None, "task review leaked across candidates")
-        must(get_task_review(conn, c1, "another-track", "skill-1") is None, "task review leaked across tracks")
+        must(duplicate["next_review_at"] == first["next_review_at"], "duplicate task scheduling must not push the review date")
+        must(get_task_review(conn, c2, "snowpro-core", skill_id) is None, "task review leaked across candidates")
 
-        immediate = reset_task_review(conn, c1, "snowpro-core", "skill-1")
+        try:
+            get_task_review(conn, c1, "advanced-data-engineer", skill_id)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("task review accepted a task under the wrong certification track")
+
+        immediate = reset_task_review(conn, c1, "snowpro-core", skill_id)
         must(int(immediate["interval_days"]) == 0, "manual reset should make a task due immediately")
         due = due_task_reviews(conn, c1, "snowpro-core", limit=10)
         must(int(due["task_due_count"]) == 1, "due task review was not returned")
-        must(due["task_reviews"][0]["skill_id"] == "skill-1", "wrong task review returned")
+        must(due["task_reviews"][0]["skill_id"] == skill_id, "wrong task review returned")
 
-        reviewed = mark_task_reviewed(conn, c1, "snowpro-core", "skill-1")
+        reviewed = mark_task_reviewed(conn, c1, "snowpro-core", skill_id)
         must(int(reviewed["review_count"]) == 1, "task review count did not advance")
         must(int(reviewed["interval_days"]) == 3, "first completed manual review should schedule the next review in three days")
-        reviewed_again = mark_task_reviewed(conn, c1, "snowpro-core", "skill-1")
+        reviewed_again = mark_task_reviewed(conn, c1, "snowpro-core", skill_id)
         must(int(reviewed_again["interval_days"]) == 7, "task review interval progression is not deterministic")
+
+        try:
+            schedule_task_review(conn, c1, "snowpro-core", "not-a-real-task")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("task review accepted an unknown task")
 
 
 def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
@@ -109,9 +127,44 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
         else:
             raise AssertionError("mock replay must be blocked before submission")
 
-        append_event(conn, session_id=session_id, candidate_id=c1, question_id="conv-q1", event_type="question_viewed", metadata={"position": 1}, client_event=True)
+        append_event(
+            conn,
+            session_id=session_id,
+            candidate_id=c1,
+            question_id="conv-q1",
+            event_type="question_viewed",
+            metadata={
+                "position": 1,
+                "question": "must never persist",
+                "correct_answer": [0],
+                "explanation": "must never persist",
+            },
+            client_event=True,
+        )
         record_answer_event(conn, session_id=session_id, candidate_id=c1, question_id="conv-q1", previous=[], selected=[0])
         record_answer_event(conn, session_id=session_id, candidate_id=c1, question_id="conv-q1", previous=[0], selected=[1])
+
+        try:
+            append_event(
+                conn,
+                session_id=session_id,
+                candidate_id=c1,
+                question_id="conv-q1",
+                event_type="answer_changed",
+                client_event=True,
+            )
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("client was allowed to forge a server-managed answer-change event")
+
+        # Verify forbidden metadata was stripped before persistence.
+        persisted = [json.loads(row["metadata_json"] or "{}") for row in conn.execute(
+            "SELECT metadata_json FROM exam_session_events WHERE session_id=? ORDER BY id",
+            (session_id,),
+        )]
+        forbidden = {"question", "correct_answer", "correct", "explanation", "answer_key"}
+        must(all(not (forbidden & set(item)) for item in persisted), f"replay metadata leaked private/oracle fields: {persisted}")
 
         # Deterministic elapsed-time fixture without weakening the production event API.
         base = datetime(2026, 9, 2, 12, 0, tzinfo=timezone.utc)
@@ -140,6 +193,7 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
         must("synthetic ci question" not in serialized, "mock replay leaked question text")
         must("synthetic explanation" not in serialized, "mock replay leaked explanation text")
         must("correct_positions" not in serialized and "correct answer" not in serialized, "mock replay leaked an answer oracle")
+        must("interaction metadata only" in replay["integrity_note"].lower(), "mock replay integrity note is missing")
 
         try:
             replay_payload(conn, session_id, c2)
@@ -152,21 +206,29 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
 def test_ui_contract() -> None:
     practice = (ROOT / "frontend/views/practice-v26.js").read_text(encoding="utf-8")
     lesson = (ROOT / "frontend/views/lesson-v26.js").read_text(encoding="utf-8")
+    due = (ROOT / "frontend/views/due-v26.js").read_text(encoding="utf-8")
     result = (ROOT / "frontend/views/exam-result-v26.js").read_text(encoding="utf-8")
+    session = (ROOT / "frontend/views/exam-session-v26.js").read_text(encoding="utf-8")
+    globe = (ROOT / "frontend/components/globe.js").read_text(encoding="utf-8")
     migration = (ROOT / "migrations/postgres/022_study_review_mock_replay.sql").read_text(encoding="utf-8").lower()
 
     for token in ("data-difficulty", "data-unanswered-only", "data-session-count", "difficulty: state.difficulty", "unanswered_only: state.unansweredOnly"):
         must(token in practice, f"real targeted-drill UI contract missing: {token}")
+    for forbidden in ("confidence gap", "ai-selected difficulty"):
+        must(forbidden not in practice.lower(), f"unsupported drill control leaked into UI: {forbidden}")
     must("Add to Review" in lesson and "scheduleTaskReview" in lesson, "lesson task review action is not persisted")
+    must("Concept review" in due and "Question review" in due, "Due Today does not distinguish task and question reviews")
     for label in ("Mock Replay", "Changed Answer", "Slowest", "getMockReplay"):
         must(label in result, f"mock replay UI contract missing: {label}")
+    must("recordMockReplayEvent" in session and "question_navigated_to" in session, "exam player does not capture replay navigation events")
+    must("renderActivityGlobe" in globe and "WORLD_GEOMETRY_URL" in globe, "canonical interactive globe was removed")
     for forbidden in ("correct_json", "correct_positions_json", "explanation", "question text"):
         must(forbidden not in migration, f"mock replay migration contains forbidden private payload field: {forbidden}")
 
 
 def main() -> None:
-    c1, c2, session_id = seed()
-    test_task_review(c1, c2)
+    c1, c2, session_id, skill = seed()
+    test_task_review(c1, c2, skill)
     test_mock_replay(c1, c2, session_id)
     test_ui_contract()
     print("Final UI convergence regression suite: PASS")
