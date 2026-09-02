@@ -25,11 +25,16 @@ export default async function mount(container, params = {}) {
   const domains = cert.domains || [];
   const domainCount = domains.length || 5;
   const tasks = domains.reduce((sum, domain) => sum + (domain.skills || []).length, 0) || 19;
-  const primaryLabel = account ? "Continue learning" : "Create account to start";
-  const secondaryLabel = account ? (account.plan_code === "free" ? "Take Weekly Mock" : "Take a Mock Exam") : "Sign in to practise";
-  const primaryHref = account ? `#/curriculum?track_id=${encodeURIComponent(cert.id)}` : "#/curriculum";
-  const secondaryHref = account ? `#/mock?track_id=${encodeURIComponent(cert.id)}` : "#/mock";
-  container.innerHTML = `<main class="v26-page v26-home"><section class="v26-home-hero"><p class="v26-kicker">SnowPro Core certification · ${cert.exam_code || "COF-C03"}</p><h1>Practise until you <em>pass.</em></h1><p class="v26-lede">Prepare with a complete written curriculum behind every timed mock. Create a candidate account before any study material or practice content is unlocked.</p><div class="v26-hero-actions"><a class="v26-btn primary" href="${primaryHref}">${primaryLabel}</a><a class="v26-btn secondary" href="${secondaryHref}">${secondaryLabel}</a></div><div class="v26-proof"><span>${account ? `Blueprint-first preparation across ${domainCount} domains · ${tasks} task statements` : "Account required before accessing certification content"}</span></div><div id="v26-home-globe" class="v26-home-globe"></div></section><section class="v26-home-facts" aria-label="SnowPro Core preparation facts"><div><strong>${domainCount}</strong><span>Exam domains</span></div><div><strong>${tasks}</strong><span>Task statements</span></div><div><strong>100</strong><span>Full mock questions</span></div><div><strong>750</strong><span>Practice threshold</span></div></section></main>`;
+  const primaryLabel = account ? "Continue preparing" : "Start preparing";
+  const secondaryLabel = account ? "Take a mock exam" : "Explore certifications";
+  const primaryHref = account ? `#/curriculum?track_id=${encodeURIComponent(cert.id)}` : "#/certifications";
+  const secondaryHref = account ? `#/mock?track_id=${encodeURIComponent(cert.id)}` : "#/certifications";
+  const headline = account ? "Know what to study next." : "Prepare for SnowPro with a system that knows what to study next.";
+  const lede = account
+    ? "Use your real study evidence to focus weak domains, clear due reviews, repair mistakes, and decide when you are ready for the next timed mock."
+    : "Study SnowPro domains, diagnose weaknesses, practise targeted drills, take timed mocks, review mistakes, and track readiness with a focused Snowflake learning system.";
+
+  container.innerHTML = `<main class="v26-page v26-home"><section class="v26-home-hero"><p class="v26-kicker">Snowflake Study Command Center · ${cert.exam_code || "COF-C03"}</p><h1>${headline.replace("next.", "<em>next.</em>")}</h1><p class="v26-lede">${lede}</p><div class="v26-hero-actions"><a class="v26-btn primary" href="${primaryHref}">${primaryLabel}</a><a class="v26-btn secondary" href="${secondaryHref}">${secondaryLabel}</a></div><div class="v26-proof"><span>${account ? `Blueprint-first preparation across ${domainCount} weighted domains · ${tasks} task statements` : "Official exam facts stay separate from Snowflake Brain practice configuration · candidate access required for study content"}</span></div><div id="v26-home-globe" class="v26-home-globe"></div></section><section class="v26-home-facts" aria-label="SnowPro Core preparation facts"><div><strong>${domainCount}</strong><span>Weighted domains</span></div><div><strong>${tasks}</strong><span>Task statements</span></div><div><strong>30 / 100</strong><span>Snowflake Brain mock sizes</span></div><div><strong>750</strong><span>Internal practice threshold</span></div></section></main>`;
   disposeGlobe = renderActivityGlobe(container.querySelector("#v26-home-globe"));
   await renderHomeCommandCenter(container, cert.id, account);
   renderHomeExtras(container, cert.id);
