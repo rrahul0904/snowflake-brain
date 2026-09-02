@@ -23,8 +23,19 @@ jobs:
       - name: Validate changed JavaScript syntax
         run: |
           node --check frontend/components/home-command-center.js
+          node --check frontend/components/learning-widgets.js
+          node --check frontend/components/study-shell.js
           node --check frontend/views/home-v26.js
+          node --check frontend/views/curriculum-v26.js
+          node --check frontend/views/lesson-v26.js
+          node --check frontend/views/adaptive-v26.js
+          node --check frontend/views/due-v26.js
           node --check frontend/views/mistakes-v26.js
+          node --check frontend/views/confidence-v26.js
+          node --check frontend/views/study-plan-v26.js
+          node --check frontend/views/exam-traps-v26.js
+          node --check frontend/views/exercises-v26.js
+          node --check frontend/views/exam-result-v26.js
           node --check frontend/views/community-v26.js
           node --check frontend/router-complete.js
           node --check frontend/components/nav.js
@@ -34,15 +45,24 @@ jobs:
           test -f frontend/components/globe.js
           grep -q 'renderActivityGlobe' frontend/views/home-v26.js
           grep -q 'v26-home-globe' frontend/views/home-v26.js
+          grep -q 'v26-demo-upgrade.css' frontend/index-v26.html
           if grep -Rni 'beta-demo' frontend/views/home-v26.js frontend/components/home-command-center.js frontend/router-complete.js; then
             echo 'V26 upgrade must not route back to beta-demo'
             exit 1
           fi
-      - name: Verify new V26 experiences
+      - name: Verify Study Command Center experiences
         run: |
-          grep -q 'Mistake Collection' frontend/views/mistakes-v26.js
+          grep -q 'Snowflake Study Command Center' frontend/views/home-v26.js
+          grep -q 'Next best study action' frontend/components/home-command-center.js
+          grep -q 'Mistake Notebook' frontend/views/mistakes-v26.js
+          grep -q 'Confidence Calibration' frontend/views/confidence-v26.js
+          grep -q 'Due Today' frontend/views/due-v26.js
+          grep -q 'Study Plan' frontend/views/study-plan-v26.js
+          grep -q 'Exam Trap Library' frontend/views/exam-traps-v26.js
           grep -q 'Community Insights' frontend/views/community-v26.js
-          grep -q 'Your prep command center' frontend/components/home-command-center.js
           grep -q '"#/mistakes":"mistakes-v26.js"' frontend/router-complete.js
-          grep -q '"#/community":"community-v26.js"' frontend/router-complete.js
-          grep -q 'v26-demo-upgrade.css' frontend/index-v26.html
+          grep -q '"#/due":"due-v26.js"' frontend/router-complete.js
+          grep -q '"#/confidence":"confidence-v26.js"' frontend/router-complete.js
+          grep -q '"#/study-plan":"study-plan-v26.js"' frontend/router-complete.js
+          grep -q '"#/exam-traps":"exam-traps-v26.js"' frontend/router-complete.js
+          grep -q 'command-center-tools.css' frontend/index-v26.html
