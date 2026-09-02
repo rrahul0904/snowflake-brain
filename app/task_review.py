@@ -4,6 +4,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from .certification_content import configured_skill_map
 from .database import connect
 
 SCHEMA_VERSION = "20260902_001_task_review"
@@ -20,6 +21,16 @@ def _database_key(conn: Any) -> str:
         return str(row["file"] or row[2] or "memory")
     except (KeyError, TypeError, IndexError):
         return str(row[2] or "memory")
+
+
+def _validate_skill(track_id: str, skill_id: str) -> None:
+    for cert in configured_skill_map().get("certifications") or []:
+        if cert.get("id") != track_id:
+            continue
+        if any(skill.get("id") == skill_id for domain in cert.get("domains") or [] for skill in domain.get("skills") or []):
+            return
+        raise ValueError("Task not found for certification")
+    raise ValueError("Certification track not found")
 
 
 def ensure_task_review_schema() -> None:
@@ -77,6 +88,7 @@ def _row(row: Any | None) -> dict[str, Any] | None:
 
 def get_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any] | None:
     ensure_task_review_schema()
+    _validate_skill(track_id, skill_id)
     return _row(
         conn.execute(
             "SELECT * FROM candidate_task_reviews WHERE candidate_id=? AND track_id=? AND skill_id=?",
@@ -87,15 +99,21 @@ def get_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) 
 
 def schedule_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any]:
     ensure_task_review_schema()
-    now = datetime.now(timezone.utc)
-    due = now + timedelta(days=1)
+    _validate_skill(track_id, skill_id)
+    existing = conn.execute(
+        "SELECT * FROM candidate_task_reviews WHERE candidate_id=? AND track_id=? AND skill_id=?",
+        (candidate_id, track_id, skill_id),
+    ).fetchone()
+    if existing and str(existing["status"] or "active") == "active":
+        return _row(existing) or {}
+    due = datetime.now(timezone.utc) + timedelta(days=1)
     conn.execute(
         """
         INSERT INTO candidate_task_reviews(
           candidate_id,track_id,skill_id,source_type,next_review_at,interval_days,review_count,status,updated_at
         ) VALUES (?,?,?,'task',?,1,0,'active',datetime('now'))
         ON CONFLICT(candidate_id,track_id,skill_id) DO UPDATE SET
-          status='active',
+          status='active',next_review_at=excluded.next_review_at,interval_days=1,review_count=0,
           updated_at=datetime('now')
         """,
         (candidate_id, track_id, skill_id, _sql_time(due)),
@@ -105,6 +123,7 @@ def schedule_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: 
 
 def mark_task_reviewed(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any]:
     ensure_task_review_schema()
+    _validate_skill(track_id, skill_id)
     current = get_task_review(conn, candidate_id, track_id, skill_id)
     if not current or current["status"] != "active":
         raise ValueError("Task review is not scheduled")
@@ -125,6 +144,7 @@ def mark_task_reviewed(conn: Any, candidate_id: int, track_id: str, skill_id: st
 
 def reset_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any]:
     ensure_task_review_schema()
+    _validate_skill(track_id, skill_id)
     current = get_task_review(conn, candidate_id, track_id, skill_id)
     if not current:
         schedule_task_review(conn, candidate_id, track_id, skill_id)
