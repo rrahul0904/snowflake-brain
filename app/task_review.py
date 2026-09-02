@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .certification_content import configured_skill_map
-from .database import connect
+from .config import DATABASE_BACKEND
 
 SCHEMA_VERSION = "20260902_001_task_review"
 _SCHEMA_LOCK = threading.RLock()
@@ -33,37 +33,45 @@ def _validate_skill(track_id: str, skill_id: str) -> None:
     raise ValueError("Certification track not found")
 
 
-def ensure_task_review_schema() -> None:
+def _ensure_task_review_schema(conn: Any) -> None:
+    """Bootstrap only SQLite dev/test databases on the caller's connection.
+
+    PostgreSQL schema is provisioned by migrations/postgres/022_study_review_mock_replay.sql.
+    Runtime PostgreSQL roles must never need DDL privileges. Using the caller's
+    SQLite connection also avoids a nested writer connection and the resulting
+    `database is locked` failure during Due Today requests.
+    """
+    if DATABASE_BACKEND != "sqlite":
+        return
     with _SCHEMA_LOCK:
-        with connect() as conn:
-            key = _database_key(conn)
-            if key in _READY_DATABASES:
-                return
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS candidate_task_reviews (
-                  candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
-                  track_id TEXT NOT NULL,
-                  skill_id TEXT NOT NULL,
-                  source_type TEXT NOT NULL DEFAULT 'task' CHECK(source_type IN ('task')),
-                  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                  next_review_at TEXT NOT NULL DEFAULT (datetime('now','+1 day')),
-                  interval_days INTEGER NOT NULL DEFAULT 1 CHECK(interval_days >= 0),
-                  review_count INTEGER NOT NULL DEFAULT 0 CHECK(review_count >= 0),
-                  last_reviewed_at TEXT,
-                  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived')),
-                  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-                  PRIMARY KEY(candidate_id, track_id, skill_id)
-                );
-                CREATE INDEX IF NOT EXISTS idx_candidate_task_reviews_due
-                  ON candidate_task_reviews(candidate_id, track_id, status, next_review_at);
-                """
-            )
-            conn.execute(
-                "INSERT OR IGNORE INTO schema_migrations(version,name) VALUES (?,?)",
-                (SCHEMA_VERSION, "Persisted task-level spaced review scheduling"),
-            )
-            _READY_DATABASES.add(key)
+        key = _database_key(conn)
+        if key in _READY_DATABASES:
+            return
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS candidate_task_reviews (
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              track_id TEXT NOT NULL,
+              skill_id TEXT NOT NULL,
+              source_type TEXT NOT NULL DEFAULT 'task' CHECK(source_type IN ('task')),
+              created_at TEXT NOT NULL DEFAULT (datetime('now')),
+              next_review_at TEXT NOT NULL DEFAULT (datetime('now','+1 day')),
+              interval_days INTEGER NOT NULL DEFAULT 1 CHECK(interval_days >= 0),
+              review_count INTEGER NOT NULL DEFAULT 0 CHECK(review_count >= 0),
+              last_reviewed_at TEXT,
+              status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived')),
+              updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+              PRIMARY KEY(candidate_id, track_id, skill_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_candidate_task_reviews_due
+              ON candidate_task_reviews(candidate_id, track_id, status, next_review_at);
+            """
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version,name) VALUES (?,?)",
+            (SCHEMA_VERSION, "Persisted task-level spaced review scheduling"),
+        )
+        _READY_DATABASES.add(key)
 
 
 def _sql_time(value: datetime) -> str:
@@ -87,7 +95,7 @@ def _row(row: Any | None) -> dict[str, Any] | None:
 
 
 def get_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any] | None:
-    ensure_task_review_schema()
+    _ensure_task_review_schema(conn)
     _validate_skill(track_id, skill_id)
     return _row(
         conn.execute(
@@ -98,7 +106,7 @@ def get_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) 
 
 
 def schedule_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any]:
-    ensure_task_review_schema()
+    _ensure_task_review_schema(conn)
     _validate_skill(track_id, skill_id)
     existing = conn.execute(
         "SELECT * FROM candidate_task_reviews WHERE candidate_id=? AND track_id=? AND skill_id=?",
@@ -122,7 +130,7 @@ def schedule_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: 
 
 
 def mark_task_reviewed(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any]:
-    ensure_task_review_schema()
+    _ensure_task_review_schema(conn)
     _validate_skill(track_id, skill_id)
     current = get_task_review(conn, candidate_id, track_id, skill_id)
     if not current or current["status"] != "active":
@@ -143,7 +151,7 @@ def mark_task_reviewed(conn: Any, candidate_id: int, track_id: str, skill_id: st
 
 
 def reset_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str) -> dict[str, Any]:
-    ensure_task_review_schema()
+    _ensure_task_review_schema(conn)
     _validate_skill(track_id, skill_id)
     current = get_task_review(conn, candidate_id, track_id, skill_id)
     if not current:
@@ -160,7 +168,7 @@ def reset_task_review(conn: Any, candidate_id: int, track_id: str, skill_id: str
 
 
 def due_task_reviews(conn: Any, candidate_id: int, track_id: str, limit: int = 50) -> dict[str, Any]:
-    ensure_task_review_schema()
+    _ensure_task_review_schema(conn)
     safe_limit = max(1, min(int(limit), 100))
     rows = [
         _row(row)
