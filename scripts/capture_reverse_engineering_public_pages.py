@@ -46,10 +46,45 @@ def slug(value: str) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", value.lower()).strip("-")
 
 
+def page_metrics(page: Page) -> dict:
+    return page.evaluate(
+        """() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+          bodyScrollWidth: document.body?.scrollWidth || 0,
+          viewId: document.querySelector('#view-root')?.dataset?.viewId || '',
+          routeOk: document.querySelector('#view-root')?.dataset?.routeOk || '',
+          url: location.href,
+        })"""
+    )
+
+
+def diagnostic_failure(page: Page, *, width: int, height: int, theme: str, name: str, error: Exception) -> None:
+    metrics = page_metrics(page)
+    label = f"{width}x{height}-{theme}-{slug(name)}"
+    failure_path = OUT / f"FAIL-{label}.png"
+    try:
+        page.screenshot(path=str(failure_path), full_page=True, animations="disabled")
+    except Exception as screenshot_error:
+        print(f"VISUAL_QA_FAILURE_SCREENSHOT_ERROR label={label} error={screenshot_error}", flush=True)
+    print(
+        "VISUAL_QA_FAILURE "
+        f"route={name} viewport={width}x{height} theme={theme} "
+        f"assertion={type(error).__name__}:{error} "
+        f"scrollWidth={metrics.get('scrollWidth')} clientWidth={metrics.get('clientWidth')} "
+        f"bodyScrollWidth={metrics.get('bodyScrollWidth')} viewId={metrics.get('viewId')} "
+        f"routeOk={metrics.get('routeOk')} url={metrics.get('url')} "
+        f"screenshot={failure_path}",
+        flush=True,
+    )
+
+
 def assert_no_horizontal_overflow(page: Page, label: str) -> None:
-    overflow = page.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 2")
-    if overflow:
-        raise AssertionError(f"horizontal overflow: {label}")
+    metrics = page_metrics(page)
+    if metrics["scrollWidth"] > metrics["clientWidth"] + 2:
+        raise AssertionError(
+            f"horizontal overflow: {label} scrollWidth={metrics['scrollWidth']} clientWidth={metrics['clientWidth']}"
+        )
 
 
 def assert_route_contract(page: Page, name: str) -> None:
@@ -92,30 +127,38 @@ def run_viewport(browser, width: int, height: int) -> int:
     page.on("console", lambda msg: errors.append(f"console {msg.type}: {msg.text}") if msg.type == "error" else None)
     shots = 0
 
-    for theme in THEMES:
-        for name, route in ROUTES.items():
-            page.goto(f"{BASE}/{route}", wait_until="domcontentloaded")
-            page.wait_for_selector("#view-root[data-route-ok='true']")
-            set_theme(page, theme)
-            page.wait_for_timeout(100)
-            assert_route_contract(page, name)
-            assert_no_horizontal_overflow(page, f"{width}x{height}-{theme}-{name}")
-            page.screenshot(
-                path=str(OUT / f"{width}x{height}-{theme}-{slug(name)}.png"),
-                full_page=True,
-                animations="disabled",
-            )
-            shots += 1
+    try:
+        for theme in THEMES:
+            for name, route in ROUTES.items():
+                errors.clear()
+                try:
+                    page.goto(f"{BASE}/{route}", wait_until="domcontentloaded")
+                    page.wait_for_selector("#view-root[data-route-ok='true']")
+                    set_theme(page, theme)
+                    page.wait_for_timeout(100)
+                    assert_route_contract(page, name)
+                    assert_no_horizontal_overflow(page, f"{width}x{height}-{theme}-{name}")
+                    if errors:
+                        raise AssertionError("browser errors: " + " | ".join(errors))
+                    page.screenshot(
+                        path=str(OUT / f"{width}x{height}-{theme}-{slug(name)}.png"),
+                        full_page=True,
+                        animations="disabled",
+                    )
+                    shots += 1
+                except Exception as error:
+                    diagnostic_failure(page, width=width, height=height, theme=theme, name=name, error=error)
+                    raise
 
-    page.goto(f"{BASE}/#/curriculum?track_id=snowpro-core", wait_until="domcontentloaded")
-    page.wait_for_selector("#view-root[data-view-id='authentication-required']")
-    if page.locator(".v26-study-nav,.v26-curriculum-list").count():
-        raise AssertionError("anonymous study content rendered during public acceptance matrix")
-
-    if errors:
-        raise AssertionError("browser errors: " + " | ".join(errors))
-    context.close()
-    return shots
+        page.goto(f"{BASE}/#/curriculum?track_id=snowpro-core", wait_until="domcontentloaded")
+        page.wait_for_selector("#view-root[data-view-id='authentication-required']")
+        if page.locator(".v26-study-nav,.v26-curriculum-list").count():
+            raise AssertionError("anonymous study content rendered during public acceptance matrix")
+        if errors:
+            raise AssertionError("browser errors: " + " | ".join(errors))
+        return shots
+    finally:
+        context.close()
 
 
 def main() -> None:
