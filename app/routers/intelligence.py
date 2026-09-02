@@ -45,6 +45,10 @@ def _sync(conn: Any, candidate_id: int, track_id: str) -> None:
     sync_candidate_learning_state(conn, candidate_id, track_id)
 
 
+def _task_review_error(exc: ValueError) -> HTTPException:
+    return HTTPException(status_code=404, detail=str(exc))
+
+
 @router.get("/intelligence/portfolio")
 def certification_portfolio(candidate: dict = Depends(require_premium_candidate)) -> dict[str, Any]:
     with connect() as conn:
@@ -101,8 +105,11 @@ def certification_task_review_status(
 ) -> dict[str, Any]:
     if not skill_id:
         raise HTTPException(status_code=400, detail="skill_id is required")
-    with connect() as conn:
-        return {"review": get_task_review(conn, candidate["id"], track_id, skill_id)}
+    try:
+        with connect() as conn:
+            return {"review": get_task_review(conn, candidate["id"], track_id, skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
 
 
 @router.post("/intelligence/task-review")
@@ -110,8 +117,11 @@ def certification_schedule_task_review(
     payload: TaskReviewRequest,
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
-    with connect() as conn:
-        return {"review": schedule_task_review(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    try:
+        with connect() as conn:
+            return {"review": schedule_task_review(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
 
 
 @router.post("/intelligence/task-review/reviewed")
@@ -123,7 +133,7 @@ def certification_mark_task_reviewed(
         with connect() as conn:
             return {"review": mark_task_reviewed(conn, candidate["id"], payload.track_id, payload.skill_id)}
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise _task_review_error(exc) from exc
 
 
 @router.post("/intelligence/task-review/reset")
@@ -131,8 +141,11 @@ def certification_reset_task_review(
     payload: TaskReviewRequest,
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
-    with connect() as conn:
-        return {"review": reset_task_review(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    try:
+        with connect() as conn:
+            return {"review": reset_task_review(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
 
 
 @router.get("/intelligence/mistake-notebook")
