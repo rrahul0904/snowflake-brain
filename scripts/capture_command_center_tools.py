@@ -33,18 +33,15 @@ def wait_server() -> None:
     deadline = time.time() + 45
     while time.time() < deadline:
         try:
-            if api("/api/health").get("status") == "ok":
-                return
-        except Exception:
-            time.sleep(0.4)
+            if api("/api/health").get("status") == "ok": return
+        except Exception: time.sleep(0.4)
     raise RuntimeError("server not ready")
 
 
 def register_candidate() -> None:
     email = f"command-center-{uuid.uuid4().hex[:8]}@example.com"
     payload = api("/api/auth/register", "POST", {"display_name": "Command Center QA", "email": email, "password": "CommandCenterVisual!123"})
-    if not payload.get("authenticated"):
-        raise AssertionError("candidate registration did not establish a session")
+    if not payload.get("authenticated"): raise AssertionError("candidate registration did not establish a session")
 
 
 def certification_ids() -> tuple[str, str]:
@@ -57,10 +54,11 @@ def certification_ids() -> tuple[str, str]:
 
 def routes(domain_id: str, skill_id: str) -> dict[str, tuple[str, tuple[str, ...]]]:
     return {
-        "home-command-center": ("#/home", (".v26-home-hero", ".v26-home-command-wrap")),
+        "home-command-center": ("#/home", (".v26-home-hero", ".v26-home-command-wrap", "[data-evidence-confidence]")),
         "curriculum-domain-map": ("#/curriculum?track_id=snowpro-core", (".v26-curriculum-list", ".v26-study-nav")),
         "domain-detail": (f"#/domain?track_id=snowpro-core&domain_id={domain_id}", (".v26-learning-command", ".v26-domain-task-section")),
-        "task-handbook": (f"#/skill?track_id=snowpro-core&skill_id={skill_id}", (".v26-lesson-head", ".v26-decision-rules")),
+        "task-handbook": (f"#/skill?track_id=snowpro-core&skill_id={skill_id}", (".v26-lesson-head", ".v26-decision-rules", "[data-add-review]")),
+        "targeted-drill": (f"#/practice?track_id=snowpro-core&mode=drill&skill_id={skill_id}", ("[data-difficulty]", "[data-unanswered-only]", "[data-session-count]")),
         "progress": ("#/progress?track_id=snowpro-core", (".v26-readiness-panel", ".v26-recording-domain-progress")),
         "adaptive-readiness": ("#/adaptive?track_id=snowpro-core", (".v26-adaptive-overview", ".v26-readiness-radar")),
         "due-today": ("#/due?track_id=snowpro-core", (".v26-recording-progress-head",)),
@@ -76,8 +74,7 @@ def routes(domain_id: str, skill_id: str) -> dict[str, tuple[str, tuple[str, ...
 def set_theme(page: Page, theme: str) -> None:
     page.evaluate("theme => window.__setSnowflakeTheme?.(theme)", theme)
     page.wait_for_timeout(80)
-    if page.locator("html").get_attribute("data-theme") != theme:
-        raise AssertionError(f"theme did not apply: {theme}")
+    if page.locator("html").get_attribute("data-theme") != theme: raise AssertionError(f"theme did not apply: {theme}")
 
 
 def no_overflow(page: Page, label: str) -> None:
@@ -95,42 +92,33 @@ def run(browser, width: int, height: int, route_map: dict[str, tuple[str, tuple[
     shots = 0
     for theme in THEMES:
         for name, (hash_path, selectors) in route_map.items():
+            errors.clear()
             page.goto(f"{BASE}/{hash_path}", wait_until="domcontentloaded")
             page.wait_for_selector("#view-root[data-route-ok='true']")
             set_theme(page, theme)
             page.wait_for_timeout(120)
-            for selector in selectors:
-                page.wait_for_selector(selector)
-            if page.locator("#view-root[data-view-id='authentication-required']").count():
-                raise AssertionError(f"authenticated route unexpectedly gated: {name}")
+            for selector in selectors: page.wait_for_selector(selector)
+            if page.locator("#view-root[data-view-id='authentication-required']").count(): raise AssertionError(f"authenticated route unexpectedly gated: {name}")
             no_overflow(page, f"{width}x{height}-{theme}-{name}")
+            if errors: raise AssertionError("browser errors: " + " | ".join(errors))
             page.screenshot(path=str(OUT / f"{width}x{height}-{theme}-{slug(name)}.png"), full_page=True, animations="disabled")
             shots += 1
-    if errors:
-        raise AssertionError("browser errors: " + " | ".join(errors))
     context.close()
     return shots
 
 
-def slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9-]+", "-", value.lower()).strip("-")
+def slug(value: str) -> str: return re.sub(r"[^a-z0-9-]+", "-", value.lower()).strip("-")
 
 
 def main() -> None:
-    wait_server()
-    register_candidate()
-    domain_id, skill_id = certification_ids()
-    route_map = routes(domain_id, skill_id)
+    wait_server(); register_candidate(); domain_id, skill_id = certification_ids(); route_map = routes(domain_id, skill_id)
     total = 0
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         try:
-            for width, height in VIEWPORTS:
-                total += run(browser, width, height, route_map)
-        finally:
-            browser.close()
+            for width, height in VIEWPORTS: total += run(browser, width, height, route_map)
+        finally: browser.close()
     print(f"Command Center authenticated visual acceptance: PASS screenshots={total}")
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
