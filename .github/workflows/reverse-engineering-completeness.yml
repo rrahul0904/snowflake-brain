@@ -6,10 +6,12 @@ on:
       - 'artifacts/reverse-engineering-coverage.json'
       - 'config/certification_catalog.json'
       - 'config/snowflake_lab_challenges.json'
-      - 'app/security.py'
+      - 'app/**'
       - 'frontend/**'
+      - 'migrations/postgres/**'
       - 'docs/**'
       - 'scripts/test_reverse_engineering_completeness.py'
+      - 'scripts/test_final_convergence.py'
       - 'scripts/audit_private_bank_quality.py'
       - '.github/workflows/reverse-engineering-completeness.yml'
   push:
@@ -21,10 +23,12 @@ on:
       - 'artifacts/reverse-engineering-coverage.json'
       - 'config/certification_catalog.json'
       - 'config/snowflake_lab_challenges.json'
-      - 'app/security.py'
+      - 'app/**'
       - 'frontend/**'
+      - 'migrations/postgres/**'
       - 'docs/**'
       - 'scripts/test_reverse_engineering_completeness.py'
+      - 'scripts/test_final_convergence.py'
       - 'scripts/audit_private_bank_quality.py'
       - '.github/workflows/reverse-engineering-completeness.yml'
 
@@ -43,5 +47,7 @@ jobs:
           python-version: '3.13'
       - name: Validate reverse-engineering coverage
         run: python scripts/test_reverse_engineering_completeness.py
+      - name: Validate final Study Command Center convergence
+        run: python scripts/test_final_convergence.py
       - name: Verify private-bank auditor never needs repository corpus
         run: python scripts/audit_private_bank_quality.py /tmp/intentionally-absent-private-bank.json || test $? -eq 2
