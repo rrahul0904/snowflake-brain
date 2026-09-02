@@ -20,7 +20,11 @@ os.environ.pop("DATABASE_MIGRATION_URL", None)
 os.environ.pop("VERCEL", None)
 os.environ.pop("VERCEL_ENV", None)
 
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.auth import require_candidate  # noqa: E402
 from app.database import connect, run_migrations  # noqa: E402
+from app.main import app  # noqa: E402
 from app.mock_replay import append_event, record_answer_event, replay_payload  # noqa: E402
 from app.skill_brain import flatten_skills  # noqa: E402
 from app.task_review import due_task_reviews, get_task_review, mark_task_reviewed, reset_task_review, schedule_task_review  # noqa: E402
@@ -118,6 +122,49 @@ def test_task_review(c1: int, c2: int, skill: dict[str, str]) -> None:
             raise AssertionError("task review accepted an unknown task")
 
 
+def test_mounted_mock_replay_api_active(c1: int, c2: int, session_id: int) -> None:
+    app.dependency_overrides[require_candidate] = lambda: {"id": c1}
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                f"/api/mock/sessions/{session_id}/events",
+                json={
+                    "event_type": "question_viewed",
+                    "question_id": "conv-q1",
+                    "metadata": {
+                        "position": 1,
+                        "question": "must never persist",
+                        "correct_answer": [0],
+                        "explanation": "must never persist",
+                    },
+                },
+            )
+            must(response.status_code == 200, f"mounted replay event endpoint failed: {response.status_code} {response.text}")
+
+            forged = client.post(
+                f"/api/mock/sessions/{session_id}/events",
+                json={"event_type": "answer_changed", "question_id": "conv-q1", "metadata": {}},
+            )
+            must(forged.status_code == 422, "client event allowlist accepted a server-managed answer event")
+
+            app.dependency_overrides[require_candidate] = lambda: {"id": c2}
+            stolen = client.post(
+                f"/api/mock/sessions/{session_id}/events",
+                json={"event_type": "question_viewed", "question_id": "conv-q1", "metadata": {"position": 1}},
+            )
+            must(stolen.status_code in {403, 404}, f"cross-candidate replay event write was not denied: {stolen.status_code}")
+
+        with connect() as conn:
+            persisted = [json.loads(row["metadata_json"] or "{}") for row in conn.execute(
+                "SELECT metadata_json FROM exam_session_events WHERE session_id=? ORDER BY id",
+                (session_id,),
+            )]
+        forbidden = {"question", "correct_answer", "correct", "explanation", "answer_key"}
+        must(all(not (forbidden & set(item)) for item in persisted), f"mounted replay API leaked private/oracle metadata: {persisted}")
+    finally:
+        app.dependency_overrides.pop(require_candidate, None)
+
+
 def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
     with connect() as conn:
         try:
@@ -158,7 +205,6 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
         else:
             raise AssertionError("client was allowed to forge a server-managed answer-change event")
 
-        # Verify forbidden metadata was stripped before persistence.
         persisted = [json.loads(row["metadata_json"] or "{}") for row in conn.execute(
             "SELECT metadata_json FROM exam_session_events WHERE session_id=? ORDER BY id",
             (session_id,),
@@ -166,7 +212,6 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
         forbidden = {"question", "correct_answer", "correct", "explanation", "answer_key"}
         must(all(not (forbidden & set(item)) for item in persisted), f"replay metadata leaked private/oracle fields: {persisted}")
 
-        # Deterministic elapsed-time fixture without weakening the production event API.
         base = datetime(2026, 9, 2, 12, 0, tzinfo=timezone.utc)
         conn.execute("DELETE FROM exam_session_events WHERE session_id=? AND event_type IN ('question_viewed','question_navigated_from')", (session_id,))
         conn.execute(
@@ -203,6 +248,26 @@ def test_mock_replay(c1: int, c2: int, session_id: int) -> None:
             raise AssertionError("mock replay leaked across candidates")
 
 
+def test_mounted_mock_replay_api_submitted(c1: int, session_id: int) -> None:
+    app.dependency_overrides[require_candidate] = lambda: {"id": c1}
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                f"/api/mock/sessions/{session_id}/events",
+                json={"event_type": "session_resumed", "metadata": {}},
+            )
+            must(response.status_code == 409, f"submitted mock accepted a new replay event: {response.status_code}")
+
+            replay = client.get(f"/api/mock/sessions/{session_id}/replay")
+            must(replay.status_code == 200, f"mounted replay read endpoint failed after submission: {replay.status_code} {replay.text}")
+            serialized = replay.text.lower()
+            must("synthetic ci question" not in serialized, "mounted replay endpoint leaked question text")
+            must("synthetic explanation" not in serialized, "mounted replay endpoint leaked explanation text")
+            must("correct_positions" not in serialized and "correct answer" not in serialized, "mounted replay endpoint leaked an answer oracle")
+    finally:
+        app.dependency_overrides.pop(require_candidate, None)
+
+
 def test_ui_contract() -> None:
     practice = (ROOT / "frontend/views/practice-v26.js").read_text(encoding="utf-8")
     lesson = (ROOT / "frontend/views/lesson-v26.js").read_text(encoding="utf-8")
@@ -229,7 +294,9 @@ def test_ui_contract() -> None:
 def main() -> None:
     c1, c2, session_id, skill = seed()
     test_task_review(c1, c2, skill)
+    test_mounted_mock_replay_api_active(c1, c2, session_id)
     test_mock_replay(c1, c2, session_id)
+    test_mounted_mock_replay_api_submitted(c1, session_id)
     test_ui_contract()
     print("Final UI convergence regression suite: PASS")
 
