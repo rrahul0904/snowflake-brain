@@ -21,22 +21,23 @@ export function studySidebar(cert, active = "", activeSkillId = "", completedSki
     <div class="v26-side-group"><small>Study Tools</small>
       ${side("#/progress", "Progress Dashboard", cert.id, active === "progress")}
       ${side("#/adaptive", "Adaptive Readiness", cert.id, active === "adaptive")}
-      ${side("#/practice?mode=srs", "Due Today", cert.id, active === "due")}
+      ${side("#/due", "Due Today", cert.id, active === "due")}
       ${side("#/mistakes", "Mistake Notebook", cert.id, active === "mistakes")}
-      ${side("#/progress?section=confidence", "Confidence Calibration", cert.id, active === "confidence")}
-      ${side("#/progress?section=plan", "Study Plan", cert.id, active === "plan")}
+      ${side("#/confidence", "Confidence Calibration", cert.id, active === "confidence")}
+      ${side("#/study-plan", "Study Plan", cert.id, active === "plan")}
     </div>
     <div class="v26-side-group"><small>Curriculum</small>${domains}</div>
     <div class="v26-side-group"><small>Practice</small>
       ${side("#/practice?mode=diagnostic", "Diagnostic Assessment", cert.id, active === "diagnostic")}
       ${side("#/practice?mode=drill", "Targeted Drill", cert.id, active === "drill")}
-      ${side("#/mock/start?type=weekly-mock", "Quick Mock", cert.id, active === "quick-mock")}
+      ${side("#/mock/start?type=quick-mock", "Quick Mock", cert.id, active === "quick-mock")}
       ${side("#/mock/start?type=full-mock", "Full Mock", cert.id, active === "full-mock")}
       ${side("#/exercises", "Build Exercises", cert.id, active === "exercises")}
     </div>
     <div class="v26-side-group"><small>Look Up</small>
       ${side("#/quick-reference", "Quick Reference", cert.id, active === "quick-reference")}
       ${side("#/glossary", "Glossary", cert.id, active === "glossary")}
+      ${side("#/exam-traps", "Exam Trap Library", cert.id, active === "exam-traps")}
       ${side("#/exam-guide", "Exam Guide", cert.id, active === "exam-guide")}
     </div>
   </aside>`;
