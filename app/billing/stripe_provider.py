@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
-from ..config import STRIPE_API_BASE, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from ..config import STRIPE_API_BASE, STRIPE_PORTAL_CONFIGURATION_ID, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
 
 class StripeProvider:
@@ -76,10 +76,10 @@ class StripeProvider:
         return {"id": payload.get("id"), "url": payload.get("url")}
 
     def create_portal_session(self, *, customer_id: str, return_url: str) -> dict:
-        payload = self._post(
-            "/v1/billing_portal/sessions",
-            {"customer": customer_id, "return_url": return_url},
-        )
+        data: dict[str, str] = {"customer": customer_id, "return_url": return_url}
+        if STRIPE_PORTAL_CONFIGURATION_ID:
+            data["configuration"] = STRIPE_PORTAL_CONFIGURATION_ID
+        payload = self._post("/v1/billing_portal/sessions", data)
         return {"id": payload.get("id"), "url": payload.get("url")}
 
     def verify_webhook(self, payload: bytes, signature_header: str) -> dict:

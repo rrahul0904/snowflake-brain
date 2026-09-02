@@ -25,13 +25,14 @@ def main() -> None:
     backend_router = read("app/routers/adaptive.py")
     main_py = read("app/main.py")
 
-    for export in ("getAdaptiveReadiness", "getAdaptiveRecommendations", "getAdaptiveQuestionIds"):
+    for export in ("getAdaptiveReadiness", "getAdaptiveRecommendations"):
         require(api, f"export const {export}", f"adaptive API export {export}")
+    if "getAdaptiveQuestionIds" in api or "/adaptive/question-ids" in api:
+        raise AssertionError("Candidate frontend must not expose raw adaptive question-ID inventory")
+    if '"/question-ids"' in backend_router or "def question_ids" in backend_router:
+        raise AssertionError("Candidate adaptive router must not expose raw active-release question IDs")
+
     require(router, '"#/adaptive":"adaptive-v26.js"', "adaptive SPA route")
-    # Adaptive remains a first-class signed-in capability but the recording-parity
-    # header intentionally keeps only Curriculum, Practice, Reference and Journal.
-    # Require an explicit account-menu entry instead of coupling the capability to
-    # one particular primary-navigation layout.
     require(nav, 'href="#/adaptive?track_id=', "adaptive signed-in navigation")
     require(nav, 'Adaptive Readiness', "adaptive navigation label")
     require(view, "not a probability", "readiness disclaimer")
@@ -40,20 +41,19 @@ def main() -> None:
     require(view, "response_time_ms", "response-time capture")
     require(backend_router, 'prefix="/intelligence/adaptive"', "authenticated adaptive API router")
     require(main_py, "app.include_router(adaptive.router, prefix=\"/api\")", "adaptive router mount")
-    require(runtime, "adaptive_question_ids", "adaptive priority lookup")
+
+    # Adaptive priorities remain server-side. The candidate starts a normal
+    # adaptive practice session; the canonical selector then applies active
+    # release, entitlement, quota and served-history boundaries before wording is
+    # returned.
+    require(runtime, "adaptive_question_ids", "server-side adaptive priority lookup")
     require(runtime, "preferred_question_ids=preferred", "adaptive priorities passed to canonical selector")
     require(selector, "filter_rows_to_active_release", "active release boundary")
     require(selector, "filter_rows_for_entitlement", "tier entitlement boundary")
     require(selector, "reserve_daily_questions", "daily quota boundary")
     require(selector, 'strategy = "adaptive_readiness_entitlement_aware"', "adaptive selection strategy")
 
-    forbidden = ("correct_json", "correct_options", "explanation")
-    question_ids_handler = backend_router.split("def question_ids", 1)[1]
-    for token in forbidden:
-        if token in question_ids_handler:
-            raise AssertionError(f"Adaptive question-ID endpoint leaks answer-oriented field: {token}")
-
-    print("Adaptive frontend/delivery contract: PASS (route, signed-in navigation, evidence, active-release + entitlement-aware delivery)")
+    print("Adaptive frontend/delivery contract: PASS (no raw ID inventory; entitled server-side adaptive delivery)")
 
 
 if __name__ == "__main__":

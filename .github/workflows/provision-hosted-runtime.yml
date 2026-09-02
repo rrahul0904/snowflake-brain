@@ -1,0 +1,46 @@
+name: Provision Hosted Runtime Credential
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_role:
+        description: "Dedicated PostgreSQL login role used by Vercel request-serving functions"
+        required: true
+        default: "snowflake_app_runtime"
+
+permissions:
+  contents: read
+
+jobs:
+  provision-hosted-runtime:
+    name: provision-hosted-runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_MIGRATION_URL: ${{ secrets.PRODUCTION_DATABASE_MIGRATION_URL }}
+      DATABASE_SCHEMA: public
+      HOSTED_RUNTIME_ROLE: ${{ inputs.runtime_role }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_2SLKmOpeMM8ogNkXfNYHu7IyjYab
+      VERCEL_TEAM_ID: team_zmEezpOKGZy2sH5nqTfO44LD
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Require deployment-only secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${DATABASE_MIGRATION_URL:-}" ]] || { echo "PRODUCTION_DATABASE_MIGRATION_URL is required" >&2; exit 1; }
+          [[ -n "${VERCEL_TOKEN:-}" ]] || { echo "VERCEL_TOKEN is required" >&2; exit 1; }
+      - name: Create/rotate least-privilege runtime role and Vercel DATABASE_URL
+        run: python scripts/provision_hosted_runtime.py
+      - name: Require a fresh Vercel deployment
+        run: |
+          echo "Runtime credential rotation completed without printing credentials."
+          echo "Redeploy the target Preview/Production deployment so it receives the new encrypted DATABASE_URL."

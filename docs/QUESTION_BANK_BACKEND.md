@@ -28,7 +28,7 @@ There is intentionally no candidate-facing question-bank admin or status API.
 
 ## Private content boundary
 
-Production JSON bank files live under `PRIVATE_QUESTION_BANK_DIR`, mounted read-only into the application container. `private_content/` is ignored by Git. Never place commercial question-bank JSON under `frontend/`, `config/`, or another committed repository path.
+Production question content lives only in the managed PostgreSQL active release. `PRIVATE_QUESTION_BANK_DIR` is restricted to development/CI and approved one-time import jobs; it is not configured in the Vercel runtime. `private_content/` is ignored by Git. Never place commercial question-bank JSON under `frontend/`, `config/`, or another committed repository path.
 
 The current repository is safe to contain the schema/import/selection code but not the proprietary question wording.
 
@@ -65,7 +65,7 @@ The importer rejects, among other things:
 - unsupported pool/difficulty/type/status
 - source references outside `docs.snowflake.com`
 
-Run:
+Run from an approved administrative import job only:
 
 ```bash
 python scripts/question_bank_admin.py validate /private/question_bank/core-v1.json

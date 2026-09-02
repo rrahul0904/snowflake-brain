@@ -99,7 +99,7 @@ def check_frontend_contract() -> None:
     assert ".v26-adaptive-page .v26-learning-command" in css
     assert ".v26-membership-page .v26-plan-grid{grid-template-columns:repeat(3" in css
     assert "ACCOUNT_EMAIL_ACTION_BASE_URL: \"${ACCOUNT_EMAIL_ACTION_BASE_URL:-http://localhost:8010}\"" in compose
-    assert "ACCOUNT_EMAIL_ACTION_BASE_URL=https://snowflake-certified.example.com\n" in prod_env
+    assert "ACCOUNT_EMAIL_ACTION_BASE_URL=https://snowflakecertificationguide.vercel.app\n" in prod_env
     assert 'source "$ROOT_DIR/.env"' in dev
     assert "Google OAuth is enabled but" in dev
 

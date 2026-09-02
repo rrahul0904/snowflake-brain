@@ -1,3 +1,6 @@
+# DEVELOPMENT / CI ONLY — NOT PRODUCTION.
+# This overlay exists solely to rehearse account-email behavior against the
+# local Compose stack; Vercel production uses encrypted environment variables.
 services:
   snowflake-certification-guide:
     environment:

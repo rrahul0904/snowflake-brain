@@ -4,12 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ..adaptive_readiness import (
-    AdaptiveReadinessError,
-    adaptive_question_ids,
-    build_readiness,
-    latest_readiness,
-)
+from ..adaptive_readiness import AdaptiveReadinessError, build_readiness, latest_readiness
 from ..auth import require_candidate
 
 
@@ -43,21 +38,5 @@ def recommendations(
 ) -> list[dict[str, Any]]:
     try:
         return build_readiness(_candidate_id(candidate), track_id, persist=True)["recommendations"]
-    except AdaptiveReadinessError as exc:
-        raise HTTPException(status_code=400, detail={"code": "adaptive_readiness_error", "message": str(exc)}) from exc
-
-
-@router.get("/question-ids")
-def question_ids(
-    track_id: str = Query(default="snowpro-core"),
-    limit: int = Query(default=20, ge=1, le=100),
-    candidate: dict[str, Any] = Depends(require_candidate),
-) -> dict[str, Any]:
-    """Backend recommendation IDs only; no question answer material is exposed."""
-    try:
-        return {
-            "track_id": track_id,
-            "question_ids": adaptive_question_ids(_candidate_id(candidate), track_id, limit=limit),
-        }
     except AdaptiveReadinessError as exc:
         raise HTTPException(status_code=400, detail={"code": "adaptive_readiness_error", "message": str(exc)}) from exc

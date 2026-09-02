@@ -21,7 +21,7 @@ Certification
 
 ## Runtime shell
 
-`app/main.py` owns the FastAPI application, production middleware, startup migrations/schema convergence, readiness endpoints and router registration. `frontend/index-v26.html` is the only active SPA shell and loads `frontend/app-complete.js` plus `frontend/router-complete.js`.
+`app/main.py` owns the FastAPI application, production middleware, read-only schema verification, readiness endpoints and router registration. `frontend/index-v26.html` is the only active SPA shell and loads `frontend/app-complete.js` plus `frontend/router-complete.js`.
 
 Public SPA routes are limited to home, membership, about, changelog, privacy and secure account-action links. Certification study routes require a candidate session.
 
@@ -34,13 +34,13 @@ Public SPA routes are limited to home, membership, about, changelog, privacy and
 - `config/snowflake_lab_challenges.json` — build exercises
 - `config/exam_simulation.json` — preparation mock configuration
 
-Commercial question wording is not stored in tracked frontend/config assets. Production bank content is mounted read-only through `PRIVATE_QUESTION_BANK_DIR`.
+Commercial question wording is not stored in tracked frontend/config assets. The private import artifact is used only by an approved deployment job; Vercel runtime serves the active immutable PostgreSQL release and does not mount or read question-bank files.
 
 ## Backend boundaries
 
 ### Persistence
 
-`app/database.py` abstracts local SQLite and production PostgreSQL. Production uses PostgreSQL pooling and migrations under `migrations/postgres/`. CI verifies schema convergence, concurrent bootstrap, logical backup and clean restore.
+`app/database.py` abstracts local SQLite and production PostgreSQL. Production uses the Neon PostgreSQL pool, a least-privilege runtime credential and migrations under `migrations/postgres/`. An approved migration job runs `scripts/migrate_production.py` with a separate DDL credential; normal Vercel startup only verifies schema compatibility and fails closed. CI verifies schema convergence, concurrent bootstrap, logical backup and clean restore.
 
 ### Candidate identity
 
@@ -97,7 +97,7 @@ Adaptive selection remains inside the active question-bank release and normal ti
 - `/api/ready` — database readiness
 - `/api/metrics` — infrastructure-token-protected operational metrics
 
-Production requires HTTPS, secure cookies, PostgreSQL, account-email webhook delivery and a read-only private-bank mount.
+Production requires HTTPS, secure cookies, PostgreSQL, account-email webhook delivery and `QUESTION_BANK_AUTO_IMPORT=false`.
 
 ## Frontend architecture
 
@@ -149,11 +149,13 @@ Official-source freshness detects Snowflake documentation changes but never rewr
 - `./scripts/dev.sh`
 - default URL `http://127.0.0.1:8000/#/home`
 
-### Docker / production rehearsal
+### Docker / CI rehearsal
 
-`docker-compose.yml` runs PostgreSQL 17 plus the application and mounts the private bank read-only. Default host URL is `http://localhost:8010/#/home`.
+`docker-compose.yml` is explicitly **DEVELOPMENT / CI ONLY — NOT PRODUCTION**. It runs a local PostgreSQL rehearsal stack. It is not deployed to, or required by, Vercel production.
 
-`deploy/production.env.example` documents the secure production contract; real secrets and provider credentials must live in the deployment secret store.
+### Production
+
+Vercel is the only production entry point: `https://snowflakecertificationguide.vercel.app/`. Managed Neon PostgreSQL is the only production persistence layer. `DATABASE_URL` exists only in Vercel's encrypted production secret store; no production capability depends on Docker, SQLite, local directories or browser storage.
 
 ## Verification architecture
 

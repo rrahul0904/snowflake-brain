@@ -34,6 +34,10 @@ jobs:
         run: python -m compileall app scripts
       - name: Verify candidate API route uniqueness
         run: python scripts/test_unique_api_routes.py
+      - name: Verify cloud-only production contract
+        run: |
+          python scripts/test_cloud_only_production.py
+          python scripts/test_production_startup_boundary.py
       - name: Verify COF-C03 written guide
         run: python scripts/smoke_core_guide.py
       - name: Verify certification-native architecture

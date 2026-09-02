@@ -7,16 +7,7 @@ from pydantic import BaseModel, Field
 
 from ..auth import require_candidate, require_premium_candidate
 from ..database import connect
-from ..evidence import evidence_audit, review_mapping
-from ..intelligence import (
-    build_question_skill_map,
-    command_brief,
-    diagnostic_plan,
-    mistake_queue,
-    portfolio,
-    readiness_model,
-    skill_mastery,
-)
+from ..intelligence import command_brief, diagnostic_plan, mistake_queue, portfolio, readiness_model, skill_mastery
 from ..learning_intelligence import (
     confidence_calibration,
     due_today,
@@ -29,15 +20,6 @@ from ..learning_intelligence import (
 from ..learning_sync import sync_candidate_learning_state
 
 router = APIRouter()
-
-
-class MappingReviewRequest(BaseModel):
-    item_id: str
-    skill_id: str
-    decision: str
-    track_id: str = "snowpro-core"
-    replacement_skill_id: str | None = None
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class StudyPreferencesRequest(BaseModel):
@@ -188,42 +170,3 @@ def certification_mock_remediation(
 def certification_diagnostic(track_id: str = "snowpro-core", count: int = 30, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     with connect() as conn:
         return diagnostic_plan(conn, track_id, count=count, candidate_id=candidate["id"])
-
-
-@router.get("/intelligence/evidence-audit")
-def certification_evidence_audit(
-    track_id: str = "snowpro-core",
-    confidence_threshold: float = 0.65,
-    limit: int = 50,
-) -> dict[str, Any]:
-    with connect() as conn:
-        return evidence_audit(
-            conn,
-            track_id=track_id,
-            confidence_threshold=confidence_threshold,
-            limit=limit,
-        )
-
-
-@router.post("/intelligence/evidence-review")
-def certification_evidence_review(payload: MappingReviewRequest) -> dict[str, Any]:
-    try:
-        with connect() as conn:
-            return review_mapping(
-                conn,
-                mapping_type="question",
-                item_id=payload.item_id,
-                skill_id=payload.skill_id,
-                decision=payload.decision,
-                track_id=payload.track_id,
-                replacement_skill_id=payload.replacement_skill_id,
-                confidence=payload.confidence,
-            )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/intelligence/reindex-skill-map")
-def reindex_skill_map(track_id: str = "snowpro-core") -> dict[str, Any]:
-    with connect() as conn:
-        return build_question_skill_map(conn, track_id)

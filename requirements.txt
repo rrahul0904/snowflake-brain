@@ -1,5 +1,7 @@
-fastapi==0.141.1
-starlette==1.6.0
+# Keep this in sync with pyproject.toml. FastAPI owns the compatible
+# Starlette constraint, so do not pin an unrelated Starlette release here.
+# 0.137.2 is the first release line used here that supports patched Starlette 1.x.
+fastapi==0.137.2
 uvicorn[standard]==0.32.1
 pydantic==2.10.3
 httpx==0.28.1
