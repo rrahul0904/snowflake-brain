@@ -39,6 +39,9 @@ echo "== V26 functional and visual contract =="
 echo "== Reverse-engineering completeness =="
 "$PYTHON_BIN" scripts/test_reverse_engineering_completeness.py
 
+echo "== Final Study Command Center convergence =="
+"$PYTHON_BIN" scripts/test_final_convergence.py
+
 echo "== Candidate authentication and membership =="
 "$PYTHON_BIN" scripts/test_auth_membership.py
 
