@@ -21,6 +21,7 @@ ROUTES = {
     "architect-exam-guide": "#/exam-guide?track_id=advanced-architect",
     "content-integrity": "#/content-integrity",
     "membership": "#/membership",
+    "pricing": "#/pricing",
     "about": "#/about",
     "terms": "#/terms",
     "privacy": "#/privacy",
@@ -69,6 +70,10 @@ def assert_route_contract(page: Page, name: str) -> None:
         for phrase in ("Original preparation", "no exam dumps", "not affiliated"):
             if phrase.lower() not in text.lower():
                 raise AssertionError(f"content-integrity phrase missing: {phrase}")
+    elif name in {"membership", "pricing"}:
+        text = page.locator("#view-root").inner_text()
+        if "Checkout is not enabled" not in text and "hosted checkout" not in text.lower():
+            raise AssertionError("billing availability honesty copy missing")
 
 
 def set_theme(page: Page, theme: str) -> None:
@@ -102,8 +107,6 @@ def run_viewport(browser, width: int, height: int) -> int:
             )
             shots += 1
 
-    # Public facts are allowed, but a deep link to curriculum must still stop at
-    # the access gate and must not render the study shell.
     page.goto(f"{BASE}/#/curriculum?track_id=snowpro-core", wait_until="domcontentloaded")
     page.wait_for_selector("#view-root[data-view-id='authentication-required']")
     if page.locator(".v26-study-nav,.v26-curriculum-list").count():
