@@ -1,6 +1,6 @@
 export const VIEW_ID = "v26-lesson";
 
-import { escapeHtml, getSkillMap, getStudyLesson, getTaskProgress, setTaskProgress } from "../api.js";
+import { escapeHtml, getSkillMap, getStudyLesson, getTaskProgress, getTaskReview, scheduleTaskReview, setTaskProgress } from "../api.js";
 import { activeTrack, setActiveTrack } from "../ui.js";
 import { candidate, refreshCandidate } from "../auth.js";
 import { studyLayout } from "../components/study-shell.js";
@@ -22,16 +22,19 @@ export default async function mount(container, params = {}) {
   if (index < 0) index = 0;
   const item = flat[index];
   if (!item) throw new Error("Task not found");
-  const [lesson, progress] = await Promise.all([
+  const [lesson, progress, reviewPayload] = await Promise.all([
     getStudyLesson(item.id, { track_id: cert.id }),
     getTaskProgress({ track_id: cert.id }).catch(() => ({ completed_skill_ids: [] })),
+    getTaskReview({ track_id: cert.id, skill_id: item.id }).catch(() => ({ review: null })),
   ]);
   const content = lesson.content || {};
   const completed = new Set(progress.completed_skill_ids || []);
+  let taskReview = reviewPayload.review || null;
   const taskCode = item.task_code || `${item.domainIndex + 1}.${item.skillIndex + 1}`;
   const prev = flat[index - 1];
   const next = flat[index + 1];
-  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · Domain ${item.domainIndex + 1} · ${Number(item.domain.weight || 0)}% exam weight</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a><a class="v26-btn secondary" href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Open glossary</a><a class="v26-btn secondary" href="#/exam-traps?track_id=${encodeURIComponent(cert.id)}&domain=${encodeURIComponent(item.domain.id)}">Exam traps</a></div></header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise, cert.id)}${sources(content.sources)}<section class="v26-lesson-section v26-lesson-practice-next"><p class="v26-kicker">Practice this concept</p><h2>Make the reasoning retrievable.</h2><p>Reading is only the first pass. Use a targeted drill to prove you can recognize this task under exam-style scenario pressure.</p><div class="v26-inline-actions"><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Practice this concept</a><a class="v26-btn secondary" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Open build labs</a></div></section><nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
+  const reviewLabel = taskReview?.status === "active" ? "✓ In Review Queue" : "Add to Review";
+  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · Domain ${item.domainIndex + 1} · ${Number(item.domain.weight || 0)}% exam weight</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><button class="v26-btn secondary ${taskReview?.status === "active" ? "is-scheduled" : ""}" type="button" data-add-review>${reviewLabel}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a><a class="v26-btn secondary" href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Open glossary</a><a class="v26-btn secondary" href="#/exam-traps?track_id=${encodeURIComponent(cert.id)}&domain=${encodeURIComponent(item.domain.id)}">Exam traps</a></div>${taskReview?.status === "active" ? `<p class="v26-review-schedule-note">Next concept review: ${escapeHtml(formatDue(taskReview.next_review_at))}</p>` : ""}</header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise, cert.id)}${sources(content.sources)}<section class="v26-lesson-section v26-lesson-practice-next"><p class="v26-kicker">Practice this concept</p><h2>Make the reasoning retrievable.</h2><p>Reading is only the first pass. Use a targeted drill to prove you can recognize this task under exam-style scenario pressure.</p><div class="v26-inline-actions"><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Practice this concept</a><a class="v26-btn secondary" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Open build labs</a></div></section><nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
   container.innerHTML = studyLayout(cert, item.domain.id, body, item.id, completed);
   container.querySelector("[data-complete]")?.addEventListener("click", async (event) => {
     const nextState = !completed.has(item.id);
@@ -42,6 +45,22 @@ export default async function mount(container, params = {}) {
     event.currentTarget.textContent = nextState ? "✓ Completed" : "Mark Complete";
     syncSidebarCompletion(container, item.id, nextState);
     event.currentTarget.disabled = false;
+  });
+  container.querySelector("[data-add-review]")?.addEventListener("click", async (event) => {
+    if (taskReview?.status === "active") return;
+    event.currentTarget.disabled = true;
+    event.currentTarget.textContent = "Scheduling…";
+    try {
+      const payload = await scheduleTaskReview({ track_id: cert.id, skill_id: item.id });
+      taskReview = payload.review || null;
+      event.currentTarget.classList.add("is-scheduled");
+      event.currentTarget.textContent = "✓ In Review Queue";
+      event.currentTarget.insertAdjacentHTML("afterend", `<span class="v26-review-inline-note">Due ${escapeHtml(formatDue(taskReview?.next_review_at))}</span>`);
+    } catch (error) {
+      event.currentTarget.textContent = error.message || "Add to Review";
+    } finally {
+      event.currentTarget.disabled = false;
+    }
   });
   bindScenario(container);
 }
@@ -103,3 +122,4 @@ function sources(rows = []) {
   if (!rows.length) return "";
   return `<section class="v26-lesson-section"><h2>Sources</h2><div class="v26-source-list">${rows.map((source) => { if (typeof source === "string") return `<span>${escapeHtml(source)}</span>`; const href = source.url || source.href; return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || source.label || href)} ↗</a>` : `<span>${escapeHtml(source.title || source.label || "Source")}</span>`; }).join("")}</div></section>`;
 }
+function formatDue(value) { if (!value) return "tomorrow"; const date = new Date(String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "Z")); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
