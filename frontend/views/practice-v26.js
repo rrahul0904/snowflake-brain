@@ -5,7 +5,7 @@ import { activeTrack } from "../ui.js";
 import { candidate, refreshCandidate } from "../auth.js";
 import { DOMAIN_COLORS, studyLayout } from "../components/study-shell.js";
 
-const state = { questions: [], answers: new Map(), confidences: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", submitted: false, result: null, account: null };
+const state = { questions: [], answers: new Map(), confidences: new Map(), index: 0, mode: "", trackId: "snowpro-core", skillId: "", domainId: "", difficulty: "", unansweredOnly: false, sessionCount: 15, submitted: false, result: null, account: null };
 
 export default async function mount(container, params = {}) {
   state.trackId = params.track_id || activeTrack();
@@ -30,9 +30,9 @@ async function landing(container) {
   const full = config.full_mock || {};
   const dueCount = Number(due.due_count || 0);
   const dueStrip = dueCount > 0
-    ? `<a class="v26-due-strip" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=srs"><span><b>Due Today</b><strong>${dueCount} spaced-review question${dueCount === 1 ? "" : "s"}</strong></span><em>Review now →</em></a>`
+    ? `<a class="v26-due-strip" href="#/due?track_id=${encodeURIComponent(state.trackId)}"><span><b>Due Today</b><strong>${dueCount} review item${dueCount === 1 ? "" : "s"}</strong></span><em>Open queue →</em></a>`
     : `<div class="v26-due-strip clear"><span><b>Due Today</b><strong>Your spaced-review queue is clear.</strong></span><em>Nothing due</em></div>`;
-  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Choose one purpose: measure the gaps, repair a weak objective, or rehearse the timed exam.</p></section>${dueStrip}<section class="v26-section v26-practice-choices"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", `#/practice?track_id=${state.trackId}&mode=diagnostic`)}${card("Targeted Drill", "Repair weak tasks", "Focused practice by domain or across your current weak areas.", "15 questions", `#/practice?track_id=${state.trackId}&mode=drill`)}${card("Quick Mock", "Timed readiness check", "A focused timed sitting using the persisted exam player.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, `#/mock/start?track_id=${state.trackId}&type=quick-mock`)}${card("Full Mock", "Complete simulation", "Flags, navigation, autosave, refresh/resume, timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
+  container.innerHTML = `<main class="v26-page v26-practice-page"><section class="v26-page-intro centered"><p class="v26-kicker">SnowPro Core · COF-C03</p><h1>Practice</h1><p>Choose one purpose: measure the gaps, repair a weak objective, or rehearse the timed exam.</p></section>${dueStrip}<section class="v26-section v26-practice-choices"><div class="v26-practice-grid">${card("Diagnostic", "Find weak areas", "A balanced untimed baseline across all current exam domains.", "20 questions", `#/practice?track_id=${state.trackId}&mode=diagnostic`)}${card("Targeted Drill", "Repair weak tasks", "Focused practice by domain, task, difficulty, or unanswered history.", "5–20 questions", `#/practice?track_id=${state.trackId}&mode=drill`)}${card("Quick Mock", "Timed readiness check", "A focused timed sitting using the persisted exam player.", `${quick.question_count || 30} questions · ${quick.time_limit_minutes || 45} min`, `#/mock/start?track_id=${state.trackId}&type=quick-mock`)}${card("Full Mock", "Complete simulation", "Flags, navigation, autosave, refresh/resume, timer, and post-exam review.", `${full.question_count || 100} questions · ${full.time_limit_minutes || 120} min`, `#/mock/start?track_id=${state.trackId}&type=full-mock`, false, true)}</div></section>${state.account?.is_premium ? sourceSection(current.tests || [], legacy.tests || []) : ""}</main>`;
   bindSource(container);
 }
 
@@ -48,14 +48,27 @@ async function drillSetup(container, params) {
   const mastered = skills.filter((item) => Number(item.attempts || 0) > 0 && Number(item.accuracy_pct || 0) >= 80).length;
   const weak = skills.filter((item) => Number(item.attempts || 0) > 0 && Number(item.accuracy_pct || 0) < 70).length;
   state.domainId = params.domain_id || "";
-  container.innerHTML = studyLayout(cert, "drill", `<section class="v26-practice-setup center"><h1>Drill Mode</h1><p class="lede">Up to 15 questions per session, focused on the domain you choose. Use short repeated sessions to repair weak areas without turning practice into another full mock.</p><div class="v26-drill-stats"><div><strong>${attempted}</strong><span>Attempted</span></div><div><strong>${mastered}</strong><span>Mastered tasks</span></div><div><strong>${weak}</strong><span>Weak tasks</span></div><div><strong>15</strong><span>Session length</span></div></div><div class="v26-domain-filter-box"><span>Domain filter</span><div class="v26-domain-filter-chips"><button class="${state.domainId ? "" : "active"}" type="button" data-domain-filter="">All Domains</button>${(cert.domains || []).map((domain, index) => `<button class="${state.domainId === domain.id ? "active" : ""}" type="button" data-domain-filter="${escapeHtml(domain.id)}"><i style="--domain:${DOMAIN_COLORS[index % DOMAIN_COLORS.length]}"></i>${index + 1}. ${escapeHtml(shortTitle(domain.title))}</button>`).join("")}</div></div><button class="v26-btn primary" type="button" data-start-drill>Start Session</button></section>`);
+  state.skillId = params.skill_id || "";
+  state.difficulty = params.difficulty || "";
+  state.unansweredOnly = params.unanswered_only === "true" || params.unanswered_only === "1";
+  state.sessionCount = [5, 10, 15, 20].includes(Number(params.count)) ? Number(params.count) : 15;
+  const mappedSkill = (cert.domains || []).flatMap((domain) => domain.skills || []).find((skill) => skill.id === state.skillId);
+  container.innerHTML = studyLayout(cert, "drill", `<section class="v26-practice-setup center"><h1>Drill Mode</h1><p class="lede">Build a focused session using only filters the question allocator actually enforces. No fake time-limit or AI-difficulty controls are shown.</p><div class="v26-drill-stats"><div><strong>${attempted}</strong><span>Attempted</span></div><div><strong>${mastered}</strong><span>Mastered tasks</span></div><div><strong>${weak}</strong><span>Weak tasks</span></div><div><strong data-session-count-label>${state.sessionCount}</strong><span>Session length</span></div></div>${mappedSkill ? `<div class="v26-selected-task"><span>Task scope</span><strong>${escapeHtml(mappedSkill.task_code || "Task")} · ${escapeHtml(mappedSkill.title)}</strong><button type="button" data-clear-skill>Clear task scope</button></div>` : ""}<div class="v26-drill-filter-grid"><div class="v26-domain-filter-box"><span>Domain</span><div class="v26-domain-filter-chips"><button class="${state.domainId ? "" : "active"}" type="button" data-domain-filter="">All Domains</button>${(cert.domains || []).map((domain, index) => `<button class="${state.domainId === domain.id ? "active" : ""}" type="button" data-domain-filter="${escapeHtml(domain.id)}"><i style="--domain:${DOMAIN_COLORS[index % DOMAIN_COLORS.length]}"></i>${index + 1}. ${escapeHtml(shortTitle(domain.title))}</button>`).join("")}</div></div><label class="v26-drill-control"><span>Difficulty</span><select data-difficulty><option value="">Any difficulty</option><option value="easy" ${state.difficulty === "easy" ? "selected" : ""}>Easy</option><option value="medium" ${state.difficulty === "medium" ? "selected" : ""}>Medium</option><option value="hard" ${state.difficulty === "hard" ? "selected" : ""}>Hard</option></select></label><label class="v26-drill-control"><span>Session size</span><select data-session-count>${[5,10,15,20].map((count) => `<option value="${count}" ${count === state.sessionCount ? "selected" : ""}>${count} questions</option>`).join("")}</select></label><label class="v26-drill-checkbox"><input type="checkbox" data-unanswered-only ${state.unansweredOnly ? "checked" : ""}/><span><strong>Unanswered only</strong><small>Exclude questions already attempted by this candidate.</small></span></label></div><button class="v26-btn primary" type="button" data-start-drill>Start Session</button></section>`);
   container.querySelectorAll("[data-domain-filter]").forEach((button) => button.addEventListener("click", () => {
     state.domainId = button.dataset.domainFilter || "";
     container.querySelectorAll("[data-domain-filter]").forEach((item) => item.classList.toggle("active", item === button));
   }));
+  container.querySelector("[data-clear-skill]")?.addEventListener("click", () => { state.skillId = ""; drillSetup(container, { track_id: cert.id, domain_id: state.domainId, difficulty: state.difficulty, unanswered_only: state.unansweredOnly ? "1" : "0", count: state.sessionCount }); });
+  container.querySelector("[data-difficulty]")?.addEventListener("change", (event) => { state.difficulty = event.target.value || ""; });
+  container.querySelector("[data-session-count]")?.addEventListener("change", (event) => { state.sessionCount = Number(event.target.value || 15); const label = container.querySelector("[data-session-count-label]"); if (label) label.textContent = String(state.sessionCount); });
+  container.querySelector("[data-unanswered-only]")?.addEventListener("change", (event) => { state.unansweredOnly = Boolean(event.target.checked); });
   container.querySelector("[data-start-drill]")?.addEventListener("click", () => {
-    const domain = state.domainId ? `&domain_id=${encodeURIComponent(state.domainId)}` : "";
-    window.location.hash = `#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&start=1&count=15${domain}`;
+    const query = new URLSearchParams({ track_id: cert.id, mode: "drill", start: "1", count: String(state.sessionCount) });
+    if (state.domainId) query.set("domain_id", state.domainId);
+    if (state.skillId) query.set("skill_id", state.skillId);
+    if (state.difficulty) query.set("difficulty", state.difficulty);
+    if (state.unansweredOnly) query.set("unanswered_only", "1");
+    window.location.hash = `#/practice?${query}`;
   });
 }
 
@@ -95,7 +108,7 @@ async function launchSrs(container, params) {
   const data = await getDueToday({ track_id: state.trackId, limit });
   state.questions = (data.questions || []).map((row) => ({ ...row, id: row.question_id }));
   if (!state.questions.length) {
-    container.innerHTML = `<main class="v26-page"><section class="v26-no-progress"><strong>Nothing due right now</strong><p>Your spaced-review queue is clear. New misses will appear here immediately; correct answers return when their interval matures.</p><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=drill">Start a targeted drill</a></section></main>`;
+    container.innerHTML = `<main class="v26-page"><section class="v26-no-progress"><strong>No question reviews due right now</strong><p>Your concept review queue may still contain manually scheduled tasks. Open Due Today to see both evidence types.</p><a class="v26-btn primary" href="#/due?track_id=${encodeURIComponent(state.trackId)}">Open Due Today</a></section></main>`;
     return;
   }
   drawSession(container);
@@ -106,11 +119,13 @@ async function launch(container, params) {
   resetSession(mode);
   state.skillId = params.skill_id || "";
   state.domainId = params.domain_id || "";
+  state.difficulty = params.difficulty || "";
+  state.unansweredOnly = params.unanswered_only === "true" || params.unanswered_only === "1";
   const count = Number(params.count || (mode === "diagnostic" ? 20 : 15));
   container.innerHTML = `<main class="v26-page"><div class="v26-loading">Preparing ${mode === "diagnostic" ? "diagnostic" : "drill"}…</div></main>`;
-  const data = await startQuiz({ track_id: state.trackId, count, mode, skill_id: state.skillId || null, domain_id: state.domainId || null });
+  const data = await startQuiz({ track_id: state.trackId, count, mode, skill_id: state.skillId || null, domain_id: state.domainId || null, difficulty: state.difficulty || null, unanswered_only: state.unansweredOnly });
   state.questions = data.questions || [];
-  if (!state.questions.length) throw new Error("No eligible questions are available for this practice session");
+  if (!state.questions.length) throw new Error("No eligible questions are available for this practice session and filter combination");
   drawSession(container);
 }
 
