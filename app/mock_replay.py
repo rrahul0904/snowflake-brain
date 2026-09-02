@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
-from .database import connect
+from .config import DATABASE_BACKEND
 
 SCHEMA_VERSION = "20260902_002_mock_replay"
 _SCHEMA_LOCK = threading.RLock()
@@ -43,34 +43,41 @@ def _database_key(conn: Any) -> str:
         return str(row[2] or "memory")
 
 
-def ensure_mock_replay_schema() -> None:
+def _ensure_mock_replay_schema(conn: Any) -> None:
+    """Bootstrap replay tables only for SQLite dev/test on the active connection.
+
+    Hosted PostgreSQL is provisioned by migration 022 and the runtime role does
+    not need DDL privileges. Reusing the active SQLite connection avoids nested
+    writer locks while answer/flag events are being persisted.
+    """
+    if DATABASE_BACKEND != "sqlite":
+        return
     with _SCHEMA_LOCK:
-        with connect() as conn:
-            key = _database_key(conn)
-            if key in _READY_DATABASES:
-                return
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS exam_session_events (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  session_id INTEGER NOT NULL REFERENCES exam_sessions(id) ON DELETE CASCADE,
-                  candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
-                  question_id TEXT REFERENCES questions(id) ON DELETE SET NULL,
-                  event_type TEXT NOT NULL,
-                  occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
-                  metadata_json TEXT NOT NULL DEFAULT '{}'
-                );
-                CREATE INDEX IF NOT EXISTS idx_exam_session_events_session
-                  ON exam_session_events(session_id, occurred_at, id);
-                CREATE INDEX IF NOT EXISTS idx_exam_session_events_candidate
-                  ON exam_session_events(candidate_id, session_id, occurred_at);
-                """
-            )
-            conn.execute(
-                "INSERT OR IGNORE INTO schema_migrations(version,name) VALUES (?,?)",
-                (SCHEMA_VERSION, "Privacy-safe immutable mock exam replay events"),
-            )
-            _READY_DATABASES.add(key)
+        key = _database_key(conn)
+        if key in _READY_DATABASES:
+            return
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS exam_session_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              session_id INTEGER NOT NULL REFERENCES exam_sessions(id) ON DELETE CASCADE,
+              candidate_id INTEGER NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+              question_id TEXT REFERENCES questions(id) ON DELETE SET NULL,
+              event_type TEXT NOT NULL,
+              occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
+              metadata_json TEXT NOT NULL DEFAULT '{}'
+            );
+            CREATE INDEX IF NOT EXISTS idx_exam_session_events_session
+              ON exam_session_events(session_id, occurred_at, id);
+            CREATE INDEX IF NOT EXISTS idx_exam_session_events_candidate
+              ON exam_session_events(candidate_id, session_id, occurred_at);
+            """
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version,name) VALUES (?,?)",
+            (SCHEMA_VERSION, "Privacy-safe immutable mock exam replay events"),
+        )
+        _READY_DATABASES.add(key)
 
 
 def _safe_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
@@ -95,7 +102,7 @@ def append_event(
     metadata: dict[str, Any] | None = None,
     client_event: bool = False,
 ) -> None:
-    ensure_mock_replay_schema()
+    _ensure_mock_replay_schema(conn)
     if event_type not in _ALLOWED_EVENTS:
         raise ValueError("Unsupported mock replay event")
     if client_event and event_type not in _CLIENT_EVENTS:
@@ -177,7 +184,7 @@ def _parse_time(value: str | None) -> datetime | None:
 
 
 def replay_payload(conn: Any, session_id: int, candidate_id: int) -> dict[str, Any]:
-    ensure_mock_replay_schema()
+    _ensure_mock_replay_schema(conn)
     session = conn.execute(
         "SELECT id,track_id,status,finished_at,started_at FROM exam_sessions WHERE id=? AND candidate_id=?",
         (session_id, candidate_id),
