@@ -21,6 +21,7 @@ os.environ.pop("VERCEL", None)
 os.environ.pop("VERCEL_ENV", None)
 
 from fastapi import HTTPException  # noqa: E402
+from fastapi.routing import APIRoute, iter_route_contexts  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from pydantic import ValidationError  # noqa: E402
 
@@ -128,30 +129,30 @@ def test_task_review(c1: int, c2: int, skill: dict[str, str]) -> None:
             raise AssertionError("task review accepted an unknown task")
 
 
-def test_mounted_mock_replay_api_active(c1: int, c2: int, session_id: int) -> None:
-    post_route = next(
-        (
-            route
-            for route in app.routes
-            if str(getattr(route, "path", "")).startswith("/api/mock/sessions/")
-            and str(getattr(route, "path", "")).endswith("/events")
-            and "POST" in (getattr(route, "methods", set()) or set())
-        ),
-        None,
-    )
-    replay_route = next(
-        (
-            route
-            for route in app.routes
-            if str(getattr(route, "path", "")).startswith("/api/mock/sessions/")
-            and str(getattr(route, "path", "")).endswith("/replay")
-            and "GET" in (getattr(route, "methods", set()) or set())
-        ),
-        None,
-    )
-    must(post_route is not None, "candidate Mock Replay event endpoint is not mounted under /api")
-    must(replay_route is not None, "candidate Mock Replay read endpoint is not mounted under /api")
+def _effective_api_route(endpoint: object, method: str) -> str | None:
+    for route_context in iter_route_contexts(app.routes):
+        original = route_context.original_route
+        if not isinstance(original, APIRoute):
+            continue
+        if original.endpoint is endpoint and method in (original.methods or set()):
+            return str(route_context.path)
+    return None
 
+
+def test_mounted_mock_replay_api_active(c1: int, c2: int, session_id: int) -> None:
+    post_path = _effective_api_route(post_candidate_mock_replay_event, "POST")
+    replay_path = _effective_api_route(get_candidate_mock_replay, "GET")
+    must(
+        post_path == "/api/mock/sessions/{session_id}/events",
+        f"candidate Mock Replay event endpoint is not mounted at the expected effective path: {post_path}",
+    )
+    must(
+        replay_path == "/api/mock/sessions/{session_id}/replay",
+        f"candidate Mock Replay read endpoint is not mounted at the expected effective path: {replay_path}",
+    )
+
+    # Security middleware is deliberately outside FastAPI dependencies, so an
+    # anonymous request must fail before any replay mutation is possible.
     with TestClient(app) as client:
         anonymous = client.post(
             f"/api/mock/sessions/{session_id}/events",
