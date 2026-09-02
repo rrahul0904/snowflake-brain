@@ -65,6 +65,9 @@ def main() -> None:
         "/api/mock/config?track_id=snowpro-core",
         "/api/labs/config",
         "/api/intelligence/readiness?track_id=snowpro-core",
+        "/api/intelligence/due-today?track_id=snowpro-core",
+        "/api/intelligence/confidence-calibration?track_id=snowpro-core",
+        "/api/intelligence/study-plan?track_id=snowpro-core",
     )
     for path in protected:
         response = client.get(path)
@@ -84,6 +87,12 @@ def main() -> None:
         "/static/views/exam-session-v26.js",
         "/static/views/exam-result-v26.js",
         "/static/views/progress-v26.js",
+        "/static/views/mistakes-v26.js",
+        "/static/views/adaptive-v26.js",
+        "/static/views/due-v26.js",
+        "/static/views/confidence-v26.js",
+        "/static/views/study-plan-v26.js",
+        "/static/views/exam-traps-v26.js",
         "/static/views/account-v26.js",
     ):
         response = client.get(path)
@@ -93,6 +102,7 @@ def main() -> None:
     client.cookies.set("snowflake_candidate_session", "forged-session-token")
     check(client.get("/api/skills/map").status_code == 401, "forged candidate cookie must not unlock API content")
     check(client.get("/static/views/lesson-v26.js").status_code == 401, "forged candidate cookie must not unlock study module")
+    check(client.get("/static/views/due-v26.js").status_code == 401, "forged candidate cookie must not unlock due-review module")
     client.cookies.clear()
 
     signup = client.post(
@@ -112,6 +122,10 @@ def main() -> None:
         "/api/mock/config?track_id=snowpro-core",
         "/static/views/lesson-v26.js",
         "/static/views/practice-v26.js",
+        "/static/views/due-v26.js",
+        "/static/views/confidence-v26.js",
+        "/static/views/study-plan-v26.js",
+        "/static/views/exam-traps-v26.js",
     ):
         response = client.get(path)
         check(response.status_code == 200, f"authenticated Free candidate should reach included content: {path} -> {response.status_code}")
@@ -124,6 +138,7 @@ def main() -> None:
         "#/home",
         "#/certifications",
         "#/membership",
+        "#/pricing",
         "#/about",
         "#/exam-guide",
         "#/content-integrity",
@@ -135,8 +150,8 @@ def main() -> None:
     check(public_routes == expected_public_routes, f"public SPA route allowlist drifted: {sorted(public_routes)}")
     for protected_route in (
         "#/curriculum", "#/domain", "#/skill", "#/progress", "#/mistakes", "#/adaptive",
-        "#/practice", "#/mock", "#/reference", "#/journal", "#/community", "#/labs",
-        "#/credentials", "#/account",
+        "#/due", "#/confidence", "#/study-plan", "#/exam-traps", "#/practice", "#/mock",
+        "#/reference", "#/journal", "#/community", "#/labs", "#/credentials", "#/account", "#/settings",
     ):
         check(protected_route not in public_routes, f"protected SPA route became public: {protected_route}")
     check("if(!publicRoutes.has(path))" in router and "if(!candidate())" in router, "protected SPA routes require candidate state")
@@ -147,6 +162,7 @@ def main() -> None:
 
     nav = (ROOT / "frontend" / "components" / "nav.js").read_text(encoding="utf-8")
     check("if (account)" in nav and "getCertificationCatalog()" in nav, "guest navigation does not fetch protected study metadata")
+    check('"#/pricing"' in nav, "public navigation exposes the pricing alias")
 
     info = (ROOT / "frontend" / "views" / "info-v26.js").read_text(encoding="utf-8")
     check("source_verified_at" in info and "Facts without verified source evidence are not displayed" in info, "exam guide exposes provenance contract")
