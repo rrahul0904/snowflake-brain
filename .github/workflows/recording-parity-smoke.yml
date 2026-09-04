@@ -15,19 +15,23 @@ jobs:
         run: |
           node --check frontend/components/globe.js
           node --check frontend/components/home-extras.js
+          node --check frontend/components/home-command-center.js
+          node --check frontend/components/learning-widgets.js
           node --check frontend/views/curriculum-v26.js
           node --check frontend/views/practice-v26.js
           node --check frontend/views/info-v26.js
           node --check frontend/router-complete.js
           node --check frontend/app-complete.js
-      - name: Verify approved warm token system
+      - name: Verify approved Snowflake Study Command Center token system
         run: |
-          grep -q -- '--bg:#211713' frontend/styles/tokens.css
-          grep -q -- '--text:#f0e5d8' frontend/styles/tokens.css
-          grep -q -- '--accent:#bd7148' frontend/styles/tokens.css
-          grep -q -- '--bg:#f2eadf' frontend/styles/tokens.css
-          grep -q -- '--text:#2b201b' frontend/styles/tokens.css
-          grep -q -- '--accent:#a75e38' frontend/styles/tokens.css
+          grep -q -- '--background:#07111F' frontend/styles/tokens.css
+          grep -q -- '--surface:#0B1728' frontend/styles/tokens.css
+          grep -q -- '--text-primary:#F8FAFC' frontend/styles/tokens.css
+          grep -q -- '--snowflake-blue:#29B5E8' frontend/styles/tokens.css
+          grep -q -- '--background:#F7FAFC' frontend/styles/tokens.css
+          grep -q -- '--surface:#FFFFFF' frontend/styles/tokens.css
+          grep -q -- '--text-primary:#102033' frontend/styles/tokens.css
+          grep -q -- '--domain-5:#8B5CF6' frontend/styles/tokens.css
       - name: Verify recording-derived globe treatment
         run: |
           grep -q 'centerLon = 123' frontend/components/globe.js
@@ -53,6 +57,9 @@ jobs:
           grep -q '\["#/journal", "Journal"\]' frontend/components/nav.js
           ! grep -q '\["#/adaptive", "Adaptive"\]' frontend/components/nav.js
           grep -q 'Adaptive Readiness' frontend/components/nav.js
+          grep -q 'Due Today' frontend/components/nav.js
+          grep -q 'Confidence Calibration' frontend/components/nav.js
+          grep -q 'Study Plan' frontend/components/nav.js
       - name: Verify parity surfaces use canonical architecture
         run: |
           ! grep -q 'recording-feature-parity.css' frontend/index-v26.html
@@ -66,6 +73,7 @@ jobs:
           grep -q '#/terms' frontend/router-complete.js
           grep -q 'v26-testimonial-grid' frontend/components/home-extras.js
           grep -q 'v26-exam-domain-row' frontend/views/info-v26.js
+          grep -q 'study-command-center.css' frontend/index-v26.html
       - name: Verify feedback drawer contract
         run: |
           grep -q 'width:min(420px,100vw)' frontend/styles/shell.css

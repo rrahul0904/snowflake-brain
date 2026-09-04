@@ -37,8 +37,13 @@ def skill_map(candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
 
 
 @router.get("/skills/catalog")
-def skill_catalog(candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
-    del candidate
+def skill_catalog() -> dict[str, Any]:
+    """Public source-verified certification metadata only.
+
+    certification_catalog() deliberately returns focused certification facts and
+    product availability; it does not contain curriculum domains/tasks, private
+    question-bank content, answers, candidate state, or entitlements.
+    """
     return certification_catalog()
 
 
@@ -253,12 +258,8 @@ def skill_resources(
 ) -> dict[str, Any]:
     """Return only non-question resource metadata.
 
-    This route previously returned arbitrary mapped question rows including
-    ``correct_json`` and ``explanation`` to any authenticated candidate. That
-    bypassed quota, served-history, active-release, and pre-submit answer-hiding
-    controls. Candidate question delivery is intentionally singular now:
-    practice/mock endpoints allocate questions and ``/api/questions/{id}``
-    requires a candidate-served relationship.
+    Candidate question delivery is singular: practice/mock endpoints allocate
+    questions and /api/questions/{id} requires a candidate-served relationship.
     """
     del candidate
     skills = {skill["id"]: skill for skill in flatten_skills(track_id)}

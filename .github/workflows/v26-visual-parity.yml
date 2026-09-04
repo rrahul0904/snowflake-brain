@@ -7,6 +7,8 @@ on:
       - "app/**"
       - "config/**"
       - "scripts/capture_v26_visuals.py"
+      - "scripts/capture_reverse_engineering_public_pages.py"
+      - "scripts/capture_command_center_tools.py"
       - ".github/workflows/v26-visual-parity.yml"
   workflow_dispatch:
 
@@ -55,8 +57,14 @@ jobs:
           cat /tmp/v26-server.log
           exit 1
 
-      - name: Capture dark light and mobile parity screens
+      - name: Capture authenticated dark light and mobile parity screens
         run: python scripts/capture_v26_visuals.py
+
+      - name: Capture public completeness matrix across themes and viewports
+        run: python scripts/capture_reverse_engineering_public_pages.py
+
+      - name: Capture authenticated Study Command Center tools
+        run: python scripts/capture_command_center_tools.py
 
       - name: Show server log on failure
         if: failure()

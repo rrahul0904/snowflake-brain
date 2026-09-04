@@ -1,0 +1,50 @@
+/* Final Study Command Center convergence: responsive fixes + persisted review/replay UX. */
+
+/* Prevent intrinsic grid/flex sizing from pushing public layouts wider than the viewport. */
+.v26-home,.v26-home-hero,.v26-home-facts,.v26-home-command-wrap,.v26-home-globe,
+.v26-home-command-wrap *,.v26-home-hero *{min-width:0;box-sizing:border-box}
+.v26-home-hero,.v26-home-facts,.v26-home-command-wrap{width:100%}
+.v26-home .v26-globe-wrap,.v26-home .v26-globe{max-width:100%;min-width:0}
+.v26-home .v26-globe{width:min(410px,100%)!important;margin-inline:auto}
+.v26-command-heading{flex-wrap:wrap}
+.v26-command-heading>a{max-width:100%;white-space:normal}
+
+/* Task-level concept review */
+.v26-review-schedule-note{margin:10px 0 0!important;color:var(--text-muted)!important;font-size:12px!important}
+.v26-review-inline-note{align-self:center;color:var(--text-muted);font-size:12px}
+.v26-btn.is-scheduled{border-color:color-mix(in srgb,var(--success) 45%,var(--border-subtle))!important;color:var(--success)!important}
+.v26-task-review-queue{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.v26-task-review-card{border:var(--panel-border);border-radius:18px;background:var(--surface);padding:20px;display:grid;gap:12px;min-width:0}
+.v26-task-review-card.overdue{border-color:color-mix(in srgb,var(--warning) 45%,var(--border-subtle))}
+.v26-task-review-card.reviewed{opacity:.62}
+.v26-task-review-card header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.v26-task-review-card header span{color:var(--snowflake-blue);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.v26-task-review-card header b{font-family:var(--mono);font-size:11px}.v26-task-review-card h3{margin:0;font-size:18px}.v26-task-review-card p{margin:0;color:var(--text-secondary);line-height:1.5}.v26-task-review-card dl{display:grid;grid-template-columns:1fr auto;gap:7px 12px;margin:0;font-size:12px}.v26-task-review-card dt{color:var(--text-muted)}.v26-task-review-card dd{margin:0;font-family:var(--mono)}.v26-task-review-card footer{display:flex;gap:8px;flex-wrap:wrap}.v26-task-review-card footer a,.v26-task-review-card footer button{border:1px solid var(--border-subtle);background:var(--surface-soft);color:var(--text-primary);border-radius:10px;padding:8px 10px;text-decoration:none;font:700 11px/1.2 var(--sans);cursor:pointer}
+
+/* Keep formatted starter SQL readable without allowing a long line to widen the lesson. */
+.v26-build pre{max-width:100%;overflow-x:auto}
+.v26-inline-actions{flex-wrap:wrap}
+
+/* Honest drill filters */
+.v26-drill-filter-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(150px,.55fr) minmax(150px,.55fr);gap:14px;align-items:end;margin:20px 0}.v26-drill-control{display:grid;gap:8px;text-align:left}.v26-drill-control>span,.v26-domain-filter-box>span{color:var(--text-muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.v26-drill-control select{width:100%;min-height:44px;border:1px solid var(--border-subtle);border-radius:11px;background:var(--surface);color:var(--text-primary);padding:0 12px}.v26-drill-checkbox{grid-column:1/-1;display:flex;align-items:flex-start;gap:10px;padding:13px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--surface-soft);text-align:left}.v26-drill-checkbox input{margin-top:3px}.v26-drill-checkbox span{display:grid;gap:3px}.v26-drill-checkbox small{color:var(--text-muted)}.v26-selected-task{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:14px 16px;border:1px solid rgba(41,181,232,.28);border-radius:12px;background:var(--surface-blue)}.v26-selected-task>span{color:var(--text-muted);font-size:10px;text-transform:uppercase}.v26-selected-task>strong{flex:1;min-width:180px}.v26-selected-task button{border:0;background:none;color:var(--snowflake-blue);font-weight:750;cursor:pointer}
+
+/* Mock replay */
+.v26-mock-replay{overflow:hidden}.v26-replay-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.v26-replay-stats>div{border:var(--panel-border);border-radius:14px;background:var(--surface-soft);padding:16px;min-width:0}.v26-replay-stats strong{display:block;font:800 24px/1 var(--mono)}.v26-replay-stats span{display:block;margin-top:6px;color:var(--text-muted);font-size:11px}.v26-replay-filters{display:flex;gap:7px;flex-wrap:wrap;margin:18px 0}.v26-replay-filters button{border:1px solid var(--border-subtle);border-radius:999px;background:var(--surface);color:var(--text-secondary);padding:8px 12px;font-size:11px;font-weight:750;cursor:pointer}.v26-replay-filters button.active{border-color:var(--snowflake-blue);background:var(--surface-blue);color:var(--text-primary)}.v26-replay-list{display:grid;gap:10px}.v26-replay-card{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:16px;align-items:center;border:var(--panel-border);border-radius:16px;background:var(--surface);padding:16px;min-width:0}.v26-replay-position{display:grid;gap:5px}.v26-replay-position span{font:800 12px/1 var(--mono);color:var(--snowflake-blue)}.v26-replay-position strong{font:800 18px/1 var(--mono)}.v26-replay-evidence{min-width:0}.v26-replay-evidence header{display:flex;gap:8px;align-items:center}.v26-replay-evidence header b{font-size:12px}.v26-replay-evidence header em{font-style:normal;color:var(--warning);font-size:11px}.v26-replay-evidence p{margin:5px 0;color:var(--text-secondary);font-size:12px}.v26-replay-evidence small{color:var(--text-muted)}.v26-replay-card footer{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.v26-replay-card footer a,.v26-replay-card footer button{border:0;background:none;color:var(--snowflake-blue);text-decoration:none;font-size:11px;font-weight:750;cursor:pointer;padding:5px}.v26-replay-card.incorrect{border-left:3px solid var(--danger)}.v26-replay-card.unanswered{border-left:3px solid var(--warning)}.v26-replay-card.correct{border-left:3px solid var(--success)}
+
+/* The observed CI overflow starts at the tablet transition, so reflow instead of shrinking text. */
+@media (max-width:1100px){
+  .v26-nav-inner{padding-inline:20px;gap:18px}.v26-brand small{display:none}.v26-primary-nav{gap:16px;margin-left:0}.v26-nav-actions{gap:8px}.v26-signup-link,.v26-login-link{padding-inline:10px}
+  .v26-command-grid,.v26-command-domain-map{grid-template-columns:repeat(3,minmax(0,1fr))}.v26-home-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.v26-next-best-action{grid-template-columns:1fr}.v26-home-hero{padding-inline:clamp(24px,5vw,48px)}
+  .v26-trap-controls{grid-template-columns:1fr 1fr}.v26-trap-controls>div{grid-column:1/-1}
+  .v26-task-review-queue{grid-template-columns:1fr}.v26-replay-card{grid-template-columns:76px minmax(0,1fr)}.v26-replay-card footer{grid-column:1/-1;justify-content:flex-start}
+  .v26-footer-inner{min-width:0;flex-direction:column;align-items:flex-start;gap:18px;padding-inline:clamp(20px,4vw,34px)}
+  .v26-footer-inner nav{width:100%;max-width:100%;min-width:0;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:10px 18px}
+  .v26-footer-inner nav a{white-space:normal}
+}
+@media (max-width:900px){
+  .v26-command-grid,.v26-command-domain-map{grid-template-columns:repeat(2,minmax(0,1fr))}.v26-drill-filter-grid{grid-template-columns:1fr 1fr}.v26-domain-filter-box{grid-column:1/-1}.v26-replay-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .v26-command-grid,.v26-command-domain-map,.v26-home-facts,.v26-drill-filter-grid,.v26-replay-stats{grid-template-columns:1fr}.v26-domain-filter-box,.v26-drill-checkbox{grid-column:auto}.v26-home-hero h1{font-size:clamp(38px,12vw,58px)!important}.v26-replay-card{grid-template-columns:1fr}.v26-replay-card footer{grid-column:auto}.v26-task-review-card footer>*{flex:1 1 140px;text-align:center}.v26-home .v26-globe{width:min(360px,100%)!important}
+}
+@media (max-width:420px){
+  .v26-page{padding-inline:16px!important}.v26-home-hero{padding:26px 20px}.v26-command-card,.v26-command-domain{min-height:auto}.v26-replay-filters button{flex:1 1 42%;min-height:42px}.v26-drill-control select{min-height:46px}.v26-selected-task>strong{min-width:0;width:100%}
+}

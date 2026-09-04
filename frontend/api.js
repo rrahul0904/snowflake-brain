@@ -54,6 +54,10 @@ export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/
 export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
 export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);
 export const getDueToday = (params = {}) => api(`/api/intelligence/due-today?${new URLSearchParams(params)}`);
+export const getTaskReview = (params = {}) => api(`/api/intelligence/task-review?${new URLSearchParams(params)}`);
+export const scheduleTaskReview = (payload) => api("/api/intelligence/task-review", { method: "POST", body: JSON.stringify(payload) });
+export const markTaskReviewed = (payload) => api("/api/intelligence/task-review/reviewed", { method: "POST", body: JSON.stringify(payload) });
+export const resetTaskReview = (payload) => api("/api/intelligence/task-review/reset", { method: "POST", body: JSON.stringify(payload) });
 export const getMistakeNotebook = (params = {}) => api(`/api/intelligence/mistake-notebook?${new URLSearchParams(params)}`);
 export const updateMistakeNotebook = (questionId, payload) => api(`/api/intelligence/mistake-notebook/${encodeURIComponent(questionId)}`, { method: "PATCH", body: JSON.stringify(payload) });
 export const getConfidenceCalibration = (params = {}) => api(`/api/intelligence/confidence-calibration?${new URLSearchParams(params)}`);
@@ -75,10 +79,12 @@ export const startMockSession = (payload) => api("/api/mock/sessions", { method:
 export const getActiveMockSession = (params = {}) => api(`/api/mock/sessions/active?${new URLSearchParams(params)}`);
 export const getMockSession = (id) => api(`/api/mock/sessions/${encodeURIComponent(id)}`);
 export const cancelMockSession = (id) => api(`/api/mock/session-control/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" });
+export const recordMockReplayEvent = (sessionId, payload) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/events`, { method: "POST", body: JSON.stringify(payload) });
 export const saveMockAnswer = (sessionId, questionId, selected) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/answers/${encodeURIComponent(questionId)}`, { method: "PUT", body: JSON.stringify({ selected }) });
 export const saveMockFlag = (sessionId, questionId, flagged) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/questions/${encodeURIComponent(questionId)}/flag`, { method: "PUT", body: JSON.stringify({ flagged }) });
 export const submitMockSession = (sessionId, reason = "learner") => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/submit`, { method: "POST", body: JSON.stringify({ reason }) });
 export const getMockResult = (sessionId) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/result`);
+export const getMockReplay = (sessionId) => api(`/api/mock/sessions/${encodeURIComponent(sessionId)}/replay`);
 export const getMockHistory = (params = {}) => api(`/api/mock/history?${new URLSearchParams(params)}`);
 export const toggleBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`, { method: "POST", body: "{}" });
 export const getBookmark = (id) => api(`/api/questions/${encodeURIComponent(id)}/bookmark`);
