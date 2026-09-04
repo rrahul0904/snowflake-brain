@@ -27,6 +27,11 @@ jobs:
       BRAIN_DB: /tmp/snowflake-v26-visual.sqlite
       V26_BASE_URL: http://127.0.0.1:8000
       V26_VISUAL_DIR: artifacts/v26-visual-parity
+      # The visual matrix deliberately navigates dozens of authenticated routes
+      # in one synthetic session.  Rate-limit policy is exercised separately by
+      # Security Assurance; it would otherwise turn this rendering test into a
+      # self-inflicted 429 test rather than a visual/accessibility test.
+      SECURITY_RATE_LIMIT_ENABLED: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
