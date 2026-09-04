@@ -63,13 +63,14 @@ def main() -> int:
         # the first page incomplete and assert the aggregate still sees all.
         with connect() as conn:
             for index in range(51):
+                plan = ("premium_20", "premium_40", "premium_100")[index % 3]
                 conn.execute(
                     "INSERT INTO billing_subscriptions(candidate_id,provider,provider_customer_id,provider_subscription_id,provider_price_id,internal_plan,status) VALUES (?,?,?,?,?,?,?)",
-                    (candidate["id"], "stripe", f"cus_{index}", f"sub_{index}", f"price_{index}", "premium_100", "active"),
+                    (candidate["id"], "stripe", f"cus_{index}", f"sub_{index}", f"price_{index}", plan, "active"),
                 )
         paged = client.get("/api/admin/subscriptions?page=1&page_size=1")
         require(paged.status_code, 200, "paginated subscriptions")
-        if paged.json()["kpis"]["active_subscribers"] != 51 or paged.json()["kpis"]["mrr"] != 1020.0:
+        if paged.json()["kpis"]["active_subscribers"] != 51 or paged.json()["kpis"]["mrr"] != 2720.0:
             raise AssertionError("subscription KPI totals changed with pagination")
         with connect() as conn:
             conn.execute("UPDATE candidate_accounts SET role='candidate' WHERE id=?", (admin["id"],))

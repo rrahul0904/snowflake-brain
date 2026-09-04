@@ -46,24 +46,33 @@ def runtime_dsn(admin_dsn: str, role: str, password: str) -> str:
     return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
 
 
-def create_or_rotate_role(admin_dsn: str, role: str, password: str) -> None:
+def staged_runtime_role(base_role: str) -> str:
+    """Return a fresh, PostgreSQL-safe role name for a no-downtime handoff."""
+    suffix = secrets.token_hex(6)
+    maximum_base_length = 63 - len(suffix) - 1
+    require(maximum_base_length > 0, "Hosted runtime role name is too long")
+    return f"{base_role[:maximum_base_length]}_{suffix}"
+
+
+def create_staged_role(admin_dsn: str, role: str, password: str) -> None:
+    """Create a new login instead of changing the credential used by live code.
+
+    Vercel environment values are applied to future deployments. Updating the
+    password on an existing role before a deployment would therefore strand
+    already-running functions when their pooled connections reconnect.  A fresh
+    role preserves the old deployment until the new deployment is healthy.
+    """
     parsed = urlsplit(admin_dsn)
     database_name = parsed.path.lstrip("/")
     require(bool(database_name), "Migration DSN must include a database name")
     with psycopg.connect(admin_dsn, autocommit=True) as conn:
         exists = conn.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (role,)).fetchone()
-        if exists:
-            conn.execute(
-                sql.SQL(
-                    "ALTER ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
-                ).format(sql.Identifier(role), sql.Literal(password))
-            )
-        else:
-            conn.execute(
-                sql.SQL(
-                    "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
-                ).format(sql.Identifier(role), sql.Literal(password))
-            )
+        require(not exists, "Refusing to alter an existing runtime role during staged rotation")
+        conn.execute(
+            sql.SQL(
+                "CREATE ROLE {} LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
+            ).format(sql.Identifier(role), sql.Literal(password))
+        )
         conn.execute(
             sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
                 sql.Identifier(database_name), sql.Identifier(role)
@@ -104,8 +113,9 @@ def main() -> None:
     require(bool(RUNTIME_ROLE), "HOSTED_RUNTIME_ROLE must not be empty")
 
     password = secrets.token_urlsafe(36)
-    generated_runtime_dsn = runtime_dsn(MIGRATION_URL, RUNTIME_ROLE, password)
-    create_or_rotate_role(MIGRATION_URL, RUNTIME_ROLE, password)
+    staged_role = staged_runtime_role(RUNTIME_ROLE)
+    generated_runtime_dsn = runtime_dsn(MIGRATION_URL, staged_role, password)
+    create_staged_role(MIGRATION_URL, staged_role, password)
 
     # Import application modules only after the in-memory runtime DSN is set so
     # app.config sees the new credential and the verifier tests the exact role
@@ -126,7 +136,7 @@ def main() -> None:
         grant_runtime_privileges()
         status = assert_production_schema_ready()
         require(status.get("status") == "ok", "Least-privilege runtime verification failed after ACL reconciliation")
-        require(status.get("runtime_role") == RUNTIME_ROLE, "Runtime verifier authenticated as an unexpected PostgreSQL role")
+        require(status.get("runtime_role") == staged_role, "Runtime verifier authenticated as an unexpected PostgreSQL role")
         upsert_vercel_runtime_dsn(generated_runtime_dsn)
     finally:
         close_pool()
@@ -136,12 +146,14 @@ def main() -> None:
         json.dumps(
             {
                 "status": "ok",
-                "runtime_role": RUNTIME_ROLE,
+                "runtime_role": staged_role,
                 "database_schema": DATABASE_SCHEMA,
                 "vercel_project_id": VERCEL_PROJECT_ID,
                 "vercel_targets": ["production", "preview"],
                 "runtime_dsn_rotated": True,
                 "redeploy_required": True,
+                "cutover_state": "staged",
+                "previous_runtime_role_retirement": "defer until the new deployment is verified healthy",
             }
         )
     )

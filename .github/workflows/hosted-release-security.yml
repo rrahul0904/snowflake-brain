@@ -44,7 +44,10 @@ jobs:
       SECURITY_TEST_ATTACKER_PASSWORD: ${{ secrets.PRODUCTION_SECURITY_ATTACKER_PASSWORD }}
       SECURITY_TEST_VICTIM_EMAIL: ${{ secrets.PRODUCTION_SECURITY_VICTIM_EMAIL }}
       SECURITY_TEST_VICTIM_PASSWORD: ${{ secrets.PRODUCTION_SECURITY_VICTIM_PASSWORD }}
-      EXERCISE_LIVE_BANK: ${{ github.event_name == 'workflow_dispatch' && inputs.exercise_live_bank || 'true' }}
+      # A manual false must remain false. Pushes keep the intentional final
+      # release default of true without treating a false dispatch input as an
+      # expression fallback.
+      EXERCISE_LIVE_BANK: ${{ github.event_name != 'workflow_dispatch' || inputs.exercise_live_bank }}
       RELEASE_MAIN_SHA: ${{ github.sha }}
       RELEASE_PR_NUMBER: "37"
     steps:

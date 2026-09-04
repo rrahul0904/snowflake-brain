@@ -123,7 +123,10 @@ def audit(actor_id: int, event: str, *, target_type: str = "", target_id: str = 
 
 
 def _plan_mrr(plan: str) -> float:
-    return {"premium_100": 20.0, "premium_250": 40.0, "premium_500": 100.0}.get(plan, 0.0)
+    # Internal plan codes are the durable billing contract.  Price-ID variable
+    # names retain a historical 100/250/500 naming convention, so do not infer
+    # a plan's monetary value from those provider configuration names.
+    return {"premium_20": 20.0, "premium_40": 40.0, "premium_100": 100.0}.get(plan, 0.0)
 
 
 def overview() -> dict[str, Any]:
