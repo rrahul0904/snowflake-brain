@@ -97,7 +97,16 @@ def run(browser, width: int, height: int, route_map: dict[str, tuple[str, tuple[
             page.wait_for_selector("#view-root[data-route-ok='true']")
             set_theme(page, theme)
             page.wait_for_timeout(120)
-            for selector in selectors: page.wait_for_selector(selector)
+            for selector in selectors:
+                if selector == ".v26-study-nav" and width <= 900:
+                    # The compact/tablet shell intentionally collapses the desktop
+                    # study sidebar. Prove that the navigation remains mounted for
+                    # semantic/route parity while respecting the responsive contract.
+                    page.wait_for_selector(selector, state="attached")
+                    if page.locator(selector).is_visible():
+                        raise AssertionError(f"compact study navigation should be collapsed: {width}x{height}-{theme}-{name}")
+                else:
+                    page.wait_for_selector(selector)
             if page.locator("#view-root[data-view-id='authentication-required']").count(): raise AssertionError(f"authenticated route unexpectedly gated: {name}")
             no_overflow(page, f"{width}x{height}-{theme}-{name}")
             if errors: raise AssertionError("browser errors: " + " | ".join(errors))
