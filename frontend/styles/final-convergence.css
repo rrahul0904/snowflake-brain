@@ -3,9 +3,11 @@
 /* Prevent intrinsic grid/flex sizing from pushing public layouts wider than the viewport. */
 .v26-home,.v26-home-hero,.v26-home-facts,.v26-home-command-wrap,.v26-home-globe,
 .v26-home-command-wrap *,.v26-home-hero *{min-width:0;box-sizing:border-box}
-.v26-home-hero,.v26-home-facts,.v26-home-command-wrap{width:100%}
+.v26-home{max-width:100%;overflow-x:clip}
+.v26-home>*,.v26-home-hero,.v26-home-facts,.v26-home-command-wrap{width:100%;max-width:100%}
 .v26-home .v26-globe-wrap,.v26-home .v26-globe{max-width:100%;min-width:0}
 .v26-home .v26-globe{width:min(410px,100%)!important;margin-inline:auto}
+.v26-home .v26-globe-points{overflow:hidden}
 .v26-command-heading{flex-wrap:wrap}
 .v26-command-heading>a{max-width:100%;white-space:normal}
 
