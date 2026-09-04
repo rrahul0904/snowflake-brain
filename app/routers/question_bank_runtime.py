@@ -26,6 +26,7 @@ from ..mock_exam import (
     set_flag,
     submit_session,
 )
+from ..mock_replay import append_event, record_answer_event, record_flag_event, replay_payload
 from ..question_bank import (
     candidate_was_served_question,
     question_review_metadata,
@@ -61,6 +62,12 @@ class SessionFlag(BaseModel):
 
 class SessionSubmit(BaseModel):
     reason: Literal["learner", "timer"] = "learner"
+
+
+class SessionReplayEvent(BaseModel):
+    event_type: Literal["question_viewed", "question_navigated_from", "question_navigated_to", "session_resumed"]
+    question_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class QuizAnswer(BaseModel):
@@ -134,9 +141,6 @@ def start_candidate_practice(payload: CertificationQuizStart, candidate: dict[st
         )
     preferred: list[str] | None = None
     if str(payload.mode or "").strip().lower().replace("_", "-") == "adaptive":
-        # Ask the intelligence layer for a wider candidate priority set, then let
-        # the canonical selector enforce active release, tier eligibility, quota,
-        # served-history recording and answer hiding.
         preferred = adaptive_question_ids(
             candidate["id"],
             payload.track_id,
@@ -193,28 +197,111 @@ def get_candidate_mock(session_id: int, candidate: dict[str, Any] = Depends(requ
     return _candidate_mock(session_payload(session_id)) or {}
 
 
+@router.post("/mock/sessions/{session_id}/events")
+def post_candidate_mock_replay_event(
+    session_id: int,
+    payload: SessionReplayEvent,
+    candidate: dict[str, Any] = Depends(require_candidate),
+) -> dict[str, bool]:
+    require_owned_mock_session(session_id, candidate["id"])
+    try:
+        with connect() as conn:
+            session = conn.execute(
+                "SELECT status FROM exam_sessions WHERE id=? AND candidate_id=?",
+                (session_id, candidate["id"]),
+            ).fetchone()
+            if not session or str(session["status"]) != "in_progress":
+                raise HTTPException(status_code=409, detail="Replay events are accepted only during an active mock")
+            append_event(
+                conn,
+                session_id=session_id,
+                candidate_id=candidate["id"],
+                question_id=payload.question_id,
+                event_type=payload.event_type,
+                metadata=payload.metadata,
+                client_event=True,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True}
+
+
 @router.put("/mock/sessions/{session_id}/answers/{question_id}")
 def put_candidate_mock_answer(session_id: int, question_id: str, payload: SessionAnswer, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     require_owned_mock_session(session_id, candidate["id"])
-    return save_answer(session_id, question_id, payload.selected)
+    with connect() as conn:
+        previous = conn.execute(
+            "SELECT selected_json FROM exam_session_answers WHERE session_id=? AND question_id=?",
+            (session_id, question_id),
+        ).fetchone()
+        previous_selected = [int(item) for item in json_list(previous["selected_json"])] if previous else []
+    result = save_answer(session_id, question_id, payload.selected)
+    with connect() as conn:
+        record_answer_event(
+            conn,
+            session_id=session_id,
+            candidate_id=candidate["id"],
+            question_id=question_id,
+            previous=previous_selected,
+            selected=result.get("selected") or [],
+        )
+    return result
 
 
 @router.put("/mock/sessions/{session_id}/questions/{question_id}/flag")
 def put_candidate_mock_flag(session_id: int, question_id: str, payload: SessionFlag, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     require_owned_mock_session(session_id, candidate["id"])
-    return set_flag(session_id, question_id, payload.flagged)
+    with connect() as conn:
+        previous = conn.execute(
+            "SELECT flagged FROM exam_session_questions WHERE session_id=? AND question_id=?",
+            (session_id, question_id),
+        ).fetchone()
+        previous_flagged = bool(previous["flagged"]) if previous else False
+    result = set_flag(session_id, question_id, payload.flagged)
+    if previous_flagged != bool(payload.flagged):
+        with connect() as conn:
+            record_flag_event(
+                conn,
+                session_id=session_id,
+                candidate_id=candidate["id"],
+                question_id=question_id,
+                flagged=bool(payload.flagged),
+            )
+    return result
 
 
 @router.post("/mock/sessions/{session_id}/submit")
 def submit_candidate_mock(session_id: int, payload: SessionSubmit | None = None, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     require_owned_mock_session(session_id, candidate["id"])
-    return _candidate_result(submit_session(session_id, (payload or SessionSubmit()).reason))
+    reason = (payload or SessionSubmit()).reason
+    result = submit_session(session_id, reason)
+    with connect() as conn:
+        append_event(
+            conn,
+            session_id=session_id,
+            candidate_id=candidate["id"],
+            event_type="timer_expired" if reason == "timer" else "session_submitted",
+            metadata={"reason": reason},
+        )
+    return _candidate_result(result)
 
 
 @router.get("/mock/sessions/{session_id}/result")
 def get_candidate_mock_result(session_id: int, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     require_owned_mock_session(session_id, candidate["id"])
     return _candidate_result(result_payload(session_id))
+
+
+@router.get("/mock/sessions/{session_id}/replay")
+def get_candidate_mock_replay(session_id: int, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
+    require_owned_mock_session(session_id, candidate["id"])
+    try:
+        with connect() as conn:
+            return replay_payload(conn, session_id, candidate["id"])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/mock/history")

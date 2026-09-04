@@ -1,10 +1,10 @@
 export const VIEW_ID = "v26-exam-session";
 
-import { getMockConfig, getMockSession, saveMockAnswer, saveMockFlag, submitMockSession } from "../api.js";
+import { getMockConfig, getMockSession, recordMockReplayEvent, saveMockAnswer, saveMockFlag, submitMockSession } from "../api.js";
 import { candidate, refreshCandidate } from "../auth.js";
 import { premiumGate } from "../components/entitlement-gates.js";
 
-const DOMAIN_COLORS = ["#c87966", "#859db8", "#c49a62", "#7b9e91", "#b97b82"];
+const DOMAIN_COLORS = ["#29B5E8", "#6366F1", "#10B981", "#F59E0B", "#8B5CF6"];
 const state = { session: null, config: null, index: 0, filter: "all", timer: null, loadedAt: 0, remaining: 0, saving: false };
 
 export function unmount() {
@@ -37,12 +37,14 @@ export default async function mount(container, params = {}) {
   draw(container);
   startTimer(container);
   window.addEventListener("keydown", keyboard);
+  recordMockReplayEvent(sessionId, { event_type: "session_resumed", metadata: { position: session.questions?.[0]?.position || 1 } }).catch(() => {});
+  recordView(state.index);
 }
 
 function keyboard(event) {
   if (!state.session || event.target?.matches?.("input,textarea,select,button")) return;
-  if (event.key === "ArrowRight") { state.index = Math.min(state.session.questions.length - 1, state.index + 1); draw(document.querySelector("#view-root")); }
-  if (event.key === "ArrowLeft") { state.index = Math.max(0, state.index - 1); draw(document.querySelector("#view-root")); }
+  if (event.key === "ArrowRight") navigateTo(Math.min(state.session.questions.length - 1, state.index + 1), document.querySelector("#view-root"));
+  if (event.key === "ArrowLeft") navigateTo(Math.max(0, state.index - 1), document.querySelector("#view-root"));
 }
 
 function draw(container) {
@@ -63,17 +65,34 @@ function draw(container) {
 
 function bind(container) {
   container.querySelectorAll("[data-filter]").forEach((button) => button.addEventListener("click", () => { state.filter = button.dataset.filter; draw(container); }));
-  container.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => { state.index = Number(button.dataset.jump); draw(container); }));
-  container.querySelectorAll("[data-question-index]").forEach((button) => button.addEventListener("click", () => { state.index = Number(button.dataset.questionIndex); draw(container); }));
+  container.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => navigateTo(Number(button.dataset.jump), container)));
+  container.querySelectorAll("[data-question-index]").forEach((button) => button.addEventListener("click", () => navigateTo(Number(button.dataset.questionIndex), container)));
   container.querySelectorAll("input[name='answer']").forEach((input) => input.addEventListener("change", () => saveAnswer(container)));
-  container.querySelector("[data-prev]")?.addEventListener("click", () => { state.index = Math.max(0, state.index - 1); draw(container); });
-  container.querySelector("[data-next]")?.addEventListener("click", () => { state.index = Math.min(state.session.questions.length - 1, state.index + 1); draw(container); });
+  container.querySelector("[data-prev]")?.addEventListener("click", () => navigateTo(Math.max(0, state.index - 1), container));
+  container.querySelector("[data-next]")?.addEventListener("click", () => navigateTo(Math.min(state.session.questions.length - 1, state.index + 1), container));
   container.querySelector("[data-flag]")?.addEventListener("click", () => toggleFlag(container));
   container.querySelectorAll("[data-submit]").forEach((button) => button.addEventListener("click", () => container.querySelector("[data-dialog]")?.showModal()));
   container.querySelector("[data-cancel]")?.addEventListener("click", () => container.querySelector("[data-dialog]")?.close());
   container.querySelector("[data-confirm]")?.addEventListener("click", () => finish(container, "learner"));
   container.querySelector("[data-open-nav]")?.addEventListener("click", () => document.body.classList.add("v26-exam-nav-open"));
   container.querySelector("[data-close-nav]")?.addEventListener("click", () => document.body.classList.remove("v26-exam-nav-open"));
+}
+
+function navigateTo(nextIndex, container) {
+  const from = state.session.questions[state.index];
+  const to = state.session.questions[nextIndex];
+  if (!to || nextIndex === state.index) return;
+  const sessionId = state.session.session_id;
+  recordMockReplayEvent(sessionId, { event_type: "question_navigated_from", question_id: from.id, metadata: { from_position: from.position, to_position: to.position } }).catch(() => {});
+  state.index = nextIndex;
+  draw(container);
+  recordMockReplayEvent(sessionId, { event_type: "question_navigated_to", question_id: to.id, metadata: { from_position: from.position, to_position: to.position } }).catch(() => {});
+}
+
+function recordView(index) {
+  const q = state.session?.questions?.[index];
+  if (!q) return;
+  recordMockReplayEvent(state.session.session_id, { event_type: "question_viewed", question_id: q.id, metadata: { position: q.position } }).catch(() => {});
 }
 
 async function saveAnswer(container) {

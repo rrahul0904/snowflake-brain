@@ -6,7 +6,16 @@ from fastapi.staticfiles import StaticFiles
 
 from .account_lifecycle import ensure_account_lifecycle_schema
 from .adaptive_readiness import ensure_adaptive_readiness_schema
-from .config import DATABASE_BACKEND, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
+from .config import (
+    DATABASE_BACKEND,
+    IS_VERCEL_RUNTIME,
+    OBSERVABILITY_METRICS_TOKEN,
+    QUESTION_BANK_AUTO_IMPORT,
+    RELEASE_BUILD_TIMESTAMP,
+    RELEASE_GIT_SHA,
+    RELEASE_ID,
+    VERCEL_ENV,
+)
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
@@ -21,8 +30,10 @@ from .observability_middleware import ObservabilityMiddleware
 from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema
+from .production_schema import assert_production_schema_ready
 from .routers import (
     account,
+    admin,
     activity,
     adaptive,
     affiliate,
@@ -59,25 +70,30 @@ app.add_middleware(ObservabilityMiddleware)
 @app.on_event("startup")
 def startup() -> None:
     try:
-        run_migrations()
-        ensure_identity_billing_schema()
-        ensure_question_version_schema()
-        ensure_question_bank_release_schema()
-        ensure_learning_intelligence_schema()
-        ensure_account_lifecycle_schema()
-        ensure_adaptive_readiness_schema()
-        ensure_talent_schema()
-        # SQLite historically created feedback lazily. Account export/deletion
-        # needs that candidate-linked table to exist even for candidates who have
-        # never submitted feedback, so bootstrap its lightweight local schema.
-        feedback.ensure_feedback_schema()
-        if QUESTION_BANK_AUTO_IMPORT:
-            # The source directory is private deployment content, never a frontend
-            # asset and never committed to this repository. Imports never replace an
-            # already active release; they remain admin/staging content until an
-            # explicit release activation.
-            import_question_bank_directory()
-        ensure_active_release_baseline("snowpro-core")
+        if IS_VERCEL_RUNTIME:
+            # Every Vercel request-serving deployment, including Preview, is
+            # deliberately read-only at startup. A preview must never mutate a
+            # shared managed database merely because it is not the production alias.
+            assert_production_schema_ready()
+        else:
+            # Local/CI retain their lightweight self-contained setup.
+            run_migrations()
+            ensure_identity_billing_schema()
+            ensure_question_version_schema()
+            ensure_question_bank_release_schema()
+            ensure_learning_intelligence_schema()
+            ensure_account_lifecycle_schema()
+            ensure_adaptive_readiness_schema()
+            ensure_talent_schema()
+            # SQLite historically created feedback lazily. Account export/deletion
+            # needs that candidate-linked table to exist even for candidates who have
+            # never submitted feedback, so bootstrap its lightweight local schema.
+            feedback.ensure_feedback_schema()
+            if QUESTION_BANK_AUTO_IMPORT:
+                # The source directory is private development/CI content, never a
+                # frontend asset and never committed to this repository.
+                import_question_bank_directory()
+            ensure_active_release_baseline("snowpro-core")
     except Exception as exc:
         record_background_failure("application_startup", exc)
         raise
@@ -100,6 +116,17 @@ def health() -> dict[str, str]:
         "question_bank": "private-v1",
         "database_backend": DATABASE_BACKEND,
         "observability": "structured-v1",
+    }
+
+
+@app.get("/api/release")
+def release() -> dict[str, str]:
+    """Non-secret deployment identity used for exact-SHA release checks."""
+    return {
+        "git_sha": RELEASE_GIT_SHA,
+        "release_id": RELEASE_ID,
+        "environment": VERCEL_ENV or "local",
+        "build_timestamp": RELEASE_BUILD_TIMESTAMP,
     }
 
 
@@ -150,9 +177,25 @@ app.include_router(feedback.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(account.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 app.include_router(credentials.router, prefix="/api")
 app.include_router(google_auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
+
+
+# Keep the API namespace fail-closed for every common HTTP method. These
+# fallbacks are registered after every real API router so concrete routes match
+# first; only unknown/retired API paths reach this handler. This prevents the
+# SPA catch-all from turning retired endpoints into HTTP 200 HTML and prevents
+# method-specific 405 responses from revealing ambiguous route semantics.
+_API_FALLBACK_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
+
+
+@app.api_route("/api", methods=_API_FALLBACK_METHODS, include_in_schema=False)
+@app.api_route("/api/{full_path:path}", methods=_API_FALLBACK_METHODS, include_in_schema=False)
+def api_not_found(full_path: str = "") -> None:
+    raise HTTPException(status_code=404, detail="Not found")
+
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 

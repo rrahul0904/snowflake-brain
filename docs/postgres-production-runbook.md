@@ -1,14 +1,12 @@
 # PostgreSQL Production Runbook
 
-This runbook owns the production persistence boundary for the Snowflake Certification Guide. SQLite remains supported for local development and lightweight tests; production should configure `DATABASE_URL` and use PostgreSQL.
+This runbook owns the production persistence boundary for the Snowflake Certification Guide. Vercel is the only production application runtime and managed Neon PostgreSQL is the only production persistence layer. SQLite remains supported strictly for local development and lightweight tests.
 
 ## Configuration
 
 Required production setting:
 
-```bash
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
-```
+Configure the pooled Neon `DATABASE_URL` only in the Vercel encrypted **Production** environment. Never copy that value into a local `.env`, Docker Compose file, repository file, browser code, log, error response or support ticket.
 
 Recommended settings:
 
@@ -21,15 +19,17 @@ DB_POOL_TIMEOUT_SECONDS=10
 
 `DATABASE_URL` should come from the deployment secret store. Do not commit production credentials.
 
-## Startup and migrations
+## Controlled migrations and runtime verification
 
-Application startup calls the database migration boundary before any candidate routes are served. PostgreSQL migrations live in:
+PostgreSQL migrations live in:
 
 ```text
 migrations/postgres/
 ```
 
-They are applied in lexical order and recorded in `schema_migrations`. A PostgreSQL advisory transaction lock serializes migration application so concurrent application replicas cannot race the schema bootstrap.
+They are applied in lexical order and recorded in `schema_migrations`. An approved deployment job runs `python scripts/migrate_production.py` with `DATABASE_MIGRATION_URL`, a distinct DDL-capable migration credential. The runner takes a PostgreSQL advisory lock, applies pending migrations, verifies the runtime credential can read the expected schema, and exits without printing credentials.
+
+Normal Vercel/FastAPI startup does **not** run migrations, create schemas, auto-import question files or activate a release. It checks the current schema and database connectivity only; a missing/incompatible schema keeps readiness failed.
 
 Readiness is exposed at:
 
@@ -39,14 +39,14 @@ GET /api/ready
 
 The readiness probe performs a real database round trip. `/api/health` remains process liveness and should not be used as a dependency-readiness gate.
 
-## Local PostgreSQL stack
+## Local PostgreSQL stack (development/CI only)
 
 ```bash
 docker compose up --build
 curl http://localhost:8010/api/ready
 ```
 
-Compose starts PostgreSQL first, waits for `pg_isready`, then starts the application. The application itself is considered healthy only after `/api/ready` succeeds.
+Compose is never a production deployment path. It starts PostgreSQL first, waits for `pg_isready`, then starts the local application. The application itself is considered healthy only after `/api/ready` succeeds.
 
 ## SQLite to PostgreSQL migration
 
@@ -127,7 +127,7 @@ Use PostgreSQL query plans and production latency telemetry to tune further inde
 
 ## Failure handling
 
-If startup migration fails, the application must remain not-ready rather than partially serve candidate traffic. Investigate the migration error, correct it through a new forward migration, and rerun startup. Do not edit an already-applied production migration file in place.
+If the controlled migration job fails, do not deploy the application. Investigate the error, correct it through a new forward migration, rerun the controlled job, and then deploy. Do not edit an already-applied production migration file in place.
 
 If `/api/ready` fails while `/api/health` succeeds, treat the incident as a dependency/database readiness failure.
 

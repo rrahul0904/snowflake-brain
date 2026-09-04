@@ -42,6 +42,7 @@ for name in (
     'styles/tokens.css', 'styles/utilities.css', 'styles/shell.css', 'styles/home.css',
     'styles/study.css', 'styles/practice.css', 'styles/mock.css', 'styles/content.css',
     'styles/exam.css', 'styles/membership.css', 'styles/responsive.css', 'styles/accessibility.css',
+    'styles/reverse-engineering-completeness.css',
 ):
     ok('/static/' + name in html, 'canonical css ' + name)
 
@@ -70,8 +71,6 @@ ok(activity_body['mode'] == 'fallback', 'empty activity uses truthful fallback')
 ok(activity_body['locations'] == [], 'fallback has no fabricated locations')
 ok(activity_body['minimum_public_count'] == 3, 'privacy threshold')
 
-# A bucket below the public threshold must remain private; an aggregated bucket at
-# the threshold may be returned. These are test-only rows in the isolated database.
 with connect() as conn:
     conn.execute(
         "INSERT INTO learner_activity_aggregates(bucket_key,label,latitude,longitude,active_count,observed_at) VALUES (?,?,?,?,?,datetime('now'))",
@@ -86,12 +85,18 @@ ok(activity_live['mode'] == 'live', 'aggregated activity live mode')
 ok(activity_live['active_total'] == 3, 'only public aggregate counted')
 ok([row['bucket_key'] for row in activity_live['locations']] == ['public-test'], 'sub-threshold bucket hidden')
 
-# Certification content is no longer public. Prove the guest boundary before the
-# smoke candidate is created, then use that authenticated candidate for all study
-# metadata and mock configuration checks below.
+# Public certification discovery exposes source-checked facts only. Curriculum,
+# questions, mock configuration, and all learner-specific study data stay gated.
 ok(c.get('/api/auth/me').json() == {'authenticated': False, 'candidate': None, 'membership': None}, 'guest membership state')
 ok(c.get('/api/skills/map').status_code == 401, 'guest skill map gate')
-ok(c.get('/api/skills/catalog').status_code == 401, 'guest catalog gate')
+public_catalog_response = c.get('/api/skills/catalog')
+ok(public_catalog_response.status_code == 200, 'guest source-verified certification facts')
+public_catalog = public_catalog_response.json()['official_certifications']
+ok([(x['id'], x['exam_code']) for x in public_catalog] == [('snowpro-core', 'COF-C03'), ('advanced-data-engineer', 'DEA-C02'), ('advanced-architect', 'ARA-C01')], 'exact focused certification catalog')
+core_public = next(x for x in public_catalog if x['id'] == 'snowpro-core')
+ok(core_public['fee_usd'] == 175 and core_public['domain_count'] == 5, 'verified core facts')
+ok(core_public['source_status']['item_count'] == 'not_verified' and core_public['item_count'] is None, 'unknown public facts stay unknown')
+ok(all('domains' not in row and 'skills' not in row and 'questions' not in row for row in public_catalog), 'public facts contain no study payload')
 ok(c.get('/api/mock/config?track_id=snowpro-core').status_code == 401, 'guest mock config gate')
 ok(c.post('/api/mock/sessions', json={'track_id': 'snowpro-core', 'mode': 'quick-mock'}).status_code == 401, 'guest mock gate')
 
@@ -146,5 +151,14 @@ ok(cancel.status_code == 200 and cancel.json()['status'] == 'cancelled', 'discar
 
 f = c.post('/api/feedback', json={'title': 'V26 smoke', 'category': 'other', 'description': 'smoke', 'route': '#/home', 'track_id': 'snowpro-core'})
 ok(f.status_code == 200 and f.json()['ok'], 'feedback')
+
+# Reverse-engineering additions are present in the active UI, not in a retired beta tree.
+info_source = (ROOT / 'frontend' / 'views' / 'info-v26.js').read_text(encoding='utf-8')
+sidebar_source = (ROOT / 'frontend' / 'components' / 'study-shell.js').read_text(encoding='utf-8')
+result_source = (ROOT / 'frontend' / 'views' / 'exam-result-v26.js').read_text(encoding='utf-8')
+ok('#/content-integrity' in (ROOT / 'frontend' / 'router-complete.js').read_text(encoding='utf-8'), 'content integrity route')
+ok('source_verified_at' in info_source and 'Not guessed' in info_source, 'source-verified exam guide')
+ok('data-sidebar-skill' in sidebar_source and 'v26-task-complete' in sidebar_source, 'completion ticks')
+ok('unanswered' in result_source and 'isUnanswered' in result_source, 'unanswered result filter')
 
 print('V26 functional + visual-contract smoke: PASS')

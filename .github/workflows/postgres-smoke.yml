@@ -63,6 +63,11 @@ jobs:
       - name: Verify native PostgreSQL production foundation
         run: python scripts/test_postgres_production_foundation.py
 
+      - name: Prove production runtime role separation
+        env:
+          ROLE_TEST_ADMIN_URL: postgresql://snowflake:snowflake@127.0.0.1:5432/snowflake_ci
+        run: python scripts/test_production_role_separation_postgres.py
+
       - name: Verify readiness endpoint on PostgreSQL
         shell: bash
         env:

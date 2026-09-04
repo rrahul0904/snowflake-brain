@@ -47,7 +47,11 @@ def synthetic_bank() -> dict:
                         "authoring_status": "active",
                         "authoring_version": "test-v1",
                         "question": f"For task {skill['id']} in pool {pool}, scenario {index}: which Snowflake choice best satisfies the stated requirement?",
-                        "options": [f"Distractor A for {qid}", f"Correct option for {qid}", f"Distractor C for {qid}", f"Distractor D for {qid}"],
+                        # Deliberately neutral labels: this fixture must not
+                        # encode the answer in display text, otherwise a
+                        # payload-redaction test could pass/fail for the wrong
+                        # reason.
+                        "options": [f"Option A for {qid}", f"Option B for {qid}", f"Option C for {qid}", f"Option D for {qid}"],
                         "correct_options": [1],
                         "correct_rationale": f"Option B is correct for {qid} because it directly matches the configured task boundary and the scenario requirement.",
                         "distractor_rationales": [
@@ -114,9 +118,36 @@ def main() -> None:
     for question in drill.json()["questions"]:
         check("correct" not in question and "explanation" not in question, "practice start does not leak answers")
 
+    # Treat a second authenticated candidate as a hostile, lowest-tier account:
+    # legitimate login must not turn a known question or session identifier into
+    # access to another candidate's commercial content.
+    attacker = TestClient(app)
+    register(attacker, "Hostile Candidate", "hostile-bank@example.com")
+    known_question_id = str(drill.json()["questions"][0]["id"])
+    guessed_question = attacker.get(f"/api/questions/{known_question_id}")
+    check(guessed_question.status_code == 404, "another candidate can retrieve a served private question by ID")
+    check("correct" not in guessed_question.text.lower() and "explanation" not in guessed_question.text.lower(), "denied question request leaks answer material")
+
     weekly = free.post("/api/mock/sessions", json={"track_id": "snowpro-core", "mode": "weekly-mock"})
     check(weekly.status_code == 200 and len(weekly.json()["questions"]) == 30, "Free 30Q full-content mock starts")
     check(int(weekly.json()["duration_seconds"]) == 45 * 60, "Free mock is timed for 45 minutes")
+    stolen_session = int(weekly.json()["session_id"])
+    check(attacker.get(f"/api/mock/sessions/{stolen_session}").status_code in {403, 404}, "another candidate can read a mock by ID")
+    check(
+        attacker.put(f"/api/mock/sessions/{stolen_session}/answers/{known_question_id}", json={"selected": [1]}).status_code in {403, 404},
+        "another candidate can alter a mock answer by ID",
+    )
+    check(
+        attacker.post(f"/api/mock/sessions/{stolen_session}/submit", json={"reason": "learner"}).status_code in {403, 404},
+        "another candidate can submit a mock by ID",
+    )
+    # A pre-submit session payload must not contain either structural answer
+    # fields or a known correct-option string from the imported private bank.
+    pre_submit = free.get(f"/api/mock/sessions/{stolen_session}")
+    check(pre_submit.status_code == 200, "candidate cannot resume own active mock")
+    pre_submit_text = pre_submit.text.lower()
+    check("correct_json" not in pre_submit_text and "explanation" not in pre_submit_text, "pre-submit mock leaks answer fields")
+    check("correct option for" not in pre_submit_text, "pre-submit mock leaks private correct-option text")
     weekly_meta = metadata_for_session(int(weekly.json()["session_id"]))
     check({row["bank_pool"] for row in weekly_meta} == {"free"}, "Free mock uses only Free pool")
     check(Counter(row["domain_id"] for row in weekly_meta) == Counter({"features-architecture": 9, "account-governance": 6, "loading-connectivity": 5, "performance-transformation": 7, "data-collaboration": 3}), "Free 30Q mock spans the full blueprint")

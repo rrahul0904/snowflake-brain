@@ -1,0 +1,55 @@
+name: Reverse Engineering Completeness
+
+on:
+  pull_request:
+    paths:
+      - 'artifacts/reverse-engineering-coverage.json'
+      - 'config/certification_catalog.json'
+      - 'config/snowflake_lab_challenges.json'
+      - 'app/**'
+      - 'frontend/**'
+      - 'migrations/postgres/**'
+      - 'docs/**'
+      - 'scripts/test_reverse_engineering_completeness.py'
+      - 'scripts/test_final_convergence.py'
+      - 'scripts/audit_private_bank_quality.py'
+      - '.github/workflows/reverse-engineering-completeness.yml'
+  push:
+    branches:
+      - main
+      - security/production-bank-hardening-v1
+      - reverse-engineering-completeness-v1
+    paths:
+      - 'artifacts/reverse-engineering-coverage.json'
+      - 'config/certification_catalog.json'
+      - 'config/snowflake_lab_challenges.json'
+      - 'app/**'
+      - 'frontend/**'
+      - 'migrations/postgres/**'
+      - 'docs/**'
+      - 'scripts/test_reverse_engineering_completeness.py'
+      - 'scripts/test_final_convergence.py'
+      - 'scripts/audit_private_bank_quality.py'
+      - '.github/workflows/reverse-engineering-completeness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reverse-engineering-completeness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Validate reverse-engineering coverage
+        run: python scripts/test_reverse_engineering_completeness.py
+      - name: Validate final Study Command Center convergence
+        run: python scripts/test_final_convergence.py
+      - name: Verify private-bank auditor never needs repository corpus
+        run: python scripts/audit_private_bank_quality.py /tmp/intentionally-absent-private-bank.json || test $? -eq 2

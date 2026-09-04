@@ -47,10 +47,10 @@ class LoginRequest(BaseModel):
 def _public_candidate_with_lifecycle(candidate: dict) -> dict:
     payload = public_candidate(candidate)
     try:
-        status = account_status(int(candidate["id"]))
-        payload["email_verified"] = bool(status.get("email_verified"))
-        payload["email_verified_at"] = status.get("email_verified_at")
-        payload["password_login_enabled"] = bool(status.get("password_login_enabled"))
+        lifecycle = account_status(int(candidate["id"]))
+        payload["email_verified"] = bool(lifecycle.get("email_verified"))
+        payload["email_verified_at"] = lifecycle.get("email_verified_at")
+        payload["password_login_enabled"] = bool(lifecycle.get("password_login_enabled"))
     except Exception:
         # Identity should still be usable if lifecycle status is temporarily unavailable;
         # protected lifecycle APIs remain the source of truth for security changes.

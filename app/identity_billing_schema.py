@@ -43,6 +43,7 @@ def ensure_identity_billing_schema() -> None:
                 return
 
             _ensure_column(conn, "candidate_accounts", "password_login_enabled", "INTEGER NOT NULL DEFAULT 1")
+            _ensure_column(conn, "candidate_accounts", "role", "TEXT NOT NULL DEFAULT 'candidate'")
             _ensure_column(conn, "candidate_memberships", "entitlement_version", "INTEGER NOT NULL DEFAULT 1")
             conn.executescript(
                 """

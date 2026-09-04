@@ -21,8 +21,10 @@ jobs:
           cache: pip
       - name: Install application and test dependencies
         run: python -m pip install --upgrade pip && pip install -r requirements.txt pytest
+      - name: Compile secret-bearing provisioning automation
+        run: python -m py_compile scripts/provision_hosted_runtime.py scripts/provision_stripe_billing.py
       - name: Run security unit tests
-        run: pytest -q tests/test_security_units.py
+        run: pytest -q tests/test_security_units.py tests/test_stripe_provisioning.py
       - name: Run adversarial HTTP checks
         run: python scripts/test_security_adversarial.py
       - name: Verify private question-bank integrity contract
@@ -40,6 +42,8 @@ jobs:
           cache: pip
       - name: Install security scanners
         run: python -m pip install --upgrade pip && pip install -r requirements.txt bandit pip-audit
+      - name: Tracked secret scan
+        run: python scripts/test_tracked_secret_scan.py
       - name: Capture full Bandit SAST report
         run: bandit -r app -f json -o bandit-report.json || true
       - name: Enforce Bandit blocking policy
@@ -52,6 +56,7 @@ jobs:
         with:
           name: security-static-dependency-reports
           path: |
+            artifacts/tracked-secret-scan.json
             bandit-report.json
             pip-audit-report.json
           if-no-files-found: ignore
@@ -68,6 +73,7 @@ jobs:
       SECURITY_RATE_LIMIT_ENABLED: 'false'
       BILLING_ENABLED: 'false'
       GOOGLE_AUTH_ENABLED: 'false'
+      SECURITY_BASE_URL: http://127.0.0.1:8000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -87,6 +93,8 @@ jobs:
           done
           cat /tmp/snowflake-zap-server.log
           exit 1
+      - name: Probe hosted static and build exposure
+        run: python scripts/test_hosted_static_exposure.py
       - name: Run ZAP baseline against public application surface
         run: |
           docker run --rm --network host \
@@ -103,6 +111,7 @@ jobs:
         with:
           name: zap-baseline-report
           path: |
+            artifacts/hosted-static-exposure.json
             zap-report.json
             zap-report.html
             /tmp/snowflake-zap-server.log

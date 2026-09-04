@@ -1,0 +1,67 @@
+name: Authenticated Bank Isolation
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "frontend/**"
+      - "migrations/**"
+      - "scripts/**"
+      - "requirements.txt"
+      - ".github/workflows/authenticated-bank-isolation.yml"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: authenticated-bank-isolation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated-bank-isolation:
+    name: authenticated-bank-isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BRAIN_DB: /tmp/snowflake-authenticated-bank-isolation.sqlite
+      ACCOUNT_EMAIL_DELIVERY_MODE: outbox
+      AUTH_COOKIE_SECURE: "false"
+      FORCE_HTTPS: "false"
+      SECURITY_RATE_LIMIT_ENABLED: "false"
+      BILLING_ENABLED: "false"
+      GOOGLE_AUTH_ENABLED: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Compile security runtime
+        run: python -m compileall -q app scripts
+      - name: Candidate authorization route matrix
+        run: python scripts/test_candidate_route_matrix.py
+      - name: Hostile registered-subscriber isolation
+        run: python scripts/test_authenticated_bank_isolation.py
+      - name: Question-bank tiers and entitlement boundaries
+        run: python scripts/test_question_bank_tiers.py
+      - name: Immutable question-version linkage
+        run: python scripts/test_question_version_immutability.py
+      - name: Active release and rollback boundaries
+        run: python scripts/test_question_bank_releases.py
+      - name: Atomic exam entitlement concurrency
+        run: python scripts/test_exam_entitlement_concurrency.py
+      - name: Upload authorization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authenticated-bank-isolation-${{ github.sha }}
+          path: artifacts/candidate-authorization-matrix.json
+          if-no-files-found: warn
+          retention-days: 30

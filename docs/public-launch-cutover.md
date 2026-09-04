@@ -8,24 +8,23 @@ The codebase can be green while these deployment/provider steps are still intent
 
 Before public traffic:
 
-- choose the production hostname
-- terminate TLS with a valid certificate
-- route the hostname through the chosen load balancer/CDN/WAF
+- use the existing Vercel production hostname: `https://snowflakecertificationguide.vercel.app/`
+- keep TLS, routing and edge protection on the existing Vercel project
 - preserve the original HTTPS scheme/host correctly to FastAPI
 - enable `FORCE_HTTPS=true`
 - enable `AUTH_COOKIE_SECURE=true`
 - keep `SECURITY_RATE_LIMIT_ENABLED=true`
 - configure edge DDoS/bot/distributed rate limiting appropriate to the host
-- set `APP_BASE_URL=https://YOUR_HOST`
+- set `APP_BASE_URL=https://snowflakecertificationguide.vercel.app`
 
 Run `/api/health` and `/api/ready` through the real public HTTPS path after cutover.
 
 ## 2. Production PostgreSQL
 
-- provision managed PostgreSQL
-- create least-privilege application credentials
-- configure `DATABASE_URL` and pool sizing
-- apply the normal startup migrations to the production database
+- provision/use the intended managed Neon PostgreSQL project
+- create a least-privilege runtime role and a separate migration role
+- configure the pooled `DATABASE_URL` only in Vercel's encrypted Production environment
+- run `python scripts/migrate_production.py` from an approved deployment job using `DATABASE_MIGRATION_URL`; Vercel startup must only verify schema compatibility
 - configure provider-native backups/PITR in addition to application logical-backup procedures
 - perform and retain evidence of at least one restore rehearsal for the production backup policy
 
@@ -41,7 +40,7 @@ Configure:
 ACCOUNT_EMAIL_DELIVERY_MODE=webhook
 ACCOUNT_EMAIL_WEBHOOK_URL=...
 ACCOUNT_EMAIL_WEBHOOK_TOKEN=...
-ACCOUNT_EMAIL_ACTION_BASE_URL=https://YOUR_HOST
+ACCOUNT_EMAIL_ACTION_BASE_URL=https://snowflakecertificationguide.vercel.app
 ```
 
 Then test with a real mailbox:
@@ -61,7 +60,7 @@ Do not log action tokens or mailer credentials.
 Create a Google OAuth web application and register the exact production callback:
 
 ```text
-https://YOUR_HOST/api/auth/google/callback
+https://snowflakecertificationguide.vercel.app/api/auth/google/callback
 ```
 
 Configure:
@@ -70,7 +69,7 @@ Configure:
 GOOGLE_AUTH_ENABLED=true
 GOOGLE_OIDC_CLIENT_ID=...
 GOOGLE_OIDC_CLIENT_SECRET=...
-GOOGLE_OIDC_REDIRECT_URI=https://YOUR_HOST/api/auth/google/callback
+GOOGLE_OIDC_REDIRECT_URI=https://snowflakecertificationguide.vercel.app/api/auth/google/callback
 ```
 
 Live cutover test:
@@ -135,9 +134,8 @@ Exercise at least one non-production alert to prove the destination is reachable
 
 ## 7. Private question-bank activation
 
-- place the approved private artifact in the production private-content store
-- mount it read-only as `PRIVATE_QUESTION_BANK_DIR`
-- import/stage it through the normal backend process
+- place the approved private artifact in an approved administrative import context
+- import/stage it through the controlled PostgreSQL import process
 - validate checksum/version metadata
 - run automated QA
 - complete the required human content/SME review for the release batch
@@ -174,7 +172,7 @@ The connected automation environment may not have permission to configure GitHub
 
 After the real deployment is live, test through the public hostname—not localhost:
 
-- home/public pages
+- home/public pages on `https://snowflakecertificationguide.vercel.app/`
 - create account
 - verification email
 - login/logout

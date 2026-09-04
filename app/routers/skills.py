@@ -5,9 +5,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from ..auth import require_candidate
 from ..certification_content import certification_catalog, configured_skill_map, content_coverage, study_lesson
 from ..database import connect
-from ..auth import require_candidate
 from ..skill_brain import certification, flatten_skills, skill_score
 
 router = APIRouter()
@@ -31,17 +31,25 @@ def _question_text(row: dict[str, Any]) -> str:
 
 
 @router.get("/skills/map")
-def skill_map() -> dict[str, Any]:
+def skill_map(candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
+    del candidate
     return configured_skill_map()
 
 
 @router.get("/skills/catalog")
 def skill_catalog() -> dict[str, Any]:
+    """Public source-verified certification metadata only.
+
+    certification_catalog() deliberately returns focused certification facts and
+    product availability; it does not contain curriculum domains/tasks, private
+    question-bank content, answers, candidate state, or entitlements.
+    """
     return certification_catalog()
 
 
 @router.get("/skills/content-coverage")
-def skill_content_coverage() -> dict[str, Any]:
+def skill_content_coverage(candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
+    del candidate
     return content_coverage()
 
 
@@ -230,7 +238,12 @@ def skill_summary(track_id: str = "snowpro-core", candidate: dict = Depends(requ
 
 
 @router.get("/skills/{skill_id}/lesson")
-def skill_lesson(skill_id: str, track_id: str = "snowpro-core") -> dict[str, Any]:
+def skill_lesson(
+    skill_id: str,
+    track_id: str = "snowpro-core",
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    del candidate
     lesson = study_lesson(track_id, skill_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Written task lesson is not configured for this certification")
@@ -238,55 +251,23 @@ def skill_lesson(skill_id: str, track_id: str = "snowpro-core") -> dict[str, Any
 
 
 @router.get("/skills/{skill_id}/resources")
-def skill_resources(skill_id: str, track_id: str = "snowpro-core", limit: int = 12) -> dict[str, Any]:
+def skill_resources(
+    skill_id: str,
+    track_id: str = "snowpro-core",
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    """Return only non-question resource metadata.
+
+    Candidate question delivery is singular: practice/mock endpoints allocate
+    questions and /api/questions/{id} requires a candidate-served relationship.
+    """
+    del candidate
     skills = {skill["id"]: skill for skill in flatten_skills(track_id)}
     skill = skills.get(skill_id)
     if not skill:
         return {"skill": None, "questions": [], "mapping_strategy": "none"}
-    limit = max(1, min(50, limit))
-    with connect() as conn:
-        persisted = [
-            dict(row)
-            for row in conn.execute(
-                """
-                SELECT q.id, q.track_id, q.question, q.options_json, q.correct_json, q.explanation,
-                       q.tags, q.test_title, q.source_kind, qsm.confidence, qsm.reviewed
-                FROM question_skill_map qsm
-                JOIN questions q ON q.id = qsm.question_id
-                WHERE qsm.track_id = ? AND qsm.skill_id = ?
-                  AND q.track_id = ? AND q.source_kind <> 'legacy'
-                  AND (qsm.reviewed = 1 OR qsm.confidence >= 0.70)
-                ORDER BY qsm.reviewed DESC,
-                         CASE q.source_kind WHEN 'source' THEN 0 WHEN 'curated' THEN 1 WHEN 'canonical' THEN 2 ELSE 3 END,
-                         qsm.confidence DESC,
-                         q.id
-                LIMIT ?
-                """,
-                (track_id, skill_id, track_id, limit),
-            )
-        ]
-        if persisted:
-            return {"skill": skill, "questions": persisted, "mapping_strategy": "persisted_reliable"}
-        questions = [
-            dict(row)
-            for row in conn.execute(
-                """
-                SELECT q.id, q.track_id, q.question, q.options_json, q.correct_json, q.explanation,
-                       q.tags, q.test_title, q.source_kind
-                FROM questions q
-                WHERE q.track_id = ? AND q.source_kind <> 'legacy'
-                LIMIT 2000
-                """,
-                (track_id,),
-            )
-        ]
-    question_scored = sorted(
-        [(skill_score(_question_text(row), skill), row) for row in questions],
-        key=lambda item: (item[0], 1 if item[1].get("source_kind") == "source" else 0),
-        reverse=True,
-    )
     return {
         "skill": skill,
-        "questions": [row for score, row in question_scored if score > 0][:limit],
-        "mapping_strategy": "heuristic_fallback",
+        "questions": [],
+        "mapping_strategy": "candidate_delivery_only",
     }

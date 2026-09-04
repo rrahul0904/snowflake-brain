@@ -7,16 +7,7 @@ from pydantic import BaseModel, Field
 
 from ..auth import require_candidate, require_premium_candidate
 from ..database import connect
-from ..evidence import evidence_audit, review_mapping
-from ..intelligence import (
-    build_question_skill_map,
-    command_brief,
-    diagnostic_plan,
-    mistake_queue,
-    portfolio,
-    readiness_model,
-    skill_mastery,
-)
+from ..intelligence import command_brief, diagnostic_plan, mistake_queue, portfolio, readiness_model, skill_mastery
 from ..learning_intelligence import (
     confidence_calibration,
     due_today,
@@ -27,17 +18,9 @@ from ..learning_intelligence import (
     update_mistake,
 )
 from ..learning_sync import sync_candidate_learning_state
+from ..task_review import due_task_reviews, get_task_review, mark_task_reviewed, reset_task_review, schedule_task_review
 
 router = APIRouter()
-
-
-class MappingReviewRequest(BaseModel):
-    item_id: str
-    skill_id: str
-    decision: str
-    track_id: str = "snowpro-core"
-    replacement_skill_id: str | None = None
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class StudyPreferencesRequest(BaseModel):
@@ -53,8 +36,17 @@ class MistakeUpdateRequest(BaseModel):
     status: str | None = None
 
 
+class TaskReviewRequest(BaseModel):
+    track_id: str = "snowpro-core"
+    skill_id: str = Field(min_length=1, max_length=200)
+
+
 def _sync(conn: Any, candidate_id: int, track_id: str) -> None:
     sync_candidate_learning_state(conn, candidate_id, track_id)
+
+
+def _task_review_error(exc: ValueError) -> HTTPException:
+    return HTTPException(status_code=404, detail=str(exc))
 
 
 @router.get("/intelligence/portfolio")
@@ -95,7 +87,65 @@ def certification_due_today(
 ) -> dict[str, Any]:
     with connect() as conn:
         _sync(conn, candidate["id"], track_id)
-        return due_today(conn, candidate["id"], track_id, limit=limit)
+        question_due = due_today(conn, candidate["id"], track_id, limit=limit)
+        task_due = due_task_reviews(conn, candidate["id"], track_id, limit=limit)
+        return {
+            **question_due,
+            **task_due,
+            "due_count": int(question_due.get("due_count") or 0) + int(task_due.get("task_due_count") or 0),
+            "question_due_count": int(question_due.get("due_count") or 0),
+        }
+
+
+@router.get("/intelligence/task-review")
+def certification_task_review_status(
+    track_id: str = "snowpro-core",
+    skill_id: str = "",
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    if not skill_id:
+        raise HTTPException(status_code=400, detail="skill_id is required")
+    try:
+        with connect() as conn:
+            return {"review": get_task_review(conn, candidate["id"], track_id, skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
+
+
+@router.post("/intelligence/task-review")
+def certification_schedule_task_review(
+    payload: TaskReviewRequest,
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    try:
+        with connect() as conn:
+            return {"review": schedule_task_review(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
+
+
+@router.post("/intelligence/task-review/reviewed")
+def certification_mark_task_reviewed(
+    payload: TaskReviewRequest,
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    try:
+        with connect() as conn:
+            return {"review": mark_task_reviewed(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
+
+
+@router.post("/intelligence/task-review/reset")
+def certification_reset_task_review(
+    payload: TaskReviewRequest,
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    try:
+        with connect() as conn:
+            return {"review": reset_task_review(conn, candidate["id"], payload.track_id, payload.skill_id)}
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
 
 
 @router.get("/intelligence/mistake-notebook")
@@ -188,42 +238,3 @@ def certification_mock_remediation(
 def certification_diagnostic(track_id: str = "snowpro-core", count: int = 30, candidate: dict = Depends(require_candidate)) -> dict[str, Any]:
     with connect() as conn:
         return diagnostic_plan(conn, track_id, count=count, candidate_id=candidate["id"])
-
-
-@router.get("/intelligence/evidence-audit")
-def certification_evidence_audit(
-    track_id: str = "snowpro-core",
-    confidence_threshold: float = 0.65,
-    limit: int = 50,
-) -> dict[str, Any]:
-    with connect() as conn:
-        return evidence_audit(
-            conn,
-            track_id=track_id,
-            confidence_threshold=confidence_threshold,
-            limit=limit,
-        )
-
-
-@router.post("/intelligence/evidence-review")
-def certification_evidence_review(payload: MappingReviewRequest) -> dict[str, Any]:
-    try:
-        with connect() as conn:
-            return review_mapping(
-                conn,
-                mapping_type="question",
-                item_id=payload.item_id,
-                skill_id=payload.skill_id,
-                decision=payload.decision,
-                track_id=payload.track_id,
-                replacement_skill_id=payload.replacement_skill_id,
-                confidence=payload.confidence,
-            )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/intelligence/reindex-skill-map")
-def reindex_skill_map(track_id: str = "snowpro-core") -> dict[str, Any]:
-    with connect() as conn:
-        return build_question_skill_map(conn, track_id)

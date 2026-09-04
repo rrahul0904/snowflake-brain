@@ -1,3 +1,6 @@
+# DEVELOPMENT / CI ONLY — NOT PRODUCTION.
+# Production runs only on Vercel with managed PostgreSQL. This Compose stack is
+# a local rehearsal environment and must never receive production credentials.
 services:
   postgres:
     image: postgres:17-alpine

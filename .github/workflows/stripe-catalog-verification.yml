@@ -1,0 +1,91 @@
+name: Stripe Catalog Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Stripe catalog mode to verify"
+        required: true
+        default: "test"
+        type: choice
+        options:
+          - test
+          - live
+
+permissions:
+  contents: read
+
+jobs:
+  verify-test:
+    name: verify-stripe-test-catalog
+    if: ${{ inputs.mode == 'test' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      EXPECTED_STRIPE_LIVEMODE: "false"
+      STRIPE_PRICE_PREMIUM_100: price_1UAh71RB8OGmEnBwrmYTR1Bl
+      STRIPE_PRICE_PREMIUM_250: price_1UAh76RB8OGmEnBwqxrrUSZD
+      STRIPE_PRICE_PREMIUM_500: price_1UAh7CRB8OGmEnBwbzIoly62
+      STRIPE_PRICE_EXAM_PACK: price_1UAh7HRB8OGmEnBwHAumtGCn
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Require Stripe test secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${STRIPE_SECRET_KEY:-}" ]] || { echo "STRIPE_TEST_SECRET_KEY is required" >&2; exit 1; }
+      - name: Verify test catalog
+        run: python scripts/verify_stripe_catalog.py
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripe-test-catalog-${{ github.sha }}
+          path: artifacts/stripe-catalog-verification.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  verify-live:
+    name: verify-stripe-live-catalog
+    if: ${{ inputs.mode == 'live' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      EXPECTED_STRIPE_LIVEMODE: "true"
+      STRIPE_PRICE_PREMIUM_100: price_1UAh7tRB8OGmEnBw4IELJdNO
+      STRIPE_PRICE_PREMIUM_250: price_1UAh7zRB8OGmEnBwnR4LS5n1
+      STRIPE_PRICE_PREMIUM_500: price_1UAh85RB8OGmEnBwLBW2xid9
+      STRIPE_PRICE_EXAM_PACK: price_1UAh8CRB8OGmEnBwyYbQDzyK
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+      - name: Require Stripe live secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${STRIPE_SECRET_KEY:-}" ]] || { echo "STRIPE_LIVE_SECRET_KEY is required" >&2; exit 1; }
+      - name: Verify live catalog
+        run: python scripts/verify_stripe_catalog.py
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripe-live-catalog-${{ github.sha }}
+          path: artifacts/stripe-catalog-verification.json
+          if-no-files-found: warn
+          retention-days: 30

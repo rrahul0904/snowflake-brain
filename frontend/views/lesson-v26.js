@@ -1,9 +1,10 @@
 export const VIEW_ID = "v26-lesson";
 
-import { escapeHtml, getSkillMap, getStudyLesson, getTaskProgress, setTaskProgress } from "../api.js";
+import { escapeHtml, getSkillMap, getStudyLesson, getTaskProgress, getTaskReview, scheduleTaskReview, setTaskProgress } from "../api.js";
 import { activeTrack, setActiveTrack } from "../ui.js";
 import { candidate, refreshCandidate } from "../auth.js";
 import { studyLayout } from "../components/study-shell.js";
+import { decisionRuleCard, examTrapCard } from "../components/learning-widgets.js";
 
 export default async function mount(container, params = {}) {
   const trackId = params.track_id || activeTrack();
@@ -21,17 +22,20 @@ export default async function mount(container, params = {}) {
   if (index < 0) index = 0;
   const item = flat[index];
   if (!item) throw new Error("Task not found");
-  const [lesson, progress] = await Promise.all([
+  const [lesson, progress, reviewPayload] = await Promise.all([
     getStudyLesson(item.id, { track_id: cert.id }),
     getTaskProgress({ track_id: cert.id }).catch(() => ({ completed_skill_ids: [] })),
+    getTaskReview({ track_id: cert.id, skill_id: item.id }).catch(() => ({ review: null })),
   ]);
   const content = lesson.content || {};
   const completed = new Set(progress.completed_skill_ids || []);
+  let taskReview = reviewPayload.review || null;
   const taskCode = item.task_code || `${item.domainIndex + 1}.${item.skillIndex + 1}`;
   const prev = flat[index - 1];
   const next = flat[index + 1];
-  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · ${Number(item.domain.weight || 0)}%</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a></div></header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise)}${sources(content.sources)}<nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
-  container.innerHTML = studyLayout(cert, item.domain.id, body, item.id);
+  const reviewLabel = taskReview?.status === "active" ? "✓ In Review Queue" : "Add to Review";
+  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · Domain ${item.domainIndex + 1} · ${Number(item.domain.weight || 0)}% exam weight</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><button class="v26-btn secondary ${taskReview?.status === "active" ? "is-scheduled" : ""}" type="button" data-add-review>${reviewLabel}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a><a class="v26-btn secondary" href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Open glossary</a><a class="v26-btn secondary" href="#/exam-traps?track_id=${encodeURIComponent(cert.id)}&domain=${encodeURIComponent(item.domain.id)}">Exam traps</a></div>${taskReview?.status === "active" ? `<p class="v26-review-schedule-note">Next concept review: ${escapeHtml(formatDue(taskReview.next_review_at))}</p>` : ""}</header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise, cert.id)}${sources(content.sources)}<section class="v26-lesson-section v26-lesson-practice-next"><p class="v26-kicker">Practice this concept</p><h2>Make the reasoning retrievable.</h2><p>Reading is only the first pass. Use a targeted drill to prove you can recognize this task under exam-style scenario pressure.</p><div class="v26-inline-actions"><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Practice this concept</a><a class="v26-btn secondary" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Open build labs</a></div></section><nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
+  container.innerHTML = studyLayout(cert, item.domain.id, body, item.id, completed);
   container.querySelector("[data-complete]")?.addEventListener("click", async (event) => {
     const nextState = !completed.has(item.id);
     event.currentTarget.disabled = true;
@@ -39,9 +43,35 @@ export default async function mount(container, params = {}) {
     nextState ? completed.add(item.id) : completed.delete(item.id);
     event.currentTarget.className = `v26-btn ${nextState ? "secondary" : "primary"}`;
     event.currentTarget.textContent = nextState ? "✓ Completed" : "Mark Complete";
+    syncSidebarCompletion(container, item.id, nextState);
     event.currentTarget.disabled = false;
   });
+  container.querySelector("[data-add-review]")?.addEventListener("click", async (event) => {
+    if (taskReview?.status === "active") return;
+    event.currentTarget.disabled = true;
+    event.currentTarget.textContent = "Scheduling…";
+    try {
+      const payload = await scheduleTaskReview({ track_id: cert.id, skill_id: item.id });
+      taskReview = payload.review || null;
+      event.currentTarget.classList.add("is-scheduled");
+      event.currentTarget.textContent = "✓ In Review Queue";
+      event.currentTarget.insertAdjacentHTML("afterend", `<span class="v26-review-inline-note">Due ${escapeHtml(formatDue(taskReview?.next_review_at))}</span>`);
+    } catch (error) {
+      event.currentTarget.textContent = error.message || "Add to Review";
+    } finally {
+      event.currentTarget.disabled = false;
+    }
+  });
   bindScenario(container);
+}
+
+function syncSidebarCompletion(container, skillId, completed) {
+  const link = [...container.querySelectorAll("[data-sidebar-skill]")].find((item) => item.dataset.sidebarSkill === skillId);
+  if (!link) return;
+  link.dataset.completed = String(completed);
+  link.classList.toggle("completed", completed);
+  link.querySelector(".v26-task-complete")?.remove();
+  if (completed) link.insertAdjacentHTML("beforeend", `<em class="v26-task-complete" aria-label="Completed" title="Completed">✓<span class="sr-only"> Completed</span></em>`);
 }
 
 function textList(title, items = []) {
@@ -55,21 +85,22 @@ function keyConcept(value) {
 }
 function decisionRules(rules = []) {
   if (!rules.length) return "";
-  return `<section class="v26-lesson-section"><h2>Decision Rules</h2><div class="v26-decision-rules">${rules.map((rule) => `<article><span>When</span><h3>${escapeHtml(rule.when || "")}</h3><p><strong>Choose:</strong> ${escapeHtml(rule.choose || "")}</p><p>${escapeHtml(rule.why || "")}</p></article>`).join("")}</div></section>`;
+  return `<section class="v26-lesson-section"><h2>Decision Rules</h2><p class="v26-section-intro">Translate scenario signals into the Snowflake capability that actually owns the requirement.</p><div class="v26-decision-rules">${rules.map((rule) => decisionRuleCard(rule)).join("")}</div></section>`;
 }
 function trapCards(explanations = [], anti = []) {
   const rows = explanations.length ? explanations : anti.map((item) => ({ trap: item, correction: "Use the task boundary and scenario requirement to choose the Snowflake feature." }));
   if (!rows.length) return "";
-  return `<section class="v26-lesson-section"><h2>Exam Traps</h2><div class="v26-traps">${rows.map((row) => `<article><span>Trap</span><p>${escapeHtml(row.trap || row)}</p>${row.correction ? `<strong>${escapeHtml(row.correction)}</strong>` : ""}</article>`).join("")}</div></section>`;
+  return `<section class="v26-lesson-section"><h2>Exam Traps</h2><p class="v26-section-intro">Treat distractors as reasoning errors to recognize, not facts to memorize.</p><div class="v26-traps">${rows.map((row) => examTrapCard(row)).join("")}</div></section>`;
 }
 function workedExample(example) {
   if (!example || (!example.prompt && !example.answer && !example.question)) return "";
-  return `<section class="v26-lesson-section"><h2>Worked Example</h2><div class="v26-worked"><p>${escapeHtml(example.prompt || example.question || "")}</p>${example.answer ? `<strong>${escapeHtml(example.answer)}</strong>` : ""}${example.reasoning ? `<p>${escapeHtml(example.reasoning)}</p>` : ""}</div></section>`;
+  const reasoning = Array.isArray(example.reasoning) ? example.reasoning : example.reasoning ? [example.reasoning] : [];
+  return `<section class="v26-lesson-section"><h2>Worked Example</h2><div class="v26-worked"><p>${escapeHtml(example.prompt || example.question || "")}</p>${reasoning.length ? `<ol>${reasoning.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>` : ""}${example.answer ? `<strong>${escapeHtml(example.answer)}</strong>` : ""}</div></section>`;
 }
 function scenario(item) {
   if (!item?.question) return "";
   const options = item.options || [];
-  return `<section class="v26-lesson-section"><h2>Practice Scenario</h2><div class="v26-scenario" data-scenario data-correct="${Number(item.correct_index || 0)}" data-explanation="${escapeHtml(item.explanation || "")}"><p>${escapeHtml(item.question)}</p><div>${options.map((option, index) => `<label><input type="radio" name="lesson-scenario" value="${index}"/><span>${String.fromCharCode(65 + index)}</span><b>${escapeHtml(option)}</b></label>`).join("")}</div><button class="v26-btn secondary" type="button" data-check-scenario>Check Answer</button><p class="v26-scenario-result" data-scenario-result hidden aria-live="polite"></p></div></section>`;
+  return `<section class="v26-lesson-section"><h2>Practice Scenario</h2><div class="v26-scenario" data-scenario data-correct="${Number(item.correct_index || 0)}" data-explanation="${escapeHtml(item.explanation || "")}"><p>${escapeHtml(item.question)}</p><fieldset><legend class="sr-only">Choose one answer</legend>${options.map((option, index) => `<label><input type="radio" name="lesson-scenario" value="${index}"/><span>${String.fromCharCode(65 + index)}</span><b>${escapeHtml(option)}</b></label>`).join("")}</fieldset><button class="v26-btn secondary" type="button" data-check-scenario>Check Answer</button><p class="v26-scenario-result" data-scenario-result hidden aria-live="polite"></p></div></section>`;
 }
 function bindScenario(container) {
   container.querySelector("[data-check-scenario]")?.addEventListener("click", () => {
@@ -82,12 +113,13 @@ function bindScenario(container) {
     result.textContent = chosen < 0 ? "Choose an answer first." : `${chosen === correct ? "Correct." : `Not quite. The best answer is ${String.fromCharCode(65 + correct)}.`} ${root.dataset.explanation || ""}`;
   });
 }
-function buildExercise(exercise) {
+function buildExercise(exercise, trackId) {
   if (!exercise || (!exercise.prompt && !exercise.title && !exercise.description)) return "";
   const checks = exercise.checks || [];
-  return `<section class="v26-lesson-section"><h2>Build Exercise</h2><div class="v26-build"><span>${escapeHtml(exercise.title || "Hands-on task")}</span><p>${escapeHtml(exercise.prompt || exercise.description || "")}</p>${checks.length ? `<ul>${checks.map((check) => `<li>${escapeHtml(check)}</li>`).join("")}</ul>` : ""}</div></section>`;
+  return `<section class="v26-lesson-section"><h2>Build Exercise</h2><div class="v26-build"><span>${escapeHtml(exercise.title || "Hands-on task")}</span><p>${escapeHtml(exercise.prompt || exercise.description || "")}</p>${exercise.starter_sql ? `<pre><code>${escapeHtml(exercise.starter_sql)}</code></pre>` : ""}${checks.length ? `<ul>${checks.map((check) => `<li>${escapeHtml(check)}</li>`).join("")}</ul>` : ""}<a href="#/exercises?track_id=${encodeURIComponent(trackId)}">Open the full Build Exercises workspace →</a></div></section>`;
 }
 function sources(rows = []) {
   if (!rows.length) return "";
   return `<section class="v26-lesson-section"><h2>Sources</h2><div class="v26-source-list">${rows.map((source) => { if (typeof source === "string") return `<span>${escapeHtml(source)}</span>`; const href = source.url || source.href; return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || source.label || href)} ↗</a>` : `<span>${escapeHtml(source.title || source.label || "Source")}</span>`; }).join("")}</div></section>`;
 }
+function formatDue(value) { if (!value) return "tomorrow"; const date = new Date(String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "Z")); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }

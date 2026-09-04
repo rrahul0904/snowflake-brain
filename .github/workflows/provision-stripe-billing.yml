@@ -1,0 +1,82 @@
+name: Provision Stripe Billing
+
+on:
+  workflow_dispatch:
+    inputs:
+      stripe_mode:
+        description: "Stripe environment to reconcile"
+        required: true
+        default: "test"
+        type: choice
+        options:
+          - test
+          - live
+      webhook_url:
+        description: "Exact HTTPS billing webhook URL for this environment"
+        required: true
+      portal_return_url:
+        description: "Exact HTTPS membership URL for Customer Portal return navigation"
+        required: true
+      enable_billing:
+        description: "Enable billing in the target Vercel environment after provisioning"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provision-stripe-billing-${{ inputs.stripe_mode }}
+  cancel-in-progress: false
+
+jobs:
+  provision-stripe-billing:
+    name: provision-stripe-${{ inputs.stripe_mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STRIPE_MODE: ${{ inputs.stripe_mode }}
+      STRIPE_WEBHOOK_URL: ${{ inputs.webhook_url }}
+      STRIPE_PORTAL_RETURN_URL: ${{ inputs.portal_return_url }}
+      STRIPE_API_KEY: ${{ inputs.stripe_mode == 'live' && secrets.STRIPE_LIVE_SECRET_KEY || secrets.STRIPE_TEST_SECRET_KEY }}
+      EXISTING_STRIPE_WEBHOOK_SECRET: ${{ inputs.stripe_mode == 'live' && secrets.STRIPE_LIVE_WEBHOOK_SECRET || secrets.STRIPE_TEST_WEBHOOK_SECRET }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_2SLKmOpeMM8ogNkXfNYHu7IyjYab
+      VERCEL_TEAM_ID: team_zmEezpOKGZy2sH5nqTfO44LD
+      VERCEL_TARGET: ${{ inputs.stripe_mode == 'live' && 'production' || 'preview' }}
+      ENABLE_BILLING: ${{ inputs.enable_billing }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install application dependencies
+        run: pip install -r requirements.txt
+
+      - name: Require secret-bearing inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${STRIPE_API_KEY:-}" ]] || { echo "Stripe API key secret is required for selected mode" >&2; exit 1; }
+          [[ -n "${VERCEL_TOKEN:-}" ]] || { echo "VERCEL_TOKEN is required" >&2; exit 1; }
+          [[ "${STRIPE_WEBHOOK_URL}" == https://* ]] || { echo "webhook_url must be HTTPS" >&2; exit 1; }
+          [[ "${STRIPE_PORTAL_RETURN_URL}" == https://* ]] || { echo "portal_return_url must be HTTPS" >&2; exit 1; }
+
+      - name: Refuse premature live billing enablement
+        if: ${{ inputs.stripe_mode == 'live' && inputs.enable_billing }}
+        run: |
+          echo "Live billing enablement is permitted only if Stripe reports charges enabled; the provisioning script enforces this fail-closed."
+
+      - name: Reconcile Stripe and hand secrets directly to Vercel
+        run: python scripts/provision_stripe_billing.py
+
+      - name: Release summary
+        run: |
+          echo "Stripe webhook, app-specific Customer Portal, catalog, and Vercel billing configuration reconciled without printing provider or Vercel secrets."
+          echo "Redeploy the target Vercel environment before testing billing configuration."

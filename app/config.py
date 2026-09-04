@@ -15,29 +15,64 @@ BRAIN_DB = Path(
 # pooled PostgreSQL adapter. POSTGRES_TEST_ISOLATION is CI-only and gives each
 # test process a private schema while exercising the same PostgreSQL server.
 #
-# A Vercel production function must never silently select the local SQLite
-# implementation. Besides losing durable data on serverless instances, that
-# could make a deployment appear healthy while serving an empty database.
+# Every hosted Vercel function (Preview and Production) must remain cloud-only
+# and verification-only. A preview can otherwise mutate the same managed
+# database accidentally, which is just as dangerous as a production function
+# performing DDL itself.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-IS_VERCEL_PRODUCTION = os.getenv("VERCEL_ENV", "").strip().lower() == "production"
+# This credential is deliberately separate from the runtime pool. It is used
+# only by the controlled migration job and must never be configured on a Vercel
+# runtime deployment. Keeping the two credentials distinct lets the runtime
+# role remain DML-only.
+DATABASE_MIGRATION_URL = os.getenv("DATABASE_MIGRATION_URL", "").strip()
+VERCEL_ENV = os.getenv("VERCEL_ENV", "").strip().lower()
+IS_VERCEL_PRODUCTION = VERCEL_ENV == "production"
+IS_VERCEL_RUNTIME = (
+    os.getenv("VERCEL", "").strip() == "1"
+    or VERCEL_ENV in {"preview", "production"}
+)
 IS_POSTGRES_URL = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
 
-if IS_VERCEL_PRODUCTION and not DATABASE_URL:
-    raise RuntimeError(
-        "Production database configuration error: DATABASE_URL is required when "
-        "VERCEL_ENV=production; SQLite fallback is disabled."
-    )
-if IS_VERCEL_PRODUCTION and not IS_POSTGRES_URL:
-    raise RuntimeError(
-        "Production database configuration error: DATABASE_URL must be a PostgreSQL "
-        "connection URL when VERCEL_ENV=production; SQLite fallback is disabled."
-    )
+# Deployment identity must be injected at build/deploy time. Serverless bundles
+# are not reliable Git worktrees, so an absent value stays visible as unknown.
+RELEASE_GIT_SHA = (
+    os.getenv("VERCEL_GIT_COMMIT_SHA", "").strip()
+    or os.getenv("RELEASE_GIT_SHA", "").strip()
+    or "unknown"
+)
+RELEASE_ID = (
+    os.getenv("VERCEL_DEPLOYMENT_ID", "").strip()
+    or os.getenv("RELEASE_ID", "").strip()
+    or "unknown"
+)
+RELEASE_BUILD_TIMESTAMP = os.getenv("RELEASE_BUILD_TIMESTAMP", "").strip() or "unknown"
 
+if IS_VERCEL_RUNTIME and not DATABASE_URL:
+    raise RuntimeError(
+        "Vercel database configuration error: DATABASE_URL is required for every "
+        "Preview/Production runtime; SQLite fallback is disabled."
+    )
+if IS_VERCEL_RUNTIME and not IS_POSTGRES_URL:
+    raise RuntimeError(
+        "Vercel database configuration error: DATABASE_URL must be a PostgreSQL "
+        "connection URL for every Preview/Production runtime; SQLite fallback is disabled."
+    )
+if IS_VERCEL_RUNTIME and DATABASE_MIGRATION_URL:
+    raise RuntimeError(
+        "Vercel database configuration error: DATABASE_MIGRATION_URL must not be "
+        "available to a request-serving runtime. Run migrations from an approved deployment job."
+    )
 DATABASE_BACKEND = "postgresql" if IS_POSTGRES_URL else "sqlite"
 DATABASE_SCHEMA = os.getenv("DATABASE_SCHEMA", "public").strip() or "public"
 DB_POOL_MIN_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "2")))
 DB_POOL_MAX_SIZE = max(DB_POOL_MIN_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "12")))
 DB_POOL_TIMEOUT_SECONDS = max(1, int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "10")))
+# Serverless functions can be frozen long enough for the database or a network
+# proxy to close an otherwise idle socket. Keep pooled connections short-lived
+# and validate every checkout so a thawed function reconnects before serving.
+DB_POOL_MAX_IDLE_SECONDS = max(1, int(os.getenv("DB_POOL_MAX_IDLE_SECONDS", "60")))
+DB_POOL_MAX_LIFETIME_SECONDS = max(1, int(os.getenv("DB_POOL_MAX_LIFETIME_SECONDS", "300")))
+DB_POOL_RECONNECT_TIMEOUT_SECONDS = max(1, int(os.getenv("DB_POOL_RECONNECT_TIMEOUT_SECONDS", "10")))
 POSTGRES_TEST_ISOLATION = os.getenv("POSTGRES_TEST_ISOLATION", "false").lower() in {"1", "true", "yes", "on"}
 POSTGRES_TEST_SCHEMA_PREFIX = os.getenv("POSTGRES_TEST_SCHEMA_PREFIX", "snowflake_ci").strip() or "snowflake_ci"
 
@@ -94,7 +129,7 @@ SNOWFLAKE_LABS_MODE = os.getenv("SNOWFLAKE_LABS_MODE", "offline").lower()
 # Commercial question-bank content is deliberately outside the repository and
 # outside the frontend static tree. The checked-in repository contains only the
 # importer/schema/selection engine; production bank files arrive through a
-# private deployment volume or secret-backed content store.
+# controlled administrative import job, never a request-serving Vercel function.
 PRIVATE_QUESTION_BANK_DIR = Path(
     os.getenv(
         "PRIVATE_QUESTION_BANK_DIR",
@@ -103,11 +138,29 @@ PRIVATE_QUESTION_BANK_DIR = Path(
 ).expanduser()
 QUESTION_BANK_AUTO_IMPORT = os.getenv("QUESTION_BANK_AUTO_IMPORT", "false").lower() in {"1", "true", "yes", "on"}
 
+if IS_VERCEL_RUNTIME and QUESTION_BANK_AUTO_IMPORT:
+    raise RuntimeError(
+        "Vercel question-bank configuration error: QUESTION_BANK_AUTO_IMPORT "
+        "must be false. Import releases through the controlled administrative job."
+    )
+
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes", "on"}
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
 SECURITY_RATE_LIMIT_ENABLED = os.getenv("SECURITY_RATE_LIMIT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 
+# Hosted request-serving runtimes must fail closed if deployment settings drift
+# to an insecure state. Local/test environments remain configurable so the same
+# application can be exercised over HTTP in isolated CI.
+if IS_VERCEL_RUNTIME and not AUTH_COOKIE_SECURE:
+    raise RuntimeError("Vercel security configuration error: AUTH_COOKIE_SECURE must be true")
+if IS_VERCEL_RUNTIME and not FORCE_HTTPS:
+    raise RuntimeError("Vercel security configuration error: FORCE_HTTPS must be true")
+if IS_VERCEL_RUNTIME and not SECURITY_RATE_LIMIT_ENABLED:
+    raise RuntimeError("Vercel security configuration error: SECURITY_RATE_LIMIT_ENABLED must be true")
+
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8010").rstrip("/")
+if IS_VERCEL_RUNTIME and not APP_BASE_URL.lower().startswith("https://"):
+    raise RuntimeError("Vercel security configuration error: APP_BASE_URL must use HTTPS")
 
 GOOGLE_AUTH_ENABLED = os.getenv("GOOGLE_AUTH_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 GOOGLE_OIDC_CLIENT_ID = os.getenv("GOOGLE_OIDC_CLIENT_ID", "").strip()
@@ -120,13 +173,40 @@ GOOGLE_OIDC_FLOW_MINUTES = max(3, int(os.getenv("GOOGLE_OIDC_FLOW_MINUTES", "10"
 BILLING_ENABLED = os.getenv("BILLING_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_PORTAL_CONFIGURATION_ID = os.getenv("STRIPE_PORTAL_CONFIGURATION_ID", "").strip()
 STRIPE_API_BASE = os.getenv("STRIPE_API_BASE", "https://api.stripe.com").rstrip("/")
 STRIPE_PRICE_PREMIUM_100 = os.getenv("STRIPE_PRICE_PREMIUM_100", "").strip()
 STRIPE_PRICE_PREMIUM_250 = os.getenv("STRIPE_PRICE_PREMIUM_250", "").strip()
 STRIPE_PRICE_PREMIUM_500 = os.getenv("STRIPE_PRICE_PREMIUM_500", "").strip()
 STRIPE_PRICE_EXAM_PACK = os.getenv("STRIPE_PRICE_EXAM_PACK", "").strip()
 BILLING_PAST_DUE_GRACE_DAYS = max(0, int(os.getenv("BILLING_PAST_DUE_GRACE_DAYS", "3")))
+
+if IS_VERCEL_RUNTIME and BILLING_ENABLED:
+    required_billing_settings = {
+        "STRIPE_SECRET_KEY": STRIPE_SECRET_KEY,
+        "STRIPE_WEBHOOK_SECRET": STRIPE_WEBHOOK_SECRET,
+        "STRIPE_PORTAL_CONFIGURATION_ID": STRIPE_PORTAL_CONFIGURATION_ID,
+        "STRIPE_PRICE_PREMIUM_100": STRIPE_PRICE_PREMIUM_100,
+        "STRIPE_PRICE_PREMIUM_250": STRIPE_PRICE_PREMIUM_250,
+        "STRIPE_PRICE_PREMIUM_500": STRIPE_PRICE_PREMIUM_500,
+        "STRIPE_PRICE_EXAM_PACK": STRIPE_PRICE_EXAM_PACK,
+    }
+    missing_billing_settings = sorted(key for key, value in required_billing_settings.items() if not value)
+    if missing_billing_settings:
+        raise RuntimeError(
+            "Vercel billing configuration error: BILLING_ENABLED=true requires the complete Stripe "
+            "secret, webhook, app-specific Customer Portal, and four-plan catalog contract; missing: "
+            + ", ".join(missing_billing_settings)
+        )
+
 ALLOW_MEMBERSHIP_DEV_OVERRIDE = os.getenv("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "false").lower() in {"1", "true", "yes", "on"}
+if IS_VERCEL_RUNTIME and ALLOW_MEMBERSHIP_DEV_OVERRIDE:
+    raise RuntimeError("Vercel security configuration error: ALLOW_MEMBERSHIP_DEV_OVERRIDE must be false")
+
+# Administration is an explicit database role, not a UI convention or an email
+# allow-list.  Role grants are deliberately performed through a controlled
+# migration/operations procedure; request serving code never promotes accounts.
+ADMIN_REPORTING_TIMEZONE = os.getenv("ADMIN_REPORTING_TIMEZONE", "UTC").strip() or "UTC"
 
 # No display/programmatic advertising is supported. These settings only enable
 # editorial Amazon Associates links inside the authenticated Resources page.
