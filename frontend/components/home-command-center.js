@@ -21,7 +21,20 @@ export async function renderHomeCommandCenter(container, trackId = "snowpro-core
     return;
   }
 
-  const [due, mistakes, plan, summary, history, map, progress, readiness] = await Promise.all([
+  const fallback = [
+    { due_count: 0, questions: [], task_reviews: [] },
+    { counts: {}, items: [] },
+    { preferences: {}, priority_skills: [], days: [] },
+    { skills: [], domains: [] },
+    { history: [] },
+    { certifications: [] },
+    { completed_skill_ids: [] },
+    {},
+  ];
+  // The command center is a convenience aggregate, not a reason to hold the
+  // learner's Home route hostage if one optional reporting request stalls.
+  // The fallback deliberately reports no evidence; it never invents progress.
+  const [due, mistakes, plan, summary, history, map, progress, readiness] = await Promise.race([Promise.all([
     getDueToday({ track_id: trackId, limit: 5 }).catch(() => ({ due_count: 0, questions: [], task_reviews: [] })),
     getMistakeNotebook({ track_id: trackId, status: "active", limit: 5 }).catch(() => ({ counts: {}, items: [] })),
     getStudyPlan({ track_id: trackId }).catch(() => ({ preferences: {}, priority_skills: [], days: [] })),
@@ -30,7 +43,7 @@ export async function renderHomeCommandCenter(container, trackId = "snowpro-core
     getSkillMap().catch(() => ({ certifications: [] })),
     getTaskProgress({ track_id: trackId }).catch(() => ({ completed_skill_ids: [] })),
     account.is_premium ? getIntelligenceReadiness({ track_id: trackId }).catch(() => ({})) : Promise.resolve({}),
-  ]);
+  ]), new Promise((resolve) => window.setTimeout(() => resolve(fallback), 8000))]);
 
   const cert = (map.certifications || []).find((item) => item.id === trackId) || (map.certifications || [])[0] || { domains: [] };
   const skills = summary.skills || [];
