@@ -79,7 +79,23 @@ def set_theme(page: Page, theme: str) -> None:
 
 def no_overflow(page: Page, label: str) -> None:
     if page.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 2"):
-        raise AssertionError(f"horizontal overflow: {label}")
+        diagnostic = page.evaluate(
+            """() => {
+              const viewport = document.documentElement.clientWidth;
+              const offenders = [...document.querySelectorAll('*')].map((element) => {
+                const rect = element.getBoundingClientRect();
+                return {
+                  tag: element.tagName,
+                  id: element.id,
+                  className: String(element.className || '').slice(0, 160),
+                  left: Math.round(rect.left), right: Math.round(rect.right),
+                  width: Math.round(rect.width), scrollWidth: element.scrollWidth,
+                };
+              }).filter((item) => item.left < -2 || item.right > viewport + 2).slice(0, 12);
+              return { viewport, documentScrollWidth: document.documentElement.scrollWidth, offenders };
+            }"""
+        )
+        raise AssertionError(f"horizontal overflow: {label}; diagnostic={json.dumps(diagnostic, separators=(',', ':'))}")
 
 
 def run(browser, width: int, height: int, route_map: dict[str, tuple[str, tuple[str, ...]]]) -> int:
