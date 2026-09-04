@@ -6,7 +6,16 @@ from fastapi.staticfiles import StaticFiles
 
 from .account_lifecycle import ensure_account_lifecycle_schema
 from .adaptive_readiness import ensure_adaptive_readiness_schema
-from .config import DATABASE_BACKEND, IS_VERCEL_RUNTIME, OBSERVABILITY_METRICS_TOKEN, QUESTION_BANK_AUTO_IMPORT
+from .config import (
+    DATABASE_BACKEND,
+    IS_VERCEL_RUNTIME,
+    OBSERVABILITY_METRICS_TOKEN,
+    QUESTION_BANK_AUTO_IMPORT,
+    RELEASE_BUILD_TIMESTAMP,
+    RELEASE_GIT_SHA,
+    RELEASE_ID,
+    VERCEL_ENV,
+)
 from .database import close_database, database_health, run_migrations
 from .identity_billing_schema import ensure_identity_billing_schema
 from .learning_intelligence import ensure_learning_intelligence_schema
@@ -24,6 +33,7 @@ from .question_versions import ensure_question_version_schema
 from .production_schema import assert_production_schema_ready
 from .routers import (
     account,
+    admin,
     activity,
     adaptive,
     affiliate,
@@ -109,6 +119,17 @@ def health() -> dict[str, str]:
     }
 
 
+@app.get("/api/release")
+def release() -> dict[str, str]:
+    """Non-secret deployment identity used for exact-SHA release checks."""
+    return {
+        "git_sha": RELEASE_GIT_SHA,
+        "release_id": RELEASE_ID,
+        "environment": VERCEL_ENV or "local",
+        "build_timestamp": RELEASE_BUILD_TIMESTAMP,
+    }
+
+
 @app.get("/api/ready")
 def ready() -> dict:
     """Production readiness probe including the configured database."""
@@ -156,6 +177,7 @@ app.include_router(feedback.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(account.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 app.include_router(credentials.router, prefix="/api")
 app.include_router(google_auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")

@@ -33,6 +33,20 @@ IS_VERCEL_RUNTIME = (
 )
 IS_POSTGRES_URL = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
 
+# Deployment identity must be injected at build/deploy time. Serverless bundles
+# are not reliable Git worktrees, so an absent value stays visible as unknown.
+RELEASE_GIT_SHA = (
+    os.getenv("VERCEL_GIT_COMMIT_SHA", "").strip()
+    or os.getenv("RELEASE_GIT_SHA", "").strip()
+    or "unknown"
+)
+RELEASE_ID = (
+    os.getenv("VERCEL_DEPLOYMENT_ID", "").strip()
+    or os.getenv("RELEASE_ID", "").strip()
+    or "unknown"
+)
+RELEASE_BUILD_TIMESTAMP = os.getenv("RELEASE_BUILD_TIMESTAMP", "").strip() or "unknown"
+
 if IS_VERCEL_RUNTIME and not DATABASE_URL:
     raise RuntimeError(
         "Vercel database configuration error: DATABASE_URL is required for every "
@@ -188,6 +202,11 @@ if IS_VERCEL_RUNTIME and BILLING_ENABLED:
 ALLOW_MEMBERSHIP_DEV_OVERRIDE = os.getenv("ALLOW_MEMBERSHIP_DEV_OVERRIDE", "false").lower() in {"1", "true", "yes", "on"}
 if IS_VERCEL_RUNTIME and ALLOW_MEMBERSHIP_DEV_OVERRIDE:
     raise RuntimeError("Vercel security configuration error: ALLOW_MEMBERSHIP_DEV_OVERRIDE must be false")
+
+# Administration is an explicit database role, not a UI convention or an email
+# allow-list.  Role grants are deliberately performed through a controlled
+# migration/operations procedure; request serving code never promotes accounts.
+ADMIN_REPORTING_TIMEZONE = os.getenv("ADMIN_REPORTING_TIMEZONE", "UTC").strip() or "UTC"
 
 # No display/programmatic advertising is supported. These settings only enable
 # editorial Amazon Associates links inside the authenticated Resources page.

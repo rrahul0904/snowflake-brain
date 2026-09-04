@@ -97,6 +97,16 @@ export const submitLab = (id, sql) => api(`/api/labs/${encodeURIComponent(id)}/s
 export const submitFeedback = (payload) => api("/api/feedback", { method: "POST", body: JSON.stringify(payload) });
 export const getGlobeActivity = () => api("/api/activity/globe");
 
+export const getAdminOverview = () => api("/api/admin/overview");
+export const getAdminUsers = (params = {}) => api(`/api/admin/users?${new URLSearchParams(params)}`);
+export const getAdminSubscriptions = () => api("/api/admin/subscriptions");
+export const getAdminFinops = () => api("/api/admin/finops");
+export const getAdminQuestionBank = () => api("/api/admin/question-bank");
+export const getAdminUsage = () => api("/api/admin/usage");
+export const getAdminSystem = () => api("/api/admin/system");
+export const getAdminDeployments = () => api("/api/admin/deployments");
+export const getAdminAudit = () => api("/api/admin/audit");
+
 export function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")

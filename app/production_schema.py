@@ -36,6 +36,10 @@ REQUIRED_TABLES = frozenset(
         "candidate_readiness_snapshots",
         "feedback_submissions",
         "candidate_credentials",
+        "admin_audit_events",
+        "finops_cost_snapshots",
+        "operations_daily_snapshots",
+        "deployment_records",
     }
 )
 
@@ -88,6 +92,7 @@ RUNTIME_WRITE_TABLES = frozenset(
         "candidate_talent_profiles",
         "candidate_credentials",
         "credential_verification_events",
+        "admin_audit_events",
     }
 )
 

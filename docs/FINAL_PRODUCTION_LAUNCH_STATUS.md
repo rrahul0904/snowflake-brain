@@ -1,6 +1,6 @@
 # Final Production Launch Status
 
-Last reconciled: 2026-09-01 UTC
+Last reconciled: 2026-09-02 UTC
 
 Repository: `rrahul0904/snowflake-brain`
 
@@ -10,7 +10,7 @@ PR: #37 — Harden production PostgreSQL runtime boundary
 
 Production/main SHA currently serving the canonical alias: `c37a9a6c9546fae691d90383672563518a355493`
 
-Latest implementation SHA before this evidence refresh: `94699e697a9433c540ea9e8cdbf9ea7c4572a1d6`
+Latest implementation SHA before this evidence refresh: `49b017e5926ac576930555b65ad7375abeb98c8d`
 
 ## Release decision
 
@@ -24,9 +24,10 @@ The code-side production convergence is substantially complete, including contro
 |---|---|---|---|
 | Current production | Canonical `/api/health` and `/api/ready` return 200 on PostgreSQL, but production still serves pre-PR `main` SHA `c37a9a6c...` | PASS for old production / BLOCKED for launch | Do not promote until PR #37 gates close; final deployment SHA must equal merged `main` |
 | PR #37 | Open, mergeable, not merged | BLOCKED | Independent human `APPROVED` review plus remaining infrastructure gates |
-| Repository CI | All 11 release workflows were green on `8d0fd9a...`; current implementation commits retrigger the same gates. New Stripe provisioning compile/tests and tracked-secret checks have passed in Security Assurance during this wave | IN PROGRESS on latest head | Require every exact-final-head check green before merge |
-| Hardened Preview | Vercel builds latest branch commits successfully. Preview access is currently intercepted by Vercel Deployment Protection/SSO; earlier unprotected exact-head runtime invocation failed closed with `FUNCTION_INVOCATION_FAILED` before runtime-role convergence | BLOCKED | Run controlled hosted runtime credential provisioning, redeploy, then test an authorized Preview URL until health/readiness are stable |
-| Runtime DB credential | `scripts/provision_hosted_runtime.py` + `Provision Hosted Runtime Credential` already create/rotate `snowflake_app_runtime`, reconcile ACLs, verify the exact role, and write only the generated runtime DSN to Vercel | IMPLEMENTED / NOT EXECUTED | GitHub Actions needs `PRODUCTION_DATABASE_MIGRATION_URL` and `VERCEL_TOKEN`; dispatch workflow and redeploy |
+| Repository CI | All 11 required release workflows and the Vercel Preview check are green on `49b017e...` | PASS for that exact head | Require the checks to rerun after any subsequent release-branch commit before merge |
+| Hardened Preview | Exact-head Preview was rebuilt Ready after the fail-closed runtime configuration was set. Deployment Protection redirects probes to Vercel SSO before they reach the function, so this is build evidence only | BLOCKED | Run controlled hosted runtime credential provisioning, redeploy, then test an authorized Preview URL until health/readiness are stable |
+| Hosted runtime configuration | HTTPS, secure cookies, rate limiting, PostgreSQL pool bounds, public schema, auto-import prohibition, and `BILLING_ENABLED=false` are configured for Preview and Production | PASS for non-secret contract | Preserve these fail-closed values through the final deploy |
+| Runtime DB credential | `scripts/provision_hosted_runtime.py` + `Provision Hosted Runtime Credential` already create/rotate `snowflake_app_runtime`, reconcile ACLs, verify the exact role, and write only the generated runtime DSN to Vercel. No release secrets are configured in GitHub Actions | IMPLEMENTED / NOT EXECUTED | Add `PRODUCTION_DATABASE_MIGRATION_URL` and `VERCEL_TOKEN`; dispatch workflow and redeploy |
 | Managed PostgreSQL | Active project identified as `snowflake-certification-guide-production` (`round-sunset-09172961`) | IDENTIFIED | Use controlled deployment job for migration/import writes; do not weaken request runtime privileges |
 | Private bank source | Approved File Library corpus exists: `snowpro_core_cof_c03_private_bank_1200_beta_v2.json`, version `2026-08-14-beta-1200-v2` | SOURCE READY | Make the exact approved artifact available through authenticated private HTTPS storage for the release job |
 | Private bank integrity | SHA-256 `da57f636a57180631448fda79cfdcad2acf8e38ae2f381ea891a8cea91e704c5`; 1,200 questions; pools 216 free / 504 practice / 360 mock_reserved / 120 diagnostic | PASS FOR SOURCE | Preserve hash and exact pool counts through controlled production release |

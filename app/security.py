@@ -18,6 +18,9 @@ from .config import FORCE_HTTPS, SECURITY_RATE_LIMIT_ENABLED
 SYSTEM_PROBE_API_EXACT = {
     "/api/health",
     "/api/ready",
+    # Non-secret release identity is a deployment/reproducibility probe, not
+    # candidate data. It must be publicly readable for hosted SHA verification.
+    "/api/release",
 }
 # Metrics has its own bearer-token authorization and deliberately is not a
 # SYSTEM_PROBE endpoint: when HTTPS is forced, metrics scraping must use HTTPS.

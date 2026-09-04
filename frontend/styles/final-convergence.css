@@ -9,6 +9,12 @@
 .v26-command-heading{flex-wrap:wrap}
 .v26-command-heading>a{max-width:100%;white-space:normal}
 
+/* Native form controls retain an intrinsic minimum width in grid tracks.  On the
+   compact study shell that would widen the Exam Trap controls beyond the
+   available content column, so make the controls explicitly shrinkable. */
+.v26-trap-controls>*,.v26-trap-controls label,.v26-trap-controls input,.v26-trap-controls select{min-width:0}
+.v26-trap-controls input,.v26-trap-controls select{width:100%;max-width:100%}
+
 /* Task-level concept review */
 .v26-review-schedule-note{margin:10px 0 0!important;color:var(--text-muted)!important;font-size:12px!important}
 .v26-review-inline-note{align-self:center;color:var(--text-muted);font-size:12px}

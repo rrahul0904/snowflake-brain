@@ -1,0 +1,35 @@
+name: Predeployment Certification (No Deploy)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BRAIN_DB: /tmp/snowflake-predeploy.sqlite
+      ACCOUNT_EMAIL_DELIVERY_MODE: outbox
+      BILLING_ENABLED: "false"
+      GOOGLE_AUTH_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r requirements.txt
+      - name: Run no-deploy certification
+        run: bash scripts/release_predeploy_certify.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: predeployment-certification-${{ github.sha }}
+          path: artifacts/predeployment-certification.json
+          if-no-files-found: error
