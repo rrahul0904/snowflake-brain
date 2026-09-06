@@ -36,7 +36,9 @@ function publish(next) {
 }
 
 export async function refreshCandidate({ notify = false } = {}) {
-  const next = await getCandidateSession();
+  // Authorization can change outside this page (for example, a controlled
+  // founder promotion). A refresh must therefore bypass the bootstrap cache.
+  const next = await getCandidateSession({ force: true });
   hasLoadedCandidate = true;
   if (notify) return publish(next);
   snapshot = { ...snapshot, ...next };
