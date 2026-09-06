@@ -5,6 +5,7 @@
       "maxDuration": 60
     }
   },
+  "buildCommand": "python3 scripts/write_release_manifest.py",
   "rewrites": [
     {
       "source": "/(.*)",

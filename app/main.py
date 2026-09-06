@@ -14,6 +14,7 @@ from .config import (
     RELEASE_BUILD_TIMESTAMP,
     RELEASE_GIT_SHA,
     RELEASE_ID,
+    RELEASE_SOURCE_DIRTY,
     VERCEL_ENV,
 )
 from .database import close_database, database_health, run_migrations
@@ -120,13 +121,14 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/release")
-def release() -> dict[str, str]:
+def release() -> dict[str, str | bool]:
     """Non-secret deployment identity used for exact-SHA release checks."""
     return {
         "git_sha": RELEASE_GIT_SHA,
         "release_id": RELEASE_ID,
         "environment": VERCEL_ENV or "local",
         "build_timestamp": RELEASE_BUILD_TIMESTAMP,
+        "source_dirty": RELEASE_SOURCE_DIRTY,
     }
 
 

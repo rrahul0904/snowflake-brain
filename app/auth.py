@@ -64,18 +64,15 @@ def public_candidate(row: dict[str, Any]) -> dict[str, Any]:
         "email": row["email"],
         "display_name": row["display_name"],
         "sign_in_methods": methods,
+        # This is only a presentation hint. Every /api/admin route still
+        # rechecks the database role for the active session.
+        "admin_access": row.get("role") == "admin",
     }
 
 
 def membership_for_candidate(candidate_id: int) -> dict[str, Any]:
     ensure_identity_billing_schema()
     with connect() as conn:
-        conn.execute(
-            "UPDATE candidate_memberships SET status = 'expired', updated_at = datetime('now') "
-            "WHERE candidate_id = ? AND status = 'active' AND expires_at IS NOT NULL "
-            "AND datetime(expires_at) <= datetime('now')",
-            (candidate_id,),
-        )
         row = conn.execute(
             """
             SELECT tier, status, plan_code, starts_at, expires_at, source, entitlement_version
@@ -332,11 +329,6 @@ def candidate_for_token(token: str | None) -> dict[str, Any] | None:
             "AND datetime(s.expires_at) > datetime('now')",
             (token_hash,),
         ).fetchone()
-        if row:
-            conn.execute(
-                "UPDATE candidate_sessions SET last_seen_at = datetime('now') WHERE token_hash = ?",
-                (token_hash,),
-            )
     return candidate_context(dict(row)) if row else None
 
 

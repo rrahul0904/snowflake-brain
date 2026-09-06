@@ -13,21 +13,6 @@ WINDOW_MINUTES = 30
 MIN_PUBLIC_COUNT = 3
 
 
-def _ensure_table(conn) -> None:
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS learner_activity_aggregates ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "bucket_key TEXT NOT NULL, "
-        "label TEXT NOT NULL, "
-        "latitude REAL NOT NULL, "
-        "longitude REAL NOT NULL, "
-        "active_count INTEGER NOT NULL DEFAULT 0, "
-        "observed_at TEXT NOT NULL DEFAULT (datetime('now')), "
-        "source TEXT NOT NULL DEFAULT 'aggregate'"
-        ")"
-    )
-
-
 @router.get("/activity/globe")
 def globe_activity() -> dict[str, Any]:
     """Return only coarse, already-aggregated activity that is safe to display publicly.
@@ -38,7 +23,6 @@ def globe_activity() -> dict[str, Any]:
     Buckets below MIN_PUBLIC_COUNT are never returned.
     """
     with connect() as conn:
-        _ensure_table(conn)
         rows = conn.execute(
             "SELECT bucket_key, label, latitude, longitude, active_count, observed_at "
             "FROM learner_activity_aggregates "

@@ -18,7 +18,21 @@ export async function api(path, options = {}) {
   return response.json();
 }
 
-export const getCandidateSession = () => api("/api/auth/me");
+// Public certification metadata is immutable for the lifetime of a page load.
+// Keep the Promise, rather than only the resolved value, so concurrent mounts
+// share one network request instead of racing four identical fetches.
+const bootstrap = { candidate: null, catalog: null, skillMap: null, readiness: null };
+function once(key, load) {
+  if (!bootstrap[key]) bootstrap[key] = load().catch((error) => { bootstrap[key] = null; throw error; });
+  return bootstrap[key];
+}
+export function clearClientBootstrap(...keys) {
+  (keys.length ? keys : Object.keys(bootstrap)).forEach((key) => { bootstrap[key] = null; });
+}
+export const getCandidateSession = ({ force = false } = {}) => {
+  if (force) bootstrap.candidate = null;
+  return once("candidate", () => api("/api/auth/me"));
+};
 export const getAuthProviders = () => api("/api/auth/providers");
 export const signupCandidate = (payload) => api("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
 export const loginCandidate = (payload) => api("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
@@ -39,8 +53,8 @@ export const deleteCredential = (credentialUid) => api(`/api/credentials/${encod
 export const getTalentProfile = () => api("/api/talent/profile");
 export const updateTalentProfile = (payload) => api("/api/talent/profile", { method: "PATCH", body: JSON.stringify(payload) });
 
-export const getSkillMap = () => api("/api/skills/map");
-export const getCertificationCatalog = () => api("/api/skills/catalog");
+export const getSkillMap = () => once("skillMap", () => api("/api/skills/map"));
+export const getCertificationCatalog = () => once("catalog", () => api("/api/skills/catalog"));
 export const getContentCoverage = () => api("/api/skills/content-coverage");
 export const getSkillSummary = (params = {}) => api(`/api/skills/summary?${new URLSearchParams(params)}`);
 export const getTaskProgress = (params = {}) => api(`/api/skills/task-progress?${new URLSearchParams(params)}`);
@@ -50,6 +64,7 @@ export const getSkillResources = (skillId, params = {}) => api(`/api/skills/${en
 
 export const getExperienceShell = (params = {}) => api(`/api/experience/shell?${new URLSearchParams(params)}`);
 export const getExperienceCommandCenter = (params = {}) => api(`/api/experience/command-center?${new URLSearchParams(params)}`);
+export const getHomeSummary = (params = {}) => once("readiness", () => api(`/api/candidate/home-summary?${new URLSearchParams(params)}`));
 export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/readiness?${new URLSearchParams(params)}`);
 export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
 export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
     "migrations/postgres/023_admin_operations_finops.sql",
+    "migrations/postgres/025_learner_activity_aggregates.sql",
     "docs/VERCEL_DEPLOYMENT_BUDGET_POLICY.md",
     "docs/PRODUCTION_ENVIRONMENT_CONTRACT.md",
     "docs/PREDEPLOYMENT_CERTIFICATION.md",
@@ -17,6 +18,7 @@ REQUIRED = [
     ".github/workflows/predeployment-certification.yml",
     "scripts/test_admin_operations.py",
     "scripts/reconcile_subscriptions.py",
+    "scripts/test_runtime_ddl_boundary.py",
 ]
 
 
@@ -52,6 +54,7 @@ def main() -> int:
     checks.append(run("python_compile", [sys.executable, "-m", "compileall", "-q", "app", "scripts"]))
     checks.append(run("admin_authorization", [sys.executable, "scripts/test_admin_operations.py"]))
     checks.append(run("subscription_reconciliation_dry_run", [sys.executable, "scripts/reconcile_subscriptions.py", "--dry-run"]))
+    checks.append(run("runtime_ddl_boundary", [sys.executable, "scripts/test_runtime_ddl_boundary.py"]))
     checks.append(run("frontend_syntax", ["node", "--check", "frontend/views/admin-operations.js"]))
     core_passed = all(item["status"] == "pass" for item in checks)
     checks.append(browser_evidence())

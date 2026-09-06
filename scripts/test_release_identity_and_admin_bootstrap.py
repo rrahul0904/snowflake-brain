@@ -27,8 +27,9 @@ def main() -> int:
         release = client.get("/api/release")
     assert release.status_code == 200
     payload = release.json()
-    assert set(payload) == {"git_sha", "release_id", "environment", "build_timestamp"}
-    assert all(isinstance(value, str) for value in payload.values())
+    assert set(payload) == {"git_sha", "release_id", "environment", "build_timestamp", "source_dirty"}
+    assert all(isinstance(value, str) for key, value in payload.items() if key != "source_dirty")
+    assert isinstance(payload["source_dirty"], bool)
     candidate = create_candidate("Designated Admin", "designated.admin@example.test", "correct-horse-battery")
     command = [sys.executable, "scripts/promote_admin.py", "--email", candidate["email"]]
     refused = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, env=os.environ.copy())

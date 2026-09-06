@@ -5,6 +5,7 @@ import os
 import re
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterable, Iterator
@@ -27,6 +28,7 @@ from .config import (
     POSTGRES_TEST_SCHEMA_PREFIX,
     ROOT_DIR,
 )
+from .observability import record_db_operation
 
 
 GLOBAL_WRITE_LOCK = 7_542_181_501
@@ -416,7 +418,13 @@ class PostgresConnectionAdapter:
 
 def get_conn() -> PostgresConnectionAdapter:
     pool = _pool()
-    raw = pool.getconn()
+    started = time.perf_counter()
+    try:
+        raw = pool.getconn()
+    except Exception:
+        record_db_operation("POOL_WAIT", (time.perf_counter() - started) * 1000, ok=False, backend="postgresql")
+        raise
+    record_db_operation("POOL_WAIT", (time.perf_counter() - started) * 1000, ok=True, backend="postgresql")
     try:
         _prepare_connection(raw)
         return PostgresConnectionAdapter(raw, pool)
