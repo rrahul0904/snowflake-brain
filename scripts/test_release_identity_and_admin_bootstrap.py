@@ -25,11 +25,15 @@ def main() -> int:
     run_migrations(); ensure_identity_billing_schema(); ensure_admin_operations_schema()
     with TestClient(app) as client:
         release = client.get("/api/release")
+        shell = client.get("/")
+        public_asset = client.get("/static/styles/tokens.css")
     assert release.status_code == 200
     payload = release.json()
     assert set(payload) == {"git_sha", "release_id", "environment", "build_timestamp", "source_dirty"}
     assert all(isinstance(value, str) for key, value in payload.items() if key != "source_dirty")
     assert isinstance(payload["source_dirty"], bool)
+    assert "s-maxage=600" in shell.headers.get("cache-control", "")
+    assert "s-maxage=3600" in public_asset.headers.get("cache-control", "")
     candidate = create_candidate("Designated Admin", "designated.admin@example.test", "correct-horse-battery")
     command = [sys.executable, "scripts/promote_admin.py", "--email", candidate["email"]]
     refused = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, env=os.environ.copy())
