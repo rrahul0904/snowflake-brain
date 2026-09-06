@@ -105,6 +105,9 @@ def check_frontend_contract() -> None:
     assert "Google OAuth is enabled but" in dev
     assert 'path==="#/admin"||!candidateLoaded()' in router
     assert "getCandidateSession({ force: true })" in auth
+    assert "let authGeneration = 0" in auth
+    assert "if (generation !== authGeneration) return snapshot" in auth
+    assert auth.count("beginAuthMutation();") == 4
 
 
 def main() -> None:

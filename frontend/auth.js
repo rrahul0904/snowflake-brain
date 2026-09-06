@@ -9,6 +9,7 @@ import {
 
 let snapshot = { authenticated: false, candidate: null, membership: null };
 let hasLoadedCandidate = false;
+let authGeneration = 0;
 
 export function authState() { return snapshot; }
 export function candidate() {
@@ -35,10 +36,16 @@ function publish(next) {
   return snapshot;
 }
 
+function beginAuthMutation() {
+  authGeneration += 1;
+}
+
 export async function refreshCandidate({ notify = false } = {}) {
   // Authorization can change outside this page (for example, a controlled
   // founder promotion). A refresh must therefore bypass the bootstrap cache.
+  const generation = authGeneration;
   const next = await getCandidateSession({ force: true });
+  if (generation !== authGeneration) return snapshot;
   hasLoadedCandidate = true;
   if (notify) return publish(next);
   snapshot = { ...snapshot, ...next };
@@ -46,6 +53,7 @@ export async function refreshCandidate({ notify = false } = {}) {
 }
 
 export async function signUp(payload) {
+  beginAuthMutation();
   clearClientBootstrap("candidate", "readiness");
   const result = await signupCandidate(payload);
   hasLoadedCandidate = true;
@@ -53,6 +61,7 @@ export async function signUp(payload) {
 }
 
 export async function logIn(payload) {
+  beginAuthMutation();
   clearClientBootstrap("candidate", "readiness");
   const result = await loginCandidate(payload);
   hasLoadedCandidate = true;
@@ -60,6 +69,7 @@ export async function logIn(payload) {
 }
 
 export async function linkGoogle(password) {
+  beginAuthMutation();
   clearClientBootstrap("candidate", "readiness");
   const result = await linkGoogleCandidate(password);
   hasLoadedCandidate = true;
@@ -67,6 +77,7 @@ export async function linkGoogle(password) {
 }
 
 export async function logOut() {
+  beginAuthMutation();
   await logoutCandidate();
   clearClientBootstrap("candidate", "readiness");
   hasLoadedCandidate = true;
