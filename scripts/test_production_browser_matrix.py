@@ -9,6 +9,7 @@ import traceback
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -198,6 +199,73 @@ def wait_for_recruiter_discoverability(page: Page, expected: bool) -> dict:
     return fetch_talent_profile(page)
 
 
+def certify_authenticated_home_request_budget(page: Page, profile: Profile) -> dict:
+    """Exercise a clean authenticated Home boot and retain safe request evidence.
+
+    This is intentionally browser-level rather than a source assertion: it
+    catches duplicate auth refreshes and route/nav remounts that static tests
+    cannot see. Only method, URL path, status, and timing are retained; cookies
+    and response bodies are never written to the report.
+    """
+    watched = {
+        "/api/auth/me",
+        "/api/skills/map",
+        "/api/skills/catalog",
+        "/api/candidate/home-summary",
+    }
+    requests: list[dict[str, object]] = []
+
+    def capture(response) -> None:
+        parsed = urlparse(response.url)
+        if parsed.path not in watched:
+            return
+        timing = response.request.timing
+        duration = max(0.0, float(timing.get("responseEnd", 0)) - float(timing.get("startTime", 0)))
+        requests.append(
+            {
+                "method": response.request.method,
+                "path": parsed.path,
+                "status": response.status,
+                "duration_ms": round(duration, 2),
+            }
+        )
+
+    page.on("response", capture)
+    try:
+        started = time.perf_counter()
+        page.goto(f"{BASE_URL}/#/home", wait_until="domcontentloaded", timeout=20_000)
+        page.locator(".v26-home-hero h1").wait_for(state="visible", timeout=10_000)
+        shell_ms = (time.perf_counter() - started) * 1000
+        wait_for_route(page, "#/home")
+        page.locator(".v26-home-command-wrap").wait_for(state="visible", timeout=10_000)
+        useful_home_ms = (time.perf_counter() - started) * 1000
+        page.wait_for_timeout(250)
+    finally:
+        page.remove_listener("response", capture)
+
+    counts = {path: 0 for path in sorted(watched)}
+    for item in requests:
+        if item["method"] != "GET" or int(item["status"]) >= 400:
+            raise AssertionError(f"{profile.name} Home API request failed: {item}")
+        counts[str(item["path"])] += 1
+    if counts["/api/auth/me"] != 1 or counts["/api/candidate/home-summary"] != 1:
+        raise AssertionError(f"{profile.name} Home missed its required authenticated boot calls: {counts}")
+    duplicates = {path: count for path, count in counts.items() if count > 1}
+    if duplicates:
+        raise AssertionError(f"{profile.name} Home duplicated boot requests: {duplicates}")
+    if shell_ms >= 1_000:
+        raise AssertionError(f"{profile.name} Home shell exceeded 1s: {shell_ms:.1f} ms")
+    if useful_home_ms >= 1_500:
+        raise AssertionError(f"{profile.name} useful Home exceeded 1.5s: {useful_home_ms:.1f} ms")
+
+    return {
+        "shell_ms": round(shell_ms, 2),
+        "useful_home_ms": round(useful_home_ms, 2),
+        "request_counts": counts,
+        "requests": requests,
+    }
+
+
 def run_profile(browser: Browser, profile: Profile) -> dict:
     context = browser.new_context(
         viewport=profile.viewport,
@@ -247,6 +315,12 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_client_clean(page, f"{profile.name} account action")
 
         candidate = register_candidate(page, profile.name.replace("-", ""))
+
+        # A full document navigation discards the in-memory client cache so
+        # this measures the actual initial candidate Home boot, not a warm
+        # route transition. It is the release gate for request coalescing.
+        home_budget = certify_authenticated_home_request_budget(page, profile)
+        assert_client_clean(page, f"{profile.name} authenticated home")
 
         # Registration must visibly remain unverified in the normal account experience.
         page.goto(f"{BASE_URL}/#/account", wait_until="networkidle", timeout=20_000)
@@ -316,6 +390,7 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
             "profile": profile.name,
             "status": "pass",
             "home_load_ms": round(load_ms, 2),
+            "authenticated_home": home_budget,
             "membership_heading_px": membership_metrics["headingPx"],
             "membership_feature_px": membership_metrics["featurePx"],
             "credential_empty_cards": empty_credential_metrics["cards"],
@@ -339,6 +414,7 @@ def main() -> None:
                     print(
                         f"Browser profile PASS: {profile.name} "
                         f"({result['home_load_ms']} ms; membership heading {result['membership_heading_px']}px; "
+                        f"authenticated Home {result['authenticated_home']['useful_home_ms']} ms; "
                         f"verified credentials {result['credential_verified_cards']})",
                         flush=True,
                     )
@@ -362,6 +438,9 @@ def main() -> None:
         for item in results:
             print(
                 f"- {item['profile']}: home network-idle {item['home_load_ms']} ms; "
+                f"authenticated shell {item['authenticated_home']['shell_ms']} ms; "
+                f"useful Home {item['authenticated_home']['useful_home_ms']} ms; "
+                f"Home requests {item['authenticated_home']['request_counts']}; "
                 f"membership heading {item['membership_heading_px']} px; "
                 f"feature text {item['membership_feature_px']} px; "
                 f"verified credentials {item['credential_verified_cards']}; "
