@@ -103,7 +103,8 @@ def check_frontend_contract() -> None:
     assert "ACCOUNT_EMAIL_ACTION_BASE_URL=https://snowflakecertificationguide.vercel.app\n" in prod_env
     assert 'source "$ROOT_DIR/.env"' in dev
     assert "Google OAuth is enabled but" in dev
-    assert 'path==="#/admin"||!candidateLoaded()' in router
+    assert 'views["#/admin"]="admin-operations.js"' in router
+    assert 'candidate().admin_access' not in router
     assert "getCandidateSession({ force: true })" in auth
     assert "let authGeneration = 0" in auth
     assert "if (generation !== authGeneration) return snapshot" in auth
