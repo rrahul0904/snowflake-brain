@@ -331,6 +331,14 @@ def candidate_for_token(token: str | None) -> dict[str, Any] | None:
         return None
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with connect() as conn:
+        # Keep device-management activity truthful without turning every
+        # authenticated request into a session-row write.
+        conn.execute(
+            "UPDATE candidate_sessions SET last_seen_at=datetime('now') "
+            "WHERE token_hash=? AND revoked_at IS NULL "
+            "AND datetime(last_seen_at) < datetime('now','-5 minutes')",
+            (token_hash,),
+        )
         row = conn.execute(
             "SELECT a.* FROM candidate_sessions s "
             "JOIN candidate_accounts a ON a.id = s.candidate_id "

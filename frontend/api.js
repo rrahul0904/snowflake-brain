@@ -14,6 +14,12 @@ export async function api(path, options = {}) {
     }
     throw new Error(message || "Request failed");
   }
+  // Home aggregates candidate progress, answers, reviews, preferences, and
+  // mocks. A mutation must not leave its in-page summary stale after route
+  // navigation; only concurrent GETs are deduplicated below.
+  if (!["GET", "HEAD", "OPTIONS"].includes((options.method || "GET").toUpperCase())) {
+    clearClientBootstrap("readiness", "skillMap");
+  }
   if (response.status === 204) return null;
   return response.json();
 }
