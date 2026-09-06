@@ -18,6 +18,7 @@ def run_boundary(vercel_environment: str) -> None:
         {
             "VERCEL": "1",
             "VERCEL_ENV": vercel_environment,
+            "VERCEL_GIT_COMMIT_SHA": "a" * 40,
             "DATABASE_URL": "postgresql://runtime:password@example.test:5432/snowflake",
             "QUESTION_BANK_AUTO_IMPORT": "false",
             "AUTH_COOKIE_SECURE": "true",

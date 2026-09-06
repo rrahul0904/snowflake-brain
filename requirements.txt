@@ -3,7 +3,7 @@
 # 0.137.2 is the first release line used here that supports patched Starlette 1.x.
 fastapi==0.137.2
 uvicorn[standard]==0.32.1
-pydantic==2.10.3
+pydantic==2.13.5
 httpx==0.28.1
 google-auth>=2.38,<3
 requests>=2.32,<3

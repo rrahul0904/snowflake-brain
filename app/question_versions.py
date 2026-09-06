@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 
+from .config import DATABASE_BACKEND
 from .database import connect
 
 
@@ -40,6 +41,8 @@ def ensure_question_version_schema() -> None:
     wording while still allowing internal provenance/authoring metadata to be
     refreshed independently.
     """
+    if DATABASE_BACKEND == "postgresql":
+        return
     with _SCHEMA_LOCK:
         with connect() as conn:
             database_key = _database_key(conn)

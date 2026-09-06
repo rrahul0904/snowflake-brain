@@ -63,6 +63,8 @@ def _columns(conn: Any, table: str) -> set[str]:
 
 
 def ensure_adaptive_readiness_schema() -> None:
+    if DATABASE_BACKEND == "postgresql":
+        return
     with connect() as conn:
         if conn.execute("SELECT 1 FROM schema_migrations WHERE version=?", (SCHEMA_VERSION,)).fetchone():
             return

@@ -22,3 +22,4 @@ review_artifacts/
 docs/replica/**/screenshots/
 docs/replica/reference/
 static/
+app/release_manifest.json

@@ -40,6 +40,7 @@ REQUIRED_TABLES = frozenset(
         "finops_cost_snapshots",
         "operations_daily_snapshots",
         "deployment_records",
+        "learner_activity_aggregates",
     }
 )
 

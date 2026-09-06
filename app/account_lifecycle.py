@@ -103,6 +103,11 @@ def _table_columns(conn: Any, table: str) -> set[str]:
 
 
 def ensure_account_lifecycle_schema() -> None:
+    # Hosted PostgreSQL has a migration-owned schema contract verified at
+    # application startup. Request paths must never run even a compatibility
+    # repair probe there.
+    if DATABASE_BACKEND == "postgresql":
+        return
     with connect() as conn:
         existing = conn.execute(
             "SELECT 1 FROM schema_migrations WHERE version=?",
@@ -110,9 +115,6 @@ def ensure_account_lifecycle_schema() -> None:
         ).fetchone()
         if existing:
             return
-        if DATABASE_BACKEND == "postgresql":
-            raise RuntimeError("PostgreSQL account lifecycle migration was not applied")
-
         account_columns = _table_columns(conn, "candidate_accounts")
         if "email_verified" not in account_columns:
             conn.execute("ALTER TABLE candidate_accounts ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1")

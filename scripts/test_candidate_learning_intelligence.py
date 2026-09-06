@@ -210,6 +210,11 @@ def main() -> None:
     with TestClient(app) as candidate_client:
         candidate_id = register(candidate_client, "learning-a@example.com")
         question_ids = seed_candidate_evidence(candidate_id)
+        # The production Due Today route is deliberately read-only. Direct
+        # fixture inserts therefore synchronize through the controlled write
+        # path before asserting the learner-facing projection.
+        with connect() as conn:
+            sync_candidate_learning_state(conn, candidate_id, "snowpro-core")
 
         due = candidate_client.get("/api/intelligence/due-today?track_id=snowpro-core&limit=20")
         check(due.status_code == 200, due.text)

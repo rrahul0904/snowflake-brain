@@ -1,11 +1,14 @@
 [project]
 name = "snowflake-certification-platform"
 version = "0.13.0"
-requires-python = ">=3.12"
+# Vercel defaults to the newest available Python when this is unconstrained.
+# pydantic-core 2.27.1 does not support CPython 3.14, so keep the production
+# function on the supported 3.12 line until the dependency set is upgraded.
+requires-python = "~=3.12.0"
 dependencies = [
   "fastapi==0.137.2",
   "uvicorn[standard]==0.32.1",
-  "pydantic==2.10.3",
+  "pydantic==2.13.5",
   "httpx==0.28.1",
   "google-auth>=2.38,<3",
   "requests>=2.32,<3",

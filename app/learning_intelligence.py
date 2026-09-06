@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from .database import connect
+from .config import DATABASE_BACKEND
 from .serializers import json_list
 
 SCHEMA_VERSION = "20260815_032_candidate_learning_intelligence_hardening"
@@ -31,6 +32,8 @@ def _ensure_column(conn: Any, table: str, column: str, declaration: str) -> None
 
 
 def ensure_learning_intelligence_schema() -> None:
+    if DATABASE_BACKEND == "postgresql":
+        return
     with _SCHEMA_LOCK:
         with connect() as conn:
             database_key = _database_key(conn)
@@ -190,8 +193,10 @@ def record_learning_review(
     session_id: int | None = None,
     response_time_ms: int | None = None,
     selected: list[int] | None = None,
+    ensure_schema: bool = True,
 ) -> dict[str, Any]:
-    ensure_learning_intelligence_schema()
+    if ensure_schema:
+        ensure_learning_intelligence_schema()
     context = _question_context(conn, question_id)
     confidence_value = int(confidence) if confidence is not None else None
     if confidence_value is not None and not 1 <= confidence_value <= 5:

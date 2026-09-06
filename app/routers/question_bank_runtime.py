@@ -27,6 +27,8 @@ from ..mock_exam import (
     submit_session,
 )
 from ..mock_replay import append_event, record_answer_event, record_flag_event, replay_payload
+from ..learning_intelligence import record_learning_review
+from ..learning_sync import ensure_learning_sync_schema
 from ..question_bank import (
     candidate_was_served_question,
     question_review_metadata,
@@ -381,13 +383,19 @@ def grade_candidate_practice(payload: QuizGradeRequest, candidate: dict[str, Any
 def record_candidate_attempt(question_id: str, payload: AttemptRequest, candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, bool]:
     _must_have_been_served(candidate["id"], question_id)
     selected = sorted(set(int(item) for item in payload.selected))
+    # Local/standalone callers can reach this route without a lifespan event;
+    # establish the full SQLite projection schema before opening the answer
+    # transaction.  Doing this separately avoids a second schema connection
+    # competing with the write transaction below.
+    with connect() as schema_conn:
+        ensure_learning_sync_schema(schema_conn)
     with connect() as conn:
         question = conn.execute("SELECT id, track_id, test_id, correct_json FROM questions WHERE id=?", (question_id,)).fetchone()
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
         correct_options = sorted(int(item) for item in json_list(question["correct_json"]) if isinstance(item, int) or str(item).isdigit())
         is_correct = selected == correct_options
-        conn.execute(
+        attempt = conn.execute(
             """
             INSERT INTO question_attempts(
               question_id,selected,correct,mode,candidate_id,response_time_ms,confidence
@@ -402,6 +410,25 @@ def record_candidate_attempt(question_id: str, payload: AttemptRequest, candidat
                 payload.response_time_ms,
                 payload.confidence,
             ),
+        )
+        # Project candidate learning state at the authoritative answer write,
+        # not on a later read.  Learner-facing intelligence endpoints remain
+        # read-only and a sync marker prevents historical backfill from
+        # reapplying this attempt.
+        record_learning_review(
+            conn,
+            candidate["id"],
+            question_id,
+            correct=is_correct,
+            confidence=payload.confidence,
+            mode=payload.mode,
+            response_time_ms=payload.response_time_ms,
+            selected=selected,
+            ensure_schema=False,
+        )
+        conn.execute(
+            "INSERT INTO candidate_learning_attempt_sync(attempt_id,candidate_id) VALUES (?,?) ON CONFLICT(attempt_id) DO NOTHING",
+            (int(attempt.lastrowid), candidate["id"]),
         )
         conn.execute(
             "INSERT INTO learning_events(event_type, track_id, practice_test_id, question_id, metadata_json, candidate_id) VALUES ('question_answered', ?, ?, ?, ?, ?)",

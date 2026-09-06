@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 
+from .config import DATABASE_BACKEND
 from .database import connect
 
 
@@ -86,6 +87,8 @@ def ensure_talent_schema() -> None:
     local/test databases compatible and makes candidate API calls safe when an
     older SQLite file is opened before the next full migration cycle.
     """
+    if DATABASE_BACKEND == "postgresql":
+        return
     with _SCHEMA_LOCK:
         with connect() as conn:
             key = _database_key(conn)

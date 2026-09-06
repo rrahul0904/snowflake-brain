@@ -30,6 +30,10 @@ def run_config(
         {
             "VERCEL": "1",
             "VERCEL_ENV": vercel_env,
+            # This is a config-only child process, not a deployment. Supply a
+            # syntactically valid clean Git identity so database validation is
+            # the behavior under test.
+            "VERCEL_GIT_COMMIT_SHA": "0" * 40,
             "QUESTION_BANK_AUTO_IMPORT": "false",
             "AUTH_COOKIE_SECURE": "true",
             "FORCE_HTTPS": "true",

@@ -17,7 +17,6 @@ from ..learning_intelligence import (
     study_plan,
     update_mistake,
 )
-from ..learning_sync import sync_candidate_learning_state
 from ..task_review import due_task_reviews, get_task_review, mark_task_reviewed, reset_task_review, schedule_task_review
 
 router = APIRouter()
@@ -39,10 +38,6 @@ class MistakeUpdateRequest(BaseModel):
 class TaskReviewRequest(BaseModel):
     track_id: str = "snowpro-core"
     skill_id: str = Field(min_length=1, max_length=200)
-
-
-def _sync(conn: Any, candidate_id: int, track_id: str) -> None:
-    sync_candidate_learning_state(conn, candidate_id, track_id)
 
 
 def _task_review_error(exc: ValueError) -> HTTPException:
@@ -86,7 +81,6 @@ def certification_due_today(
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
     with connect() as conn:
-        _sync(conn, candidate["id"], track_id)
         question_due = due_today(conn, candidate["id"], track_id, limit=limit)
         task_due = due_task_reviews(conn, candidate["id"], track_id, limit=limit)
         return {
@@ -156,7 +150,6 @@ def certification_mistake_notebook(
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
     with connect() as conn:
-        _sync(conn, candidate["id"], track_id)
         return mistake_notebook(conn, candidate["id"], track_id, status=status, limit=limit)
 
 
@@ -195,7 +188,6 @@ def certification_study_plan(
     candidate: dict = Depends(require_candidate),
 ) -> dict[str, Any]:
     with connect() as conn:
-        _sync(conn, candidate["id"], track_id)
         return study_plan(conn, candidate["id"], track_id)
 
 
@@ -228,7 +220,6 @@ def certification_mock_remediation(
             session = conn.execute("SELECT track_id FROM exam_sessions WHERE id=? AND candidate_id=?", (session_id, candidate["id"])).fetchone()
             if not session:
                 raise ValueError("Mock session not found")
-            _sync(conn, candidate["id"], str(session["track_id"] or "snowpro-core"))
             return mock_remediation(conn, candidate["id"], session_id)
     except ValueError as exc:
         raise HTTPException(status_code=404 if "not found" in str(exc).lower() else 409, detail=str(exc)) from exc

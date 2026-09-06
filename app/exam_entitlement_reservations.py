@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from .config import DATABASE_BACKEND
 from .database import connect
 from .entitlements import plan_details
 
@@ -23,6 +24,8 @@ def ensure_exam_entitlement_reservation_schema() -> None:
     source, while short-lived uncommitted reservations cover the in-flight gap.
     """
     global _SCHEMA_READY
+    if DATABASE_BACKEND == "postgresql":
+        return
     if _SCHEMA_READY:
         return
     with _SCHEMA_LOCK:
