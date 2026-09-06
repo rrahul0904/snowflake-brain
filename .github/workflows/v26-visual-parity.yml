@@ -2,6 +2,8 @@ name: V26 Visual Parity
 
 on:
   pull_request:
+    # Keep this PR-native trigger aligned with the required visual-parity
+    # branch-protection context; workflow_dispatch runs are diagnostic only.
     paths:
       - "frontend/**"
       - "app/**"
