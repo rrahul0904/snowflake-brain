@@ -233,7 +233,14 @@ def certify_authenticated_home_request_budget(page: Page, profile: Profile) -> d
     page.on("response", capture)
     try:
         started = time.perf_counter()
-        page.goto(f"{BASE_URL}/#/home", wait_until="domcontentloaded", timeout=20_000)
+        # A hash-only navigation preserves the module-level client snapshot.
+        # Add a throwaway query value so this is a genuine document reload and
+        # the request budget measures the cold authenticated Home boot.
+        page.goto(
+            f"{BASE_URL}/?browser_home_boot={uuid.uuid4().hex}#/home",
+            wait_until="domcontentloaded",
+            timeout=20_000,
+        )
         page.locator(".v26-home-hero h1").wait_for(state="visible", timeout=10_000)
         shell_ms = (time.perf_counter() - started) * 1000
         wait_for_route(page, "#/home")
