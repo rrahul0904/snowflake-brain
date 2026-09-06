@@ -14,6 +14,7 @@ from .config import (
     RELEASE_BUILD_TIMESTAMP,
     RELEASE_GIT_SHA,
     RELEASE_ID,
+    RELEASE_SOURCE_DIRTY,
     VERCEL_ENV,
 )
 from .database import close_database, database_health, run_migrations
@@ -54,6 +55,22 @@ from .talent_schema import ensure_talent_schema
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
+# The public SPA shell is identical for every visitor; candidate-specific data
+# is fetched through protected no-store API endpoints after it loads.  Let the
+# CDN satisfy repeat shell and asset requests without pinning old content in a
+# browser across a Git-backed deployment.
+PUBLIC_SHELL_CACHE_CONTROL = "public, max-age=60, s-maxage=600, stale-while-revalidate=86400"
+PUBLIC_STATIC_CACHE_CONTROL = "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400"
+
+
+class PublicFrontendStaticFiles(StaticFiles):
+    """Cache public frontend files at the CDN while security owns private views."""
+
+    async def get_response(self, path: str, scope: dict) -> object:  # type: ignore[override]
+        response = await super().get_response(path, scope)
+        if 200 <= response.status_code < 300:
+            response.headers.setdefault("Cache-Control", PUBLIC_STATIC_CACHE_CONTROL)
+        return response
 
 app = FastAPI(
     title="Snowflake Certification Guide",
@@ -120,13 +137,14 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/release")
-def release() -> dict[str, str]:
+def release() -> dict[str, str | bool]:
     """Non-secret deployment identity used for exact-SHA release checks."""
     return {
         "git_sha": RELEASE_GIT_SHA,
         "release_id": RELEASE_ID,
         "environment": VERCEL_ENV or "local",
         "build_timestamp": RELEASE_BUILD_TIMESTAMP,
+        "source_dirty": RELEASE_SOURCE_DIRTY,
     }
 
 
@@ -197,9 +215,12 @@ def api_not_found(full_path: str = "") -> None:
     raise HTTPException(status_code=404, detail="Not found")
 
 
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+app.mount("/static", PublicFrontendStaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str) -> FileResponse:
-    return FileResponse(FRONTEND_DIR / "index-v26.html")
+    return FileResponse(
+        FRONTEND_DIR / "index-v26.html",
+        headers={"Cache-Control": PUBLIC_SHELL_CACHE_CONTROL},
+    )

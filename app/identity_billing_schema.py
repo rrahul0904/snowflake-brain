@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 
+from .config import DATABASE_BACKEND
 from .database import connect
 
 
@@ -36,6 +37,11 @@ def ensure_identity_billing_schema() -> None:
     in this process, later calls are no-ops instead of repeatedly dropping and
     recreating schema objects.
     """
+    # PostgreSQL schema ownership belongs exclusively to versioned migrations.
+    # This compatibility helper remains for self-contained SQLite development
+    # databases, where it is intentionally called by local test fixtures.
+    if DATABASE_BACKEND == "postgresql":
+        return
     with _SCHEMA_LOCK:
         with connect() as conn:
             database_key = _database_key(conn)

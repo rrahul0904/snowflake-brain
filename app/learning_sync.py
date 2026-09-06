@@ -4,11 +4,14 @@ import json
 from typing import Any
 
 from .learning_intelligence import ensure_learning_intelligence_schema, record_learning_review
+from .config import DATABASE_BACKEND
 
 SCHEMA_VERSION = "20260815_031_candidate_learning_attempt_sync_v1"
 
 
 def ensure_learning_sync_schema(conn: Any) -> None:
+    if DATABASE_BACKEND == "postgresql":
+        return
     ensure_learning_intelligence_schema()
     conn.executescript(
         """

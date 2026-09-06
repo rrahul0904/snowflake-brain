@@ -64,15 +64,21 @@ def public_candidate(row: dict[str, Any]) -> dict[str, Any]:
         "email": row["email"],
         "display_name": row["display_name"],
         "sign_in_methods": methods,
+        # This is only a presentation hint. Every /api/admin route still
+        # rechecks the database role for the active session.
+        "admin_access": row.get("role") == "admin",
     }
 
 
 def membership_for_candidate(candidate_id: int) -> dict[str, Any]:
     ensure_identity_billing_schema()
     with connect() as conn:
+        # Reconcile a lapsed timed entitlement before choosing the effective
+        # membership. The database trigger owns any paid Exam Pack fallback;
+        # simply filtering expired rows would leave that trigger unreachable.
         conn.execute(
-            "UPDATE candidate_memberships SET status = 'expired', updated_at = datetime('now') "
-            "WHERE candidate_id = ? AND status = 'active' AND expires_at IS NOT NULL "
+            "UPDATE candidate_memberships SET status='expired', updated_at=datetime('now') "
+            "WHERE candidate_id=? AND status='active' AND expires_at IS NOT NULL "
             "AND datetime(expires_at) <= datetime('now')",
             (candidate_id,),
         )
@@ -325,6 +331,14 @@ def candidate_for_token(token: str | None) -> dict[str, Any] | None:
         return None
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with connect() as conn:
+        # Keep device-management activity truthful without turning every
+        # authenticated request into a session-row write.
+        conn.execute(
+            "UPDATE candidate_sessions SET last_seen_at=datetime('now') "
+            "WHERE token_hash=? AND revoked_at IS NULL "
+            "AND datetime(last_seen_at) < datetime('now','-5 minutes')",
+            (token_hash,),
+        )
         row = conn.execute(
             "SELECT a.* FROM candidate_sessions s "
             "JOIN candidate_accounts a ON a.id = s.candidate_id "
@@ -332,11 +346,6 @@ def candidate_for_token(token: str | None) -> dict[str, Any] | None:
             "AND datetime(s.expires_at) > datetime('now')",
             (token_hash,),
         ).fetchone()
-        if row:
-            conn.execute(
-                "UPDATE candidate_sessions SET last_seen_at = datetime('now') WHERE token_hash = ?",
-                (token_hash,),
-            )
     return candidate_context(dict(row)) if row else None
 
 

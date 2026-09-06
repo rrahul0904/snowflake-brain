@@ -5,6 +5,7 @@ import json
 import threading
 from typing import Any, Iterable
 
+from .config import DATABASE_BACKEND
 from .database import connect
 from .question_versions import ensure_question_version_schema
 
@@ -31,6 +32,8 @@ def _database_key(conn) -> str:
 
 
 def ensure_question_bank_release_schema() -> None:
+    if DATABASE_BACKEND == "postgresql":
+        return
     ensure_question_version_schema()
     with _SCHEMA_LOCK:
         with connect() as conn:

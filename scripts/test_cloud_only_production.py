@@ -77,6 +77,9 @@ def run_config_probe(
         {
             "VERCEL": "1",
             "VERCEL_ENV": vercel_environment,
+            # Hosted-runtime probes must satisfy the immutable-release guard
+            # before they can exercise the database fail-closed boundary.
+            "VERCEL_GIT_COMMIT_SHA": "0" * 40,
             "QUESTION_BANK_AUTO_IMPORT": "false",
             "AUTH_COOKIE_SECURE": "true",
             "FORCE_HTTPS": "true",

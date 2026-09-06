@@ -458,16 +458,21 @@ def delete_candidate_credential(candidate_id: int, credential_uid: str) -> None:
 def get_talent_profile(candidate_id: int) -> dict[str, Any]:
     ensure_talent_schema()
     with connect() as conn:
-        conn.execute(
-            "INSERT OR IGNORE INTO candidate_talent_profiles(candidate_id) VALUES (?)",
-            (candidate_id,),
-        )
         row = conn.execute("SELECT * FROM candidate_talent_profiles WHERE candidate_id=?", (candidate_id,)).fetchone()
         verified_count = conn.execute(
             "SELECT COUNT(*) AS n FROM candidate_credentials WHERE candidate_id=? AND verification_status='verified'",
             (candidate_id,),
         ).fetchone()
-    result = dict(row)
+    # A profile is optional until the candidate changes it. Reads must not
+    # create a row, particularly in PostgreSQL request paths.
+    result = dict(row) if row else {
+        "candidate_id": candidate_id,
+        "headline": "",
+        "location": "",
+        "availability": "not_looking",
+        "recruiter_discoverable": 0,
+        "public_profile": 0,
+    }
     result["recruiter_discoverable"] = bool(result.get("recruiter_discoverable"))
     result["public_profile"] = bool(result.get("public_profile"))
     result["verified_credential_count"] = int((verified_count or {"n": 0})["n"])
@@ -500,18 +505,22 @@ def update_talent_profile(
     with connect() as conn:
         conn.execute(
             """
-            UPDATE candidate_talent_profiles
-               SET headline=?, location=?, availability=?, recruiter_discoverable=?, public_profile=?,
-                   updated_at=datetime('now')
-             WHERE candidate_id=?
+            INSERT INTO candidate_talent_profiles(
+              candidate_id,headline,location,availability,recruiter_discoverable,public_profile,updated_at
+            ) VALUES (?,?,?,?,?,?,datetime('now'))
+            ON CONFLICT(candidate_id) DO UPDATE SET
+              headline=excluded.headline, location=excluded.location,
+              availability=excluded.availability,
+              recruiter_discoverable=excluded.recruiter_discoverable,
+              public_profile=excluded.public_profile, updated_at=datetime('now')
             """,
             (
+                candidate_id,
                 (headline if headline is not None else str(profile["headline"]))[:160].strip(),
                 (location if location is not None else str(profile["location"]))[:160].strip(),
                 next_availability,
                 1 if next_discoverable else 0,
                 1 if next_public else 0,
-                candidate_id,
             ),
         )
     return get_talent_profile(candidate_id)

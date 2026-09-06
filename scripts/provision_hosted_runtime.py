@@ -13,11 +13,20 @@ import json
 import os
 import secrets
 import sys
+from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
 import httpx
 import psycopg
 from psycopg import sql
+
+
+# GitHub Actions invokes this file as ``python scripts/...``.  Python then puts
+# ``scripts/`` rather than the repository root on sys.path, so explicitly make
+# application modules available without relying on a runner-specific CWD.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 RUNTIME_ROLE = os.environ.get("HOSTED_RUNTIME_ROLE", "snowflake_app_runtime").strip()

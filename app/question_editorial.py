@@ -65,6 +65,8 @@ def _table_exists(conn: Any, table: str) -> bool:
 
 
 def ensure_question_editorial_schema() -> None:
+    if DATABASE_BACKEND == "postgresql":
+        return
     ensure_question_version_schema()
     with connect() as conn:
         existing = conn.execute("SELECT 1 FROM schema_migrations WHERE version=?", (SCHEMA_VERSION,)).fetchone()

@@ -1,13 +1,6 @@
 import {
   escapeHtml,
-  getDueToday,
-  getIntelligenceReadiness,
-  getMistakeNotebook,
-  getMockHistory,
-  getSkillMap,
-  getSkillSummary,
-  getStudyPlan,
-  getTaskProgress,
+  getHomeSummary,
 } from "../api.js";
 
 const DOMAIN_COLORS = ["#29B5E8", "#6366F1", "#10B981", "#F59E0B", "#8B5CF6"];
@@ -21,29 +14,13 @@ export async function renderHomeCommandCenter(container, trackId = "snowpro-core
     return;
   }
 
-  const fallback = [
-    { due_count: 0, questions: [], task_reviews: [] },
-    { counts: {}, items: [] },
-    { preferences: {}, priority_skills: [], days: [] },
-    { skills: [], domains: [] },
-    { history: [] },
-    { certifications: [] },
-    { completed_skill_ids: [] },
-    {},
-  ];
-  // The command center is a convenience aggregate, not a reason to hold the
-  // learner's Home route hostage if one optional reporting request stalls.
-  // The fallback deliberately reports no evidence; it never invents progress.
-  const [due, mistakes, plan, summary, history, map, progress, readiness] = await Promise.race([Promise.all([
-    getDueToday({ track_id: trackId, limit: 5 }).catch(() => ({ due_count: 0, questions: [], task_reviews: [] })),
-    getMistakeNotebook({ track_id: trackId, status: "active", limit: 5 }).catch(() => ({ counts: {}, items: [] })),
-    getStudyPlan({ track_id: trackId }).catch(() => ({ preferences: {}, priority_skills: [], days: [] })),
-    getSkillSummary({ track_id: trackId }).catch(() => ({ skills: [], domains: [] })),
-    getMockHistory({ track_id: trackId }).catch(() => ({ history: [] })),
-    getSkillMap().catch(() => ({ certifications: [] })),
-    getTaskProgress({ track_id: trackId }).catch(() => ({ completed_skill_ids: [] })),
-    account.is_premium ? getIntelligenceReadiness({ track_id: trackId }).catch(() => ({})) : Promise.resolve({}),
-  ]), new Promise((resolve) => window.setTimeout(() => resolve(fallback), 8000))]);
+  const loading = document.createElement("section");
+  loading.className = "v26-section v26-home-command-section";
+  loading.innerHTML = `<div class="v26-section-heading v26-command-heading"><div><p class="v26-kicker">Your study command center</p><h2>Turn evidence into the next move.</h2><p>Loading your study evidence…</p></div></div>`;
+  main.appendChild(loading);
+  const fallback = { due: { due_count: 0, question_due_count: 0, task_due_count: 0, questions: [], task_reviews: [] }, mistakes: { counts: {}, items: [] }, plan: { preferences: {}, priority_skills: [], days: [] }, summary: { skills: [], domains: [] }, history: { history: [] }, map: { certifications: [] }, progress: { completed_skill_ids: [] }, readiness: {} };
+  const payload = await getHomeSummary({ track_id: trackId }).catch(() => fallback);
+  const { due, mistakes, plan, summary, history, map, progress, readiness } = payload;
 
   const cert = (map.certifications || []).find((item) => item.id === trackId) || (map.certifications || [])[0] || { domains: [] };
   const skills = summary.skills || [];
@@ -83,7 +60,7 @@ export async function renderHomeCommandCenter(container, trackId = "snowpro-core
   ${domainMap(cert, summary, progress, trackId)}
   ${toolGrid(trackId)}</div>`;
 
-  main.appendChild(root);
+  loading.replaceWith(root);
 }
 
 function publicPreview(trackId) {

@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -33,25 +34,38 @@ IS_VERCEL_RUNTIME = (
 )
 IS_POSTGRES_URL = DATABASE_URL.lower().startswith(("postgresql://", "postgres://"))
 
-# Deployment identity must be injected at build/deploy time. Serverless bundles
-# are not reliable Git worktrees, so an absent value stays visible as unknown.
-RELEASE_GIT_SHA = (
-    os.getenv("VERCEL_GIT_COMMIT_SHA", "").strip()
-    or os.getenv("RELEASE_GIT_SHA", "").strip()
-    or "unknown"
-)
+def _release_manifest() -> dict[str, object]:
+    path = ROOT_DIR / "app" / "release_manifest.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+# The build command emits this file from Vercel's Git metadata. It is bundled
+# with the serverless artifact, unlike a deployment environment variable that
+# can accidentally describe a different source tree.
+RELEASE_MANIFEST = _release_manifest()
+# The environment fallback exists solely for Vercel's own Git runtime metadata
+# (and isolated hosted-runtime tests). A CLI source upload gets neither this
+# value nor a manifest and is rejected below.
+_VERCEL_GIT_SHA = os.getenv("VERCEL_GIT_COMMIT_SHA", "").strip()
+RELEASE_GIT_SHA = str(RELEASE_MANIFEST.get("git_sha") or _VERCEL_GIT_SHA or "unknown")
+RELEASE_SOURCE_DIRTY = bool(RELEASE_MANIFEST.get("source_dirty", not bool(_VERCEL_GIT_SHA)))
 RELEASE_ID = (
     os.getenv("VERCEL_DEPLOYMENT_ID", "").strip()
     or os.getenv("RELEASE_ID", "").strip()
     or "unknown"
 )
-RELEASE_BUILD_TIMESTAMP = os.getenv("RELEASE_BUILD_TIMESTAMP", "").strip() or "unknown"
+RELEASE_BUILD_TIMESTAMP = str(RELEASE_MANIFEST.get("build_timestamp") or "unknown")
 
 if IS_VERCEL_RUNTIME and not DATABASE_URL:
     raise RuntimeError(
         "Vercel database configuration error: DATABASE_URL is required for every "
         "Preview/Production runtime; SQLite fallback is disabled."
     )
+if IS_VERCEL_RUNTIME and (RELEASE_GIT_SHA == "unknown" or RELEASE_SOURCE_DIRTY):
+    raise RuntimeError("Vercel release identity error: immutable clean Git build manifest is required")
 if IS_VERCEL_RUNTIME and not IS_POSTGRES_URL:
     raise RuntimeError(
         "Vercel database configuration error: DATABASE_URL must be a PostgreSQL "

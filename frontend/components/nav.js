@@ -1,4 +1,4 @@
-import { escapeHtml, getCertificationCatalog, getSkillMap } from "../api.js";
+import { escapeHtml } from "../api.js";
 import { candidate } from "../auth.js";
 import { activeTrack, navigateWithTrack, normalizeTrack, setActiveTrack } from "../ui.js";
 
@@ -24,15 +24,10 @@ export async function renderNav() {
   const nav = document.querySelector("#sidebar");
   if (!nav) return;
   const account = candidate();
-  let tracks = [];
-  let catalog = [];
-  if (account) {
-    try {
-      const [map, catalogPayload] = await Promise.all([getSkillMap(), getCertificationCatalog()]);
-      tracks = map.certifications || [];
-      catalog = catalogPayload.official_certifications || [];
-    } catch {}
-  }
+  // Navigation must not block first paint on static metadata. Course views
+  // hydrate the shared cache when they need the full blueprint.
+  const tracks = [{ id: "snowpro-core", title: "SnowPro Core", exam_code: "COF-C03" }];
+  const catalog = tracks;
   const selected = normalizeTrack(activeTrack(), tracks);
   setActiveTrack(selected);
   const cert = tracks.find((item) => item.id === selected) || { id: "snowpro-core", title: "SnowPro Core", exam_code: "COF-C03" };
@@ -50,7 +45,7 @@ export async function renderNav() {
     <nav class="v26-primary-nav" aria-label="Primary navigation">${primaryItems.map(([href, label]) => `<a href="${href}" data-href="${href}">${label}</a>`).join("")}${account ? "" : `<button class="v26-mobile-auth" type="button" data-auth-intent="login">Sign In</button><button class="v26-mobile-auth" type="button" data-auth-intent="signup">Create Account</button>`}</nav>
     <div class="v26-nav-actions">
       ${account ? `<div class="v26-cert-menu"><button class="v26-cert-trigger" type="button" data-cert-trigger aria-haspopup="menu" aria-expanded="false"><span>${cert.exam_code || "COF-C03"}</span><i>⌄</i></button><div class="v26-cert-popover" data-cert-popover role="menu" hidden><a class="v26-cert-all" href="#/certifications" role="menuitem"><span>All certifications</span><b>View paths →</b></a>${(catalog.length ? catalog : [cert]).map((item) => item.id === "snowpro-core" ? `<button type="button" role="menuitem" data-track="snowpro-core" class="selected"><span>${escapeHtml(item.exam_code || "COF-C03")}</span><b>${escapeHtml(item.title || "SnowPro Core")}</b><em>Full prep</em></button>` : `<div class="v26-cert-option-soon" role="menuitem" aria-disabled="true"><span>${escapeHtml(item.exam_code || "SnowPro")}</span><b>${escapeHtml(item.title || "Advanced certification")}</b><em>Certification listed · prep coming soon</em></div>`).join("")}</div></div>` : ""}
-      ${account ? `<div class="v26-account-menu"><button class="v26-account-link compact" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em><small class="${account.email_verified === false ? "verification-required" : "verification-ok"}">${escapeHtml(verification)}${methods ? ` · ${escapeHtml(methods)}` : ""}</small></div><a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">Progress Dashboard</a><a href="#/adaptive?track_id=${encodeURIComponent(selected)}" role="menuitem">Adaptive Readiness</a><a href="#/due?track_id=${encodeURIComponent(selected)}" role="menuitem">Due Today</a><a href="#/mistakes?track_id=${encodeURIComponent(selected)}" role="menuitem">Mistake Notebook</a><a href="#/confidence?track_id=${encodeURIComponent(selected)}" role="menuitem">Confidence Calibration</a><a href="#/study-plan?track_id=${encodeURIComponent(selected)}" role="menuitem">Study Plan</a><a href="#/credentials?track_id=${encodeURIComponent(selected)}" role="menuitem">Verified Credentials</a><a href="#/account" role="menuitem">Account & Security</a><a href="#/settings" role="menuitem">Settings</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
+      ${account ? `<div class="v26-account-menu"><button class="v26-account-link compact" type="button" data-account-trigger aria-label="${escapeHtml(account.display_name)} account menu" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(initials)}</span></button><div class="v26-account-popover" data-account-popover role="menu" hidden><div><strong>${escapeHtml(account.display_name)}</strong><span>${escapeHtml(account.email)}</span><em>${escapeHtml(account.plan)}</em><small class="${account.email_verified === false ? "verification-required" : "verification-ok"}">${escapeHtml(verification)}${methods ? ` · ${escapeHtml(methods)}` : ""}</small></div>${account.admin_access ? `<a href="#/admin" role="menuitem">Founder Operations</a>` : ""}<a href="#/progress?track_id=${encodeURIComponent(selected)}" role="menuitem">Progress Dashboard</a><a href="#/adaptive?track_id=${encodeURIComponent(selected)}" role="menuitem">Adaptive Readiness</a><a href="#/due?track_id=${encodeURIComponent(selected)}" role="menuitem">Due Today</a><a href="#/mistakes?track_id=${encodeURIComponent(selected)}" role="menuitem">Mistake Notebook</a><a href="#/confidence?track_id=${encodeURIComponent(selected)}" role="menuitem">Confidence Calibration</a><a href="#/study-plan?track_id=${encodeURIComponent(selected)}" role="menuitem">Study Plan</a><a href="#/credentials?track_id=${encodeURIComponent(selected)}" role="menuitem">Verified Credentials</a><a href="#/account" role="menuitem">Account & Security</a><a href="#/settings" role="menuitem">Settings</a><a href="#/membership" role="menuitem">Membership</a><button type="button" data-auth-logout role="menuitem">Sign Out</button></div></div>` : `<button class="v26-login-link" type="button" data-auth-intent="login">Sign In</button><button class="v26-signup-link" type="button" data-auth-intent="signup">Create Account</button>`}
       ${account ? `<a class="v26-mock-cta" href="#/mock?track_id=${encodeURIComponent(selected)}">${account?.plan_code === "free" ? "Weekly Mock" : "Take Mock Exam"}</a>` : ""}
       <button class="v26-theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme">${theme === "dark" ? "☼" : "☾"}</button>
     </div>
@@ -67,7 +62,7 @@ export async function renderNav() {
   trigger?.addEventListener("click", () => { const next = popover.hidden; popover.hidden = !next; trigger.setAttribute("aria-expanded", String(next)); });
   nav.querySelectorAll("[data-track]").forEach((button) => button.addEventListener("click", () => navigateWithTrack(button.dataset.track, "#/home")));
   accountTrigger?.addEventListener("click", () => { const next = accountPopover.hidden; accountPopover.hidden = !next; accountTrigger.setAttribute("aria-expanded", String(next)); });
-  nav.querySelector("[data-theme-toggle]")?.addEventListener("click", () => { const next = (document.documentElement.dataset.theme || "light") === "dark" ? "light" : "dark"; window.dispatchEvent(new CustomEvent("theme-toggle", { detail: { theme: next } })); renderNav(); });
+  nav.querySelector("[data-theme-toggle]")?.addEventListener("click", () => { const next = (document.documentElement.dataset.theme || "light") === "dark" ? "light" : "dark"; window.dispatchEvent(new CustomEvent("theme-toggle", { detail: { theme: next } })); });
   document.addEventListener("click", (event) => {
     if (popover && !popover.hidden && !nav.querySelector(".v26-cert-menu")?.contains(event.target)) { popover.hidden = true; trigger?.setAttribute("aria-expanded", "false"); }
     if (accountPopover && !accountPopover.hidden && !nav.querySelector(".v26-account-menu")?.contains(event.target)) { accountPopover.hidden = true; accountTrigger?.setAttribute("aria-expanded", "false"); }
