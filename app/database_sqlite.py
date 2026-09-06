@@ -364,6 +364,20 @@ def run_migrations() -> None:
               created_at TEXT DEFAULT (datetime('now'))
             );
 
+            -- This is the local/CI equivalent of PostgreSQL migration 025.
+            -- It is deliberately part of the SQLite migration path rather
+            -- than being created by the public globe request handler.
+            CREATE TABLE IF NOT EXISTS learner_activity_aggregates (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              bucket_key TEXT NOT NULL,
+              label TEXT NOT NULL,
+              latitude REAL NOT NULL,
+              longitude REAL NOT NULL,
+              active_count INTEGER NOT NULL DEFAULT 0 CHECK(active_count >= 0),
+              observed_at TEXT NOT NULL DEFAULT (datetime('now')),
+              source TEXT NOT NULL DEFAULT 'aggregate'
+            );
+
             CREATE INDEX IF NOT EXISTS idx_questions_track_test
               ON questions(track_id, test_id, question_position);
             CREATE INDEX IF NOT EXISTS idx_questions_source
@@ -394,6 +408,8 @@ def run_migrations() -> None:
               ON candidate_exam_pack_sets(candidate_id, track_id, set_kind);
             CREATE INDEX IF NOT EXISTS idx_learning_events_track
               ON learning_events(track_id, event_type, created_at);
+            CREATE INDEX IF NOT EXISTS idx_learner_activity_public_window
+              ON learner_activity_aggregates(observed_at DESC, active_count DESC);
             CREATE INDEX IF NOT EXISTS idx_candidate_sessions_candidate
               ON candidate_sessions(candidate_id, expires_at);
             CREATE INDEX IF NOT EXISTS idx_membership_events_candidate

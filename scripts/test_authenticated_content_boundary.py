@@ -158,10 +158,24 @@ def main() -> None:
     check("authentication-required" in router, "anonymous deep links render the access gate, not study content")
 
     home = (ROOT / "frontend" / "views" / "home-v26.js").read_text(encoding="utf-8")
-    check("if (account)" in home and "getSkillMap()" in home, "public home does not fetch protected skill content for guests")
+    command_center = (ROOT / "frontend" / "components" / "home-command-center.js").read_text(encoding="utf-8")
+    guest_guard = command_center.find("if (!account)")
+    summary_fetch = command_center.find("getHomeSummary(", guest_guard)
+    check(
+        "renderHomeCommandCenter(container, cert.id, account)" in home
+        and guest_guard >= 0
+        and summary_fetch > guest_guard
+        and "return;" in command_center[guest_guard:summary_fetch],
+        "public home must return before requesting the protected candidate summary",
+    )
 
     nav = (ROOT / "frontend" / "components" / "nav.js").read_text(encoding="utf-8")
-    check("if (account)" in nav and "getCertificationCatalog()" in nav, "guest navigation does not fetch protected study metadata")
+    check(
+        "const tracks = [{ id: \"snowpro-core\"" in nav
+        and "getCertificationCatalog" not in nav
+        and "account ?" in nav,
+        "navigation must use its static shell metadata instead of fetching protected study content for guests",
+    )
     check('"#/pricing"' in nav, "public navigation exposes the pricing alias")
 
     info = (ROOT / "frontend" / "views" / "info-v26.js").read_text(encoding="utf-8")
