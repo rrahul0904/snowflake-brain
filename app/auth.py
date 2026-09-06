@@ -73,6 +73,15 @@ def public_candidate(row: dict[str, Any]) -> dict[str, Any]:
 def membership_for_candidate(candidate_id: int) -> dict[str, Any]:
     ensure_identity_billing_schema()
     with connect() as conn:
+        # Reconcile a lapsed timed entitlement before choosing the effective
+        # membership. The database trigger owns any paid Exam Pack fallback;
+        # simply filtering expired rows would leave that trigger unreachable.
+        conn.execute(
+            "UPDATE candidate_memberships SET status='expired', updated_at=datetime('now') "
+            "WHERE candidate_id=? AND status='active' AND expires_at IS NOT NULL "
+            "AND datetime(expires_at) <= datetime('now')",
+            (candidate_id,),
+        )
         row = conn.execute(
             """
             SELECT tier, status, plan_code, starts_at, expires_at, source, entitlement_version
