@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.config import DATABASE_BACKEND, DATABASE_MIGRATION_URL, DATABASE_SCHEMA
+from app.config import DATABASE_MIGRATION_URL, DATABASE_SCHEMA
 from app.database import connect
 
 
@@ -71,7 +71,11 @@ def promote_postgres(email: str) -> dict[str, int | str]:
 def main() -> int:
     args = parse_args()
     try:
-        result = promote_postgres(args.email) if DATABASE_BACKEND == "postgresql" else promote_sqlite(args.email)
+        # This command deliberately receives only the deployment migration
+        # credential, never the request-serving DATABASE_URL.  Use that
+        # explicit contract to select PostgreSQL instead of the runtime
+        # backend setting, which is intentionally absent in this workflow.
+        result = promote_postgres(args.email) if DATABASE_MIGRATION_URL else promote_sqlite(args.email)
     except (LookupError, RuntimeError) as exc:
         print(f"Admin promotion refused: {exc}", file=sys.stderr)
         return 1
