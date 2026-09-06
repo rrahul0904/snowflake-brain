@@ -78,6 +78,7 @@ def check_runtime_verification() -> None:
 
 def check_frontend_contract() -> None:
     router = (ROOT / "frontend/router-complete.js").read_text(encoding="utf-8")
+    auth = (ROOT / "frontend/auth.js").read_text(encoding="utf-8")
     candidate_access = (ROOT / "frontend/components/candidate-access.js").read_text(encoding="utf-8")
     account = (ROOT / "frontend/views/account-v26.js").read_text(encoding="utf-8")
     account_action = (ROOT / "frontend/views/account-action-v26.js").read_text(encoding="utf-8")
@@ -102,6 +103,11 @@ def check_frontend_contract() -> None:
     assert "ACCOUNT_EMAIL_ACTION_BASE_URL=https://snowflakecertificationguide.vercel.app\n" in prod_env
     assert 'source "$ROOT_DIR/.env"' in dev
     assert "Google OAuth is enabled but" in dev
+    assert 'path==="#/admin"||!candidateLoaded()' in router
+    assert "getCandidateSession({ force: true })" in auth
+    assert "let authGeneration = 0" in auth
+    assert "if (generation !== authGeneration) return snapshot" in auth
+    assert auth.count("beginAuthMutation();") == 4
 
 
 def main() -> None:
