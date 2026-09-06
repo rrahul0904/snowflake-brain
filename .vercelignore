@@ -21,3 +21,9 @@ docker-compose*.yml
 .env
 .env.*
 private_content/
+
+# The immutable release manifest is generated during the Vercel build. Keep
+# this one non-secret build helper available while every other scripts/ file
+# remains excluded above.
+!scripts/
+!scripts/write_release_manifest.py
