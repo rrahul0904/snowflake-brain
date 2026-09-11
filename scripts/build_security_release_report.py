@@ -38,18 +38,22 @@ def main() -> None:
     live = load("live-hostile-subscriber.json")
     strict_release = env_bool("SECURITY_RELEASE_STRICT", False)
 
-    blockers: list[str] = []
+    hard_failures: list[str] = []
+    pending_evidence: list[str] = []
     if hosted.get("status") != "pass":
-        blockers.append("hosted_runtime_security")
+        hard_failures.append("hosted_runtime_security")
     if static.get("status") != "pass":
-        blockers.append("hosted_static_exposure")
+        hard_failures.append("hosted_static_exposure")
     if bank.get("status") != "pass":
-        blockers.append("production_bank_inventory")
+        pending_evidence.append("production_bank_inventory")
     if live.get("status") != "pass" or not bool(live.get("live_bank_exercised")):
-        blockers.append("live_black_box")
+        pending_evidence.append("live_black_box")
 
+    blockers = hard_failures + pending_evidence
     evidence_complete = not blockers
-    if evidence_complete:
+    if hard_failures:
+        status = "no-go"
+    elif evidence_complete:
         status = "go"
     elif strict_release:
         status = "no-go"
@@ -77,17 +81,18 @@ def main() -> None:
         "live_bank_exercised": bool(live.get("live_bank_exercised", False)),
         "known_critical": 0 if evidence_complete else None,
         "known_high": 0 if evidence_complete else None,
+        "hard_failures": hard_failures,
+        "pending_evidence": pending_evidence,
         "blocking_items": blockers,
     }
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(json.dumps(payload, indent=2))
 
-    # Continuous checks on ordinary main pushes must still expose missing
-    # production-only evidence, but they should not report application-code
-    # failure merely because protected release credentials are intentionally
-    # unavailable. A manually dispatched strict release remains fail-closed.
-    if blockers and strict_release:
+    # A verified hosted/runtime or static-exposure regression is always a hard
+    # failure. Protected production-only evidence may remain pending only in
+    # continuous mode; explicit strict release certification remains fail-closed.
+    if hard_failures or (pending_evidence and strict_release):
         raise SystemExit("Security release remains NO-GO: " + ", ".join(blockers))
 
 
