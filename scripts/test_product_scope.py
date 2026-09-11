@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,13 @@ BANNED_TOKENS = {
     "<video",
 }
 
+# Backend routers are typically mounted under /api, so route decorators can be
+# relative (for example @router.get("/media")). Catch those definitions too.
+BANNED_BACKEND_ROUTE_PATTERNS = (
+    re.compile(r"@(?:router|app)\.(?:get|post|put|patch|delete|options|head)\(\s*[\"']/(?:video|media|courses)(?:[\"'/])", re.IGNORECASE),
+    re.compile(r"APIRouter\([^)]*\bprefix\s*=\s*[\"']/(?:video|media|courses)(?:[\"'/])", re.IGNORECASE | re.DOTALL),
+)
+
 SCAN_ROOTS = [ROOT / "frontend", ROOT / "app"]
 TEXT_SUFFIXES = {".py", ".js", ".html", ".css", ".json", ".md", ".txt"}
 
@@ -36,10 +44,15 @@ def scan_active_runtime() -> list[str]:
         for path in base.rglob("*"):
             if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
                 continue
-            text = path.read_text(encoding="utf-8", errors="ignore").lower()
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            lowered = text.lower()
             for token in BANNED_TOKENS:
-                if token.lower() in text:
+                if token.lower() in lowered:
                     findings.append(f"{path.relative_to(ROOT)} -> {token}")
+            if path.suffix.lower() == ".py":
+                for pattern in BANNED_BACKEND_ROUTE_PATTERNS:
+                    if pattern.search(text):
+                        findings.append(f"{path.relative_to(ROOT)} -> relative video/course/media API route")
     return findings
 
 
