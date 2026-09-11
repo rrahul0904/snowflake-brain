@@ -24,11 +24,19 @@ def load(name: str) -> dict:
     return value if isinstance(value, dict) else {"status": "invalid"}
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def main() -> None:
     hosted = load("hosted-runtime-security.json")
     static = load("hosted-static-exposure.json")
     bank = load("production-bank-inventory.json")
     live = load("live-hostile-subscriber.json")
+    strict_release = env_bool("SECURITY_RELEASE_STRICT", False)
 
     blockers: list[str] = []
     if hosted.get("status") != "pass":
@@ -40,8 +48,18 @@ def main() -> None:
     if live.get("status") != "pass" or not bool(live.get("live_bank_exercised")):
         blockers.append("live_black_box")
 
+    evidence_complete = not blockers
+    if evidence_complete:
+        status = "go"
+    elif strict_release:
+        status = "no-go"
+    else:
+        status = "evidence-pending"
+
     payload = {
-        "status": "go" if not blockers else "no-go",
+        "status": status,
+        "strict_release": strict_release,
+        "evidence_complete": evidence_complete,
         "main_sha": os.environ.get("RELEASE_MAIN_SHA", ""),
         "pr_number": os.environ.get("RELEASE_PR_NUMBER", ""),
         "merge_sha": os.environ.get("RELEASE_MERGE_SHA", ""),
@@ -57,14 +75,19 @@ def main() -> None:
         "pool_counts": bank.get("pool_counts", {}),
         "production_black_box": live.get("status", "missing"),
         "live_bank_exercised": bool(live.get("live_bank_exercised", False)),
-        "known_critical": 0 if not blockers else None,
-        "known_high": 0 if not blockers else None,
+        "known_critical": 0 if evidence_complete else None,
+        "known_high": 0 if evidence_complete else None,
         "blocking_items": blockers,
     }
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(json.dumps(payload, indent=2))
-    if blockers:
+
+    # Continuous checks on ordinary main pushes must still expose missing
+    # production-only evidence, but they should not report application-code
+    # failure merely because protected release credentials are intentionally
+    # unavailable. A manually dispatched strict release remains fail-closed.
+    if blockers and strict_release:
         raise SystemExit("Security release remains NO-GO: " + ", ".join(blockers))
 
 
