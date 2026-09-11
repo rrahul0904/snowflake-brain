@@ -32,9 +32,6 @@ jobs:
       SECURITY_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || 'https://snowflakecertificationguide.vercel.app' }}
       SOAK_REQUESTS: "20"
       EXPECTED_DATABASE_BACKEND: postgresql
-      # Prefer a dedicated read-only audit credential. Compatibility fallbacks
-      # keep older deployments operable without weakening the runtime role.
-      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_AUDIT_URL || secrets.PRODUCTION_DATABASE_URL || secrets.PRODUCTION_DATABASE_MIGRATION_URL }}
       DATABASE_SCHEMA: public
       REQUIRE_ACTIVE_BANK: ${{ github.event_name == 'workflow_dispatch' && inputs.require_active_bank || false }}
       EXPECTED_ACTIVE_QUESTION_COUNT: "1200"
@@ -64,6 +61,11 @@ jobs:
       - name: Probe hosted static/build/private-file exposure
         run: python scripts/test_hosted_static_exposure.py
       - name: Verify active production bank counts without reading question content
+        env:
+          # A dedicated read-only audit credential is preferred. The legacy
+          # production audit credential remains a compatibility fallback.
+          # Deliberately do not expose the migration/admin credential here.
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_AUDIT_URL || secrets.PRODUCTION_DATABASE_URL }}
         run: |
           mkdir -p artifacts
           if [[ -z "${DATABASE_URL:-}" ]]; then
