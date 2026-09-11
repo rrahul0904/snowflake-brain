@@ -28,6 +28,14 @@ def read_report(path: Path) -> dict:
     return json.loads((path / "security-release-report.json").read_text(encoding="utf-8"))
 
 
+def expect_exit(module) -> None:
+    try:
+        module.main()
+    except SystemExit:
+        return
+    raise AssertionError("release report was expected to fail closed")
+
+
 def main() -> None:
     module = load_module()
     original_strict = os.environ.get("SECURITY_RELEASE_STRICT")
@@ -42,24 +50,33 @@ def main() -> None:
             write(artifacts, "production-bank-inventory.json", {"status": "blocked"})
             write(artifacts, "live-hostile-subscriber.json", {"status": "blocked", "live_bank_exercised": False})
 
+            # Continuous mode may represent protected production-only evidence as
+            # pending, but only while the hosted application/security baseline is green.
             os.environ["SECURITY_RELEASE_STRICT"] = "false"
             module.main()
             report = read_report(artifacts)
             assert report["status"] == "evidence-pending"
             assert report["strict_release"] is False
             assert report["evidence_complete"] is False
-            assert set(report["blocking_items"]) == {"production_bank_inventory", "live_black_box"}
+            assert report["hard_failures"] == []
+            assert set(report["pending_evidence"]) == {"production_bank_inventory", "live_black_box"}
 
+            # A verified hosted regression is always NO-GO, including continuous mode.
+            write(artifacts, "hosted-runtime-security.json", {"status": "fail"})
+            expect_exit(module)
+            report = read_report(artifacts)
+            assert report["status"] == "no-go"
+            assert report["strict_release"] is False
+            assert "hosted_runtime_security" in report["hard_failures"]
+
+            # Restore the healthy hosted baseline before checking strict release behavior.
+            write(artifacts, "hosted-runtime-security.json", {"status": "pass"})
             os.environ["SECURITY_RELEASE_STRICT"] = "true"
-            try:
-                module.main()
-            except SystemExit:
-                pass
-            else:
-                raise AssertionError("strict release must fail closed when evidence is incomplete")
+            expect_exit(module)
             report = read_report(artifacts)
             assert report["status"] == "no-go"
             assert report["strict_release"] is True
+            assert set(report["pending_evidence"]) == {"production_bank_inventory", "live_black_box"}
 
             write(
                 artifacts,
@@ -77,6 +94,8 @@ def main() -> None:
             assert report["status"] == "go"
             assert report["strict_release"] is True
             assert report["evidence_complete"] is True
+            assert report["hard_failures"] == []
+            assert report["pending_evidence"] == []
             assert report["blocking_items"] == []
 
         print("SECURITY RELEASE REPORT MODES: PASS")
