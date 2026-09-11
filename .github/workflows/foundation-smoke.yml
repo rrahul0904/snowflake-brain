@@ -42,6 +42,10 @@ jobs:
         run: python scripts/smoke_core_guide.py
       - name: Verify certification-native architecture
         run: python scripts/smoke_certification_native.py
+      - name: Verify approved non-video product scope
+        run: python scripts/test_product_scope.py
+      - name: Verify hosted security release-report modes
+        run: python scripts/test_security_release_report_modes.py
       - name: Verify V26 end-to-end backend flow
         run: python scripts/smoke_v26.py
       - name: Verify candidate auth and memberships
