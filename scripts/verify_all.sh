@@ -30,6 +30,12 @@ echo "== COF-C03 blueprint/content contract =="
 echo "== Certification-native architecture =="
 "$PYTHON_BIN" scripts/smoke_certification_native.py
 
+echo "== Approved product scope =="
+"$PYTHON_BIN" scripts/test_product_scope.py
+
+echo "== Hosted security release-report modes =="
+"$PYTHON_BIN" scripts/test_security_release_report_modes.py
+
 echo "== Production mock exam contract =="
 "$PYTHON_BIN" scripts/test_mock_exam.py
 

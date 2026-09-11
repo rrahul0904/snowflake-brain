@@ -2,16 +2,9 @@ name: V26 Visual Parity
 
 on:
   pull_request:
-    # Keep this PR-native trigger aligned with the required visual-parity
-    # branch-protection context; workflow_dispatch runs are diagnostic only.
-    paths:
-      - "frontend/**"
-      - "app/**"
-      - "config/**"
-      - "scripts/capture_v26_visuals.py"
-      - "scripts/capture_reverse_engineering_public_pages.py"
-      - "scripts/capture_command_center_tools.py"
-      - ".github/workflows/v26-visual-parity.yml"
+    # This context is required by branch protection, so it must be created for
+    # every PR. Path-filtering a required workflow leaves unrelated PRs stuck in
+    # an "Expected" state with no check run to satisfy the ruleset.
   workflow_dispatch:
 
 concurrency:
@@ -30,7 +23,7 @@ jobs:
       V26_BASE_URL: http://127.0.0.1:8000
       V26_VISUAL_DIR: artifacts/v26-visual-parity
       # The visual matrix deliberately navigates dozens of authenticated routes
-      # in one synthetic session.  Rate-limit policy is exercised separately by
+      # in one synthetic session. Rate-limit policy is exercised separately by
       # Security Assurance; it would otherwise turn this rendering test into a
       # self-inflicted 429 test rather than a visual/accessibility test.
       SECURITY_RATE_LIMIT_ENABLED: "false"

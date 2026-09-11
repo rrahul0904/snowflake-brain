@@ -24,24 +24,46 @@ def load(name: str) -> dict:
     return value if isinstance(value, dict) else {"status": "invalid"}
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def main() -> None:
     hosted = load("hosted-runtime-security.json")
     static = load("hosted-static-exposure.json")
     bank = load("production-bank-inventory.json")
     live = load("live-hostile-subscriber.json")
+    strict_release = env_bool("SECURITY_RELEASE_STRICT", False)
 
-    blockers: list[str] = []
+    hard_failures: list[str] = []
+    pending_evidence: list[str] = []
     if hosted.get("status") != "pass":
-        blockers.append("hosted_runtime_security")
+        hard_failures.append("hosted_runtime_security")
     if static.get("status") != "pass":
-        blockers.append("hosted_static_exposure")
+        hard_failures.append("hosted_static_exposure")
     if bank.get("status") != "pass":
-        blockers.append("production_bank_inventory")
+        pending_evidence.append("production_bank_inventory")
     if live.get("status") != "pass" or not bool(live.get("live_bank_exercised")):
-        blockers.append("live_black_box")
+        pending_evidence.append("live_black_box")
+
+    blockers = hard_failures + pending_evidence
+    evidence_complete = not blockers
+    if hard_failures:
+        status = "no-go"
+    elif evidence_complete:
+        status = "go"
+    elif strict_release:
+        status = "no-go"
+    else:
+        status = "evidence-pending"
 
     payload = {
-        "status": "go" if not blockers else "no-go",
+        "status": status,
+        "strict_release": strict_release,
+        "evidence_complete": evidence_complete,
         "main_sha": os.environ.get("RELEASE_MAIN_SHA", ""),
         "pr_number": os.environ.get("RELEASE_PR_NUMBER", ""),
         "merge_sha": os.environ.get("RELEASE_MERGE_SHA", ""),
@@ -57,14 +79,20 @@ def main() -> None:
         "pool_counts": bank.get("pool_counts", {}),
         "production_black_box": live.get("status", "missing"),
         "live_bank_exercised": bool(live.get("live_bank_exercised", False)),
-        "known_critical": 0 if not blockers else None,
-        "known_high": 0 if not blockers else None,
+        "known_critical": 0 if evidence_complete else None,
+        "known_high": 0 if evidence_complete else None,
+        "hard_failures": hard_failures,
+        "pending_evidence": pending_evidence,
         "blocking_items": blockers,
     }
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(json.dumps(payload, indent=2))
-    if blockers:
+
+    # A verified hosted/runtime or static-exposure regression is always a hard
+    # failure. Protected production-only evidence may remain pending only in
+    # continuous mode; explicit strict release certification remains fail-closed.
+    if hard_failures or (pending_evidence and strict_release):
         raise SystemExit("Security release remains NO-GO: " + ", ".join(blockers))
 
 
