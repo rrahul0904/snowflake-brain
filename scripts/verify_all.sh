@@ -33,6 +33,9 @@ echo "== Certification-native architecture =="
 echo "== Approved product scope =="
 "$PYTHON_BIN" scripts/test_product_scope.py
 
+echo "== Hosted security release-report modes =="
+"$PYTHON_BIN" scripts/test_security_release_report_modes.py
+
 echo "== Production mock exam contract =="
 "$PYTHON_BIN" scripts/test_mock_exam.py
 
