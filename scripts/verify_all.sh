@@ -54,6 +54,9 @@ echo "== Candidate authentication and membership =="
 echo "== Account verification and recording UX =="
 "$PYTHON_BIN" scripts/test_auth_verification_ux.py
 
+echo "== Hosted transactional email boundary =="
+"$PYTHON_BIN" scripts/test_hosted_email_delivery_boundary.py
+
 echo "== Login-required certification content boundary =="
 "$PYTHON_BIN" scripts/test_authenticated_content_boundary.py
 
