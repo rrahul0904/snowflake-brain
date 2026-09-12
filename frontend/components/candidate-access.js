@@ -23,7 +23,11 @@ export function renderCandidateAccess() {
 }
 
 function providers() {
-  providersPromise ||= getAuthProviders().catch(() => ({ google: { enabled: false }, billing: { enabled: false } }));
+  providersPromise ||= getAuthProviders().catch(() => ({
+    google: { enabled: false },
+    password: { login_enabled: true, registration_enabled: false, recovery_enabled: false },
+    billing: { enabled: false },
+  }));
   return providersPromise;
 }
 
@@ -34,32 +38,65 @@ function modalShell(inner) {
 function openAuth(intent = "login") {
   const signup = intent === "signup";
   const root = document.querySelector("#candidate-access-root");
-  root.innerHTML = modalShell(`<p class="v26-kicker">Candidate account</p><h2 id="candidate-auth-title">${signup ? "Create account" : "Sign in"}</h2><p>${signup ? "Create a Free account to save your SnowPro progress, practice history, and readiness evidence." : "Sign in to continue with your saved progress and membership."}</p><button class="v26-btn secondary v26-google-auth" type="button" data-google-auth disabled>G&nbsp;&nbsp;Continue with Google</button><p class="v26-google-status" data-google-status aria-live="polite"></p><div class="v26-auth-divider"><span>or</span></div><form data-auth-form data-intent="${intent}" novalidate>${signup ? `<label>Name<input name="display_name" autocomplete="name" minlength="2" maxlength="120" required /></label>` : ""}<label>Email<input name="email" type="email" autocomplete="email" maxlength="320" required /></label><label>Password<input name="password" type="password" autocomplete="${signup ? "new-password" : "current-password"}" minlength="8" maxlength="256" required /></label>${signup ? "" : `<button class="v26-text-action" type="button" data-password-reset>Forgot password?</button>`}<button class="v26-btn primary" type="submit">${signup ? "Create Free Account" : "Sign In"}</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch">${signup ? "Already have an account?" : "Don't have an account?"} <button type="button" data-auth-intent="${signup ? "login" : "signup"}">${signup ? "Sign in →" : "Create account →"}</button></p>`);
-  hydrateGoogleButton(root);
+  root.innerHTML = modalShell(`<p class="v26-kicker">Candidate account</p><h2 id="candidate-auth-title">${signup ? "Create account" : "Sign in"}</h2><p>${signup ? "Create a Free account to save your SnowPro progress, practice history, and readiness evidence." : "Sign in to continue with your saved progress and membership."}</p><button class="v26-btn secondary v26-google-auth" type="button" data-google-auth disabled>G&nbsp;&nbsp;Continue with Google</button><p class="v26-google-status" data-google-status aria-live="polite"></p><div class="v26-auth-divider" data-auth-divider><span>or</span></div><form data-auth-form data-email-auth data-intent="${intent}" novalidate>${signup ? `<label>Name<input name="display_name" autocomplete="name" minlength="2" maxlength="120" required /></label>` : ""}<label>Email<input name="email" type="email" autocomplete="email" maxlength="320" required /></label><label>Password<input name="password" type="password" autocomplete="${signup ? "new-password" : "current-password"}" minlength="8" maxlength="256" required /></label>${signup ? "" : `<button class="v26-text-action" type="button" data-password-reset>Forgot password?</button>`}<button class="v26-btn primary" type="submit">${signup ? "Create Free Account" : "Sign In"}</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch">${signup ? "Already have an account?" : "Don't have an account?"} <button type="button" data-auth-intent="${signup ? "login" : "signup"}">${signup ? "Sign in →" : "Create account →"}</button></p>`);
+  hydrateAuthCapabilities(root, signup);
   root.querySelector("input")?.focus();
   root.querySelector("[data-auth-form]")?.addEventListener("submit", submitAuth);
 }
 
-async function hydrateGoogleButton(root) {
-  const button = root.querySelector("[data-google-auth]");
-  const status = root.querySelector("[data-google-status]");
-  if (!button) return;
+async function hydrateAuthCapabilities(root, signup) {
+  const googleButton = root.querySelector("[data-google-auth]");
+  const googleStatus = root.querySelector("[data-google-status]");
+  const emailForm = root.querySelector("[data-email-auth]");
+  const divider = root.querySelector("[data-auth-divider]");
+  const reset = root.querySelector("[data-password-reset]");
   const config = await providers();
-  if (!root.contains(button)) return;
-  button.textContent = "G  Continue with Google";
-  if (config.google?.enabled) {
-    button.disabled = false;
-    button.title = "Continue securely with Google";
-    if (status) status.textContent = "";
-  } else {
-    button.disabled = true;
-    button.title = "Google OAuth credentials are not configured in this environment.";
-    if (status) status.textContent = "Google sign-in is ready in the product and turns on when this deployment has its Google OAuth client configured.";
+
+  if (googleButton && root.contains(googleButton)) {
+    googleButton.textContent = "G  Continue with Google";
+    if (config.google?.enabled) {
+      googleButton.disabled = false;
+      googleButton.title = "Continue securely with Google";
+    } else {
+      googleButton.disabled = true;
+      googleButton.title = "Google OAuth credentials are not configured in this environment.";
+    }
+  }
+
+  if (signup && config.password?.registration_enabled === false) {
+    if (emailForm) emailForm.hidden = true;
+    if (divider) divider.hidden = true;
+    if (googleStatus) {
+      googleStatus.textContent = config.google?.enabled
+        ? "New accounts currently use Google sign-in while transactional email is being provisioned."
+        : "Account creation is temporarily unavailable in this deployment.";
+    }
+    googleButton?.focus();
+    return;
+  }
+
+  if (!signup && reset && config.password?.recovery_enabled === false) {
+    reset.hidden = true;
+    reset.disabled = true;
+    reset.title = "Password recovery requires the production transactional email provider.";
+  }
+
+  if (googleStatus) {
+    if (config.google?.enabled) {
+      googleStatus.textContent = "";
+    } else {
+      googleStatus.textContent = "Google sign-in is ready in the product and turns on when this deployment has its Google OAuth client configured.";
+    }
   }
 }
 
-function openPasswordReset(prefill = "") {
+async function openPasswordReset(prefill = "") {
   const root = document.querySelector("#candidate-access-root");
+  const config = await providers();
+  if (config.password?.recovery_enabled === false) {
+    root.innerHTML = modalShell(`<p class="v26-kicker">Account recovery</p><h2>Password recovery is temporarily unavailable</h2><p>Transactional email is not enabled in this deployment, so the product will not create reset links that cannot be delivered.</p><p>If your account is linked to Google, continue with Google sign-in. Existing password sign-in remains available.</p><div class="v26-modal-actions"><button class="v26-btn secondary" type="button" data-auth-intent="login">Back to sign in</button>${config.google?.enabled ? `<button class="v26-btn primary" type="button" data-google-auth>G&nbsp;&nbsp;Continue with Google</button>` : ""}</div>`);
+    return;
+  }
   root.innerHTML = modalShell(`<p class="v26-kicker">Account recovery</p><h2>Reset your password</h2><p>Enter the email on your candidate account. If it exists, we’ll send a secure, expiring reset link.</p><form data-reset-request novalidate><label>Email<input name="email" type="email" autocomplete="email" value="${escapeText(prefill)}" maxlength="320" required /></label><button class="v26-btn primary" type="submit">Send reset link</button><p class="v26-form-status" data-auth-status aria-live="polite"></p></form><p class="v26-auth-switch"><button type="button" data-auth-intent="login">← Back to sign in</button></p>`);
   const form = root.querySelector("[data-reset-request]");
   root.querySelector("input")?.focus();
@@ -215,7 +252,7 @@ async function handleClick(event) {
   if (reset) {
     event.preventDefault();
     const email = reset.closest("form")?.querySelector("input[name=email]")?.value || "";
-    openPasswordReset(email);
+    await openPasswordReset(email);
     return;
   }
   const google = event.target.closest("[data-google-auth]");
