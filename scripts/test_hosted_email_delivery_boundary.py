@@ -24,6 +24,7 @@ def probe(**overrides: str) -> dict:
         "APP_BASE_URL",
         "ACCOUNT_EMAIL_DELIVERY_MODE",
         "ACCOUNT_EMAIL_WEBHOOK_URL",
+        "ACCOUNT_EMAIL_WEBHOOK_TOKEN",
     ):
         env.pop(key, None)
     env.update(overrides)
@@ -81,10 +82,32 @@ def main() -> None:
     assert hosted_missing_webhook["ready"] is False
     assert hosted_missing_webhook["reason"] == "webhook_url_missing"
 
+    hosted_insecure_webhook = probe(
+        **hosted_env(
+            ACCOUNT_EMAIL_DELIVERY_MODE="webhook",
+            ACCOUNT_EMAIL_WEBHOOK_URL="http://mailer.example.com/account-actions",
+            ACCOUNT_EMAIL_WEBHOOK_TOKEN="secret-token",
+        )
+    )
+    assert hosted_insecure_webhook["ready"] is False
+    assert hosted_insecure_webhook["reason"] == "webhook_url_must_use_https"
+
+    hosted_missing_token = probe(
+        **hosted_env(
+            ACCOUNT_EMAIL_DELIVERY_MODE="webhook",
+            ACCOUNT_EMAIL_WEBHOOK_URL="https://mailer.example.com/account-actions",
+        )
+    )
+    assert hosted_missing_token["ready"] is False
+    assert hosted_missing_token["production_ready"] is False
+    assert hosted_missing_token["registration_enabled"] is False
+    assert hosted_missing_token["reason"] == "webhook_token_missing"
+
     hosted_webhook = probe(
         **hosted_env(
             ACCOUNT_EMAIL_DELIVERY_MODE="webhook",
             ACCOUNT_EMAIL_WEBHOOK_URL="https://mailer.example.com/account-actions",
+            ACCOUNT_EMAIL_WEBHOOK_TOKEN="secret-token",
         )
     )
     assert hosted_webhook["ready"] is True
