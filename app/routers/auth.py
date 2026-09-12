@@ -18,6 +18,7 @@ from ..auth import (
     set_session_cookie,
 )
 from ..billing.service import billing_public_config
+from ..email_delivery import email_delivery_status
 from ..google_oidc import google_configured
 
 router = APIRouter()
@@ -58,10 +59,37 @@ def _public_candidate_with_lifecycle(candidate: dict) -> dict:
     return payload
 
 
+def _password_capabilities() -> dict:
+    delivery = email_delivery_status()
+    return {
+        # Existing password accounts remain usable even when transactional
+        # delivery is temporarily unavailable. New account creation and
+        # recovery must not create tokens that can only land in a dev outbox.
+        "login_enabled": True,
+        "registration_enabled": bool(delivery["registration_enabled"]),
+        "recovery_enabled": bool(delivery["recovery_enabled"]),
+        "change_email_enabled": bool(delivery["change_email_enabled"]),
+        "transactional_email_ready": bool(delivery["production_ready"]),
+    }
+
+
+def _require_email_registration() -> None:
+    if _password_capabilities()["registration_enabled"]:
+        return
+    raise HTTPException(
+        status_code=503,
+        detail={
+            "code": "transactional_email_unavailable",
+            "message": "Email/password registration is temporarily unavailable. Continue with Google sign-in.",
+        },
+    )
+
+
 @router.get("/auth/providers")
 def auth_providers() -> dict:
     return {
         "google": {"enabled": google_configured()},
+        "password": _password_capabilities(),
         "billing": billing_public_config(),
     }
 
@@ -79,6 +107,7 @@ def auth_me(candidate: dict | None = Depends(optional_candidate)) -> dict:
 
 @router.post("/auth/register", status_code=201)
 def auth_register(payload: SignupRequest, response: Response) -> dict:
+    _require_email_registration()
     candidate = create_candidate(payload.display_name, payload.email, payload.password)
     lifecycle = mark_registration_unverified(candidate["id"])
     set_session_cookie(response, candidate["id"])

@@ -25,6 +25,7 @@ from ..account_lifecycle import (
 from ..auth import COOKIE_NAME, require_candidate
 from ..config import AUTH_COOKIE_SECURE
 from ..credential_verification import get_talent_profile, list_candidate_credentials
+from ..email_delivery import email_delivery_status
 
 
 router = APIRouter(tags=["account-lifecycle"])
@@ -65,16 +66,33 @@ def _lifecycle_error(exc: AccountLifecycleError, status_code: int = 400) -> HTTP
     return HTTPException(status_code=status_code, detail={"code": "account_lifecycle_error", "message": str(exc)})
 
 
+def _require_transactional_email(capability: str = "recovery_enabled") -> None:
+    delivery = email_delivery_status()
+    if bool(delivery.get(capability)):
+        return
+    raise HTTPException(
+        status_code=503,
+        detail={
+            "code": "transactional_email_unavailable",
+            "message": "This email security action is temporarily unavailable. Google sign-in remains available.",
+        },
+    )
+
+
 @router.get("/account/status")
 def status(candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
     try:
-        return account_status(_candidate_id(candidate))
+        payload = account_status(_candidate_id(candidate))
     except AccountLifecycleError as exc:
         raise _lifecycle_error(exc) from exc
+    delivery = email_delivery_status()
+    payload["email_actions_available"] = bool(delivery["recovery_enabled"])
+    return payload
 
 
 @router.post("/account/email-verification/resend")
 def resend_verification(candidate: dict[str, Any] = Depends(require_candidate)) -> dict[str, Any]:
+    _require_transactional_email("recovery_enabled")
     try:
         return resend_email_verification(_candidate_id(candidate))
     except AccountLifecycleError as exc:
@@ -91,6 +109,7 @@ def verify_email(payload: TokenRequest) -> dict[str, Any]:
 
 @router.post("/auth/password-reset/request", status_code=202)
 def password_reset_request(payload: PasswordResetRequest) -> dict[str, Any]:
+    _require_transactional_email("recovery_enabled")
     # The service intentionally returns the same shape for known and unknown
     # email addresses so this endpoint cannot be used for account enumeration.
     return request_password_reset(payload.email)
@@ -125,6 +144,7 @@ def email_change_request(
     payload: ChangeEmailRequest,
     candidate: dict[str, Any] = Depends(require_candidate),
 ) -> dict[str, Any]:
+    _require_transactional_email("change_email_enabled")
     try:
         return request_email_change(_candidate_id(candidate), payload.new_email)
     except AccountLifecycleError as exc:

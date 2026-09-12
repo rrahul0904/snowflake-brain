@@ -13,8 +13,8 @@ export default async function mount(container) {
 
   const [sessions, status, providers, credentialResult] = await Promise.all([
     getCandidateSessions().catch(() => ({ sessions: [] })),
-    api("/api/account/status").catch(() => ({ email_verified: account.email_verified, identities: [] })),
-    getAuthProviders().catch(() => ({ google: { enabled: false } })),
+    api("/api/account/status").catch(() => ({ email_verified: account.email_verified, identities: [], email_actions_available: false })),
+    getAuthProviders().catch(() => ({ google: { enabled: false }, password: { recovery_enabled: false, change_email_enabled: false } })),
     getCredentials().catch(() => ({ credentials: [], verified_count: 0 })),
   ]);
   const methods = (account.sign_in_methods || ["email"]).map((item) => item === "google" ? "Google" : "Email");
@@ -22,18 +22,19 @@ export default async function mount(container) {
   const identities = status.identities || [];
   const googleLinked = methods.includes("Google") || identities.some((item) => item.provider === "google");
   const canLinkGoogle = Boolean(providers.google?.enabled && !googleLinked);
+  const emailActionsAvailable = Boolean(status.email_actions_available && providers.password?.recovery_enabled !== false);
   const credentialCount = Number(credentialResult.credentials?.length || 0);
   const verifiedCredentialCount = Number(credentialResult.verified_count || 0);
 
   container.innerHTML = `<main class="v26-page v26-account-page">
     <header class="v26-page-intro"><p class="v26-kicker">Account & security</p><h1>${escapeHtml(account.display_name)}</h1><p>${escapeHtml(account.email)}</p></header>
-    ${verified ? verifiedBanner(account) : verificationBanner(account)}
+    ${verified ? verifiedBanner(account) : verificationBanner(account, emailActionsAvailable)}
     <section class="v26-account-banner signed-in"><div><p class="v26-kicker">Identity</p><h2>Signed in with ${escapeHtml(methods.join(" + "))}</h2><p>All linked sign-in methods resolve to candidate #${escapeHtml(account.id)}. Your ${escapeHtml(account.plan)} membership, progress, and mock history stay on this single account.</p></div><div>${canLinkGoogle ? `<button class="v26-btn secondary" type="button" data-link-google>Link Google</button>` : ""}<a class="v26-btn secondary" href="#/membership">Membership</a></div></section>
     <section class="v26-account-security-grid">
-      <article><span>Email verification</span><strong>${verified ? "Verified" : "Action required"}</strong><p>${verified ? "This candidate email has been confirmed." : "Verify this email so account recovery and identity changes have a trusted destination."}</p>${verified ? "" : `<button type="button" data-resend-verification>Resend verification email</button><small data-verification-status aria-live="polite"></small>`}</article>
+      <article><span>Email verification</span><strong>${verified ? "Verified" : emailActionsAvailable ? "Action required" : "Delivery unavailable"}</strong><p>${verified ? "This candidate email has been confirmed." : emailActionsAvailable ? "Verify this email so account recovery and identity changes have a trusted destination." : "Transactional email is not enabled in this deployment. Existing study access remains available; Google can be linked when configured."}</p>${verified || !emailActionsAvailable ? "" : `<button type="button" data-resend-verification>Resend verification email</button><small data-verification-status aria-live="polite"></small>`}</article>
       <article><span>Licenses & certifications</span><strong>${verifiedCredentialCount ? `${verifiedCredentialCount} verified` : credentialCount ? "Verification pending" : "Add credentials"}</strong><p>Add the public Credly link for your SnowPro certifications. Verified credentials can later qualify your profile for candidate-controlled recruiter discovery.</p><a href="#/credentials">Manage credentials →</a></article>
       <article><span>Google sign-in</span><strong>${googleLinked ? "Linked" : providers.google?.enabled ? "Available" : "Not configured here"}</strong><p>${googleLinked ? "Google can sign in to this same candidate account." : providers.google?.enabled ? "Link Google without creating a second progress history." : "The Google sign-in implementation is present, but this deployment has no Google OAuth client credentials."}</p>${canLinkGoogle ? `<button type="button" data-link-google>Link Google account</button>` : ""}</article>
-      <article><span>Recovery & privacy</span><strong>Account controls</strong><p>Change your email or password, review linked identities, export your data, or permanently delete the account.</p><a href="/static/account-management.html">Open account management →</a></article>
+      <article><span>Recovery & privacy</span><strong>${emailActionsAvailable ? "Account controls" : "Core controls available"}</strong><p>${emailActionsAvailable ? "Change your email or password, review linked identities, export your data, or permanently delete the account." : "Password changes, linked identities, data export, session controls, and deletion remain available. Email changes require transactional delivery."}</p><a href="/static/account-management.html">Open account management →</a></article>
     </section>
     <section class="v26-account-sessions"><div class="v26-section-heading"><div><p class="v26-kicker">Security</p><h2>Active sessions</h2></div><button class="v26-btn secondary" type="button" data-revoke-all-sessions>Sign out all devices</button></div>${sessionList(sessions.sessions || [])}</section>
   </main>`;
@@ -77,8 +78,8 @@ function verifiedBanner(account) {
   return `<section class="v26-verification-banner verified"><div><span>Verified email</span><strong>${escapeHtml(account.email)}</strong></div><p>Your candidate email is confirmed for account recovery and security actions.</p></section>`;
 }
 
-function verificationBanner(account) {
-  return `<section class="v26-verification-banner required"><div><span>Verification required</span><strong>Confirm ${escapeHtml(account.email)}</strong></div><p>Your study access remains available, but the account is not fully verified yet. Open the secure verification link sent to this address or resend it below.</p></section>`;
+function verificationBanner(account, emailActionsAvailable) {
+  return `<section class="v26-verification-banner required"><div><span>${emailActionsAvailable ? "Verification required" : "Email delivery unavailable"}</span><strong>${emailActionsAvailable ? `Confirm ${escapeHtml(account.email)}` : escapeHtml(account.email)}</strong></div><p>${emailActionsAvailable ? "Your study access remains available, but the account is not fully verified yet. Open the secure verification link sent to this address or resend it below." : "Your study access remains available. This deployment will not create additional verification links until transactional email delivery is configured."}</p></section>`;
 }
 
 function sessionList(sessions) {
