@@ -45,12 +45,23 @@ function renderEmail() {
   left.innerHTML = `<strong>${text(account.email)}</strong><div class="muted">Account email</div>`;
   const badge = document.createElement("span");
   badge.className = "badge";
-  badge.textContent = account.email_verified ? "Verified" : "Verification needed";
+  badge.textContent = account.email_verified ? "Verified" : account.email_actions_available ? "Verification needed" : "Delivery unavailable";
   email.append(left, badge);
   summary.appendChild(email);
 
   const actions = document.getElementById("verification-actions");
+  const changeEmailForm = document.getElementById("change-email-form");
   actions.innerHTML = "";
+  changeEmailForm.classList.toggle("hidden", !account.email_actions_available);
+
+  if (!account.email_actions_available) {
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.textContent = "Transactional email is not enabled in this deployment. Verification resend and email changes are disabled instead of creating undeliverable links.";
+    actions.appendChild(note);
+    return;
+  }
+
   if (!account.email_verified) {
     const button = document.createElement("button");
     button.type = "button";
@@ -60,7 +71,7 @@ function renderEmail() {
       setStatus("Sending a fresh verification link…");
       try {
         await api("/api/account/email-verification/resend", { method: "POST", body: "{}" });
-        setStatus("A fresh verification link has been queued for your account email.", "success");
+        setStatus("A fresh verification link was sent to your account email.", "success");
       } catch (error) {
         setStatus(error.message, "error");
       } finally {
@@ -136,10 +147,7 @@ async function renderSessions() {
       button.addEventListener("click", async () => {
         button.disabled = true;
         try {
-          await api("/api/auth/sessions/revoke", {
-            method: "POST",
-            body: JSON.stringify({ session_id: session.id }),
-          });
+          await api(`/api/auth/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
           setStatus("Session revoked.", "success");
           await renderSessions();
         } catch (error) {
@@ -210,6 +218,10 @@ async function load() {
 
 document.getElementById("change-email-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!account?.email_actions_available) {
+    setStatus("Email changes require the production transactional email provider.", "error");
+    return;
+  }
   const input = document.getElementById("new-email");
   const button = event.submitter;
   button.disabled = true;
