@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.database import run_migrations  # noqa: E402
-from app.question_bank_releases import ensure_question_bank_release_schema, promote_release  # noqa: E402
+from app.question_bank_release_governance import promote_release_governed  # noqa: E402
+from app.question_bank_releases import ensure_question_bank_release_schema  # noqa: E402
 from app.question_editorial import (  # noqa: E402
     EditorialError,
     bank_health,
@@ -70,6 +71,11 @@ def main() -> int:
     promote.add_argument("release_key")
     promote.add_argument("target_status", choices=["qa_passed", "sme_approved", "staging"])
     promote.add_argument("--actor", required=True)
+    promote.add_argument(
+        "--evidence-ref",
+        default="",
+        help="Stable independent human-review evidence reference; required for sme_approved",
+    )
 
     policy = sub.add_parser("policy-set", help="Enable or disable the database editorial release gate")
     policy.add_argument("--track-id", default="snowpro-core")
@@ -124,7 +130,12 @@ def main() -> int:
                 raise EditorialError("Release cannot enter qa_passed until every immutable release item has current passing QA")
             if args.target_status in {"sme_approved", "staging"} and not report["gate_pass"]:
                 raise EditorialError("Release cannot advance until current QA, human content review, and explicit SME approval are complete")
-            result = promote_release(args.release_key, args.target_status, actor=args.actor)
+            result = promote_release_governed(
+                args.release_key,
+                args.target_status,
+                actor=args.actor,
+                approval_evidence_ref=args.evidence_ref,
+            )
             _json(result)
             return 0
 
