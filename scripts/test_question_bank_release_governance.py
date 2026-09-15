@@ -15,7 +15,7 @@ os.environ["BRAIN_DB"] = str(Path(TEMP.name) / "bank-governance.sqlite")
 from app.database import connect, run_migrations  # noqa: E402
 from app.question_bank import import_question_bank_payload  # noqa: E402
 from app.question_bank_release_governance import promote_release_governed  # noqa: E402
-from app.question_bank_releases import create_release, get_release  # noqa: E402
+from app.question_bank_releases import create_release  # noqa: E402
 from app.question_versions import ensure_question_version_schema  # noqa: E402
 from app.skill_brain import flatten_skills  # noqa: E402
 
@@ -167,10 +167,13 @@ def main() -> None:
 
     workflow = (ROOT / ".github" / "workflows" / "production-question-bank-release.yml").read_text(encoding="utf-8")
     admin_cli = (ROOT / "scripts" / "question_bank_admin.py").read_text(encoding="utf-8")
+    editorial_cli = (ROOT / "scripts" / "question_editorial_admin.py").read_text(encoding="utf-8")
     check("approval_evidence_ref:" in workflow, "production workflow exposes explicit SME evidence input")
     check("--evidence-ref" in workflow, "production workflow passes SME evidence into the governed CLI")
-    check("promote_release_governed" in admin_cli, "admin CLI cannot bypass governed SME promotion")
-    check("--evidence-ref" in admin_cli, "admin CLI requires an auditable evidence channel")
+    check("promote_release_governed" in admin_cli, "question-bank admin CLI cannot bypass governed SME promotion")
+    check("--evidence-ref" in admin_cli, "question-bank admin CLI requires an auditable evidence channel")
+    check("promote_release_governed" in editorial_cli, "editorial admin CLI cannot bypass governed SME promotion")
+    check("--evidence-ref" in editorial_cli, "editorial admin CLI requires an auditable evidence channel")
 
     print("Question-bank independent SME approval governance checks passed.")
 
