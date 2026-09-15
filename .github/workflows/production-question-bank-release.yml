@@ -150,11 +150,17 @@ jobs:
 
       - name: Record genuine SME approval action
         if: ${{ inputs.action == 'promote_sme' }}
-        run: >-
-          python scripts/question_bank_admin.py release-promote
-          "${{ inputs.release_key }}" sme_approved
-          --actor "${{ inputs.actor }}"
-          --evidence-ref "${{ inputs.approval_evidence_ref }}"
+        shell: bash
+        env:
+          RELEASE_KEY: ${{ inputs.release_key }}
+          APPROVER: ${{ inputs.actor }}
+          APPROVAL_EVIDENCE_REF: ${{ inputs.approval_evidence_ref }}
+        run: |
+          set -euo pipefail
+          python scripts/question_bank_admin.py release-promote \
+            "${RELEASE_KEY}" sme_approved \
+            --actor "${APPROVER}" \
+            --evidence-ref "${APPROVAL_EVIDENCE_REF}"
 
       - name: Promote SME-approved release to staging
         if: ${{ inputs.action == 'promote_staging' }}
