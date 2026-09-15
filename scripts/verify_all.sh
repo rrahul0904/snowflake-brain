@@ -96,6 +96,9 @@ echo "== Immutable question versions and sitting linkage =="
 echo "== Question-bank release activation and rollback =="
 "$PYTHON_BIN" scripts/test_question_bank_releases.py
 
+echo "== Question-bank independent SME approval governance =="
+"$PYTHON_BIN" scripts/test_question_bank_release_governance.py
+
 echo "== Blueprint-aware fresh reset fallback =="
 "$PYTHON_BIN" scripts/test_blueprint_fresh_fallback.py
 

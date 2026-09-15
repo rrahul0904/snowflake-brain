@@ -71,6 +71,46 @@ After review, import the directory from that administrative job:
 python scripts/question_bank_admin.py import-dir /private/question_bank
 ```
 
+## Governed release promotion
+
+Importing content is not approval. The governed release path keeps machine validation, human review, staging, and activation as separate auditable steps:
+
+```text
+draft -> qa_passed -> sme_approved -> staging -> active
+```
+
+The release creator/import operator may run validation and QA promotion, but the `sme_approved` transition has an additional separation-of-duties boundary:
+
+- the approver must be a named reviewer identity, not a generic `admin`, `operator`, `release-operator`, or `system` identity;
+- the approver must be different from the release creator/import operator;
+- a stable approval evidence reference is mandatory;
+- the evidence reference and reviewer identity are recorded in the release audit trail before the status transition.
+
+The software verifies those audit mechanics only. It does **not** pretend to verify the substance of the human review or replace a genuine Snowflake SME decision.
+
+Example after automated QA has passed:
+
+```bash
+python scripts/question_bank_admin.py release-promote \
+  cofc03-2026-08-14-beta-1200-v2 sme_approved \
+  --actor reviewer@example.com \
+  --evidence-ref 'https://github.com/rrahul0904/snowflake-brain/issues/25#issuecomment-REVIEW-EVIDENCE'
+```
+
+Then a release manager can advance the already approved immutable snapshot:
+
+```bash
+python scripts/question_bank_admin.py release-promote \
+  cofc03-2026-08-14-beta-1200-v2 staging \
+  --actor release-manager@example.com
+
+python scripts/question_bank_admin.py release-activate \
+  cofc03-2026-08-14-beta-1200-v2 \
+  --actor release-manager@example.com
+```
+
+The GitHub Actions **Production Question Bank Release** workflow enforces the same SME evidence boundary. For the `promote_sme` action, supply the actual named reviewer in `actor` and the stable review record in `approval_evidence_ref`. The workflow fails closed if either is missing or still uses a generic operator identity.
+
 ## Verify backend status
 
 Bank authoring/coverage status is an administrator-only CLI concern:
@@ -104,7 +144,7 @@ Keep the prior private artifact in restricted backup storage according to the de
 Before unrestricted public launch:
 
 1. complete automated schema/coverage/security checks;
-2. complete independent human/SME review of ambiguous or high-value mock questions;
+2. complete independent human/SME review of ambiguous or high-value mock questions and retain the stable review evidence referenced by the release audit trail;
 3. confirm source freshness for Snowflake features that may have changed since the bank's source-verification date;
 4. import only the approved artifact into PostgreSQL and activate the reviewed immutable release;
 5. rerun tier, no-answer-leak, ownership, and browser smoke tests against the deployed bank.

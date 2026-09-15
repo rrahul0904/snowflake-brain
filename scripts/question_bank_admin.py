@@ -18,6 +18,7 @@ from app.question_bank import (  # noqa: E402
     import_question_bank_file,
     validate_question_bank_payload,
 )
+from app.question_bank_release_governance import promote_release_governed  # noqa: E402
 from app.question_bank_releases import (  # noqa: E402
     activate_release,
     compare_releases,
@@ -25,7 +26,6 @@ from app.question_bank_releases import (  # noqa: E402
     ensure_question_bank_release_schema,
     get_release,
     list_releases,
-    promote_release,
     retire_release,
     rollback_release,
 )
@@ -79,10 +79,15 @@ def main() -> int:
     release_create.add_argument("--actor", default="admin")
     release_create.add_argument("--notes", default="")
 
-    release_promote = sub.add_parser("release-promote", help="Advance a release through QA, SME approval, and staging")
+    release_promote = sub.add_parser("release-promote", help="Advance a release through QA, governed SME approval, and staging")
     release_promote.add_argument("release_key")
     release_promote.add_argument("target_status", choices=["qa_passed", "sme_approved", "staging"])
     release_promote.add_argument("--actor", default="admin")
+    release_promote.add_argument(
+        "--evidence-ref",
+        default="",
+        help="Stable independent human-review evidence reference; required for sme_approved",
+    )
 
     release_activate = sub.add_parser("release-activate", help="Atomically activate a staging release and retire the previous active release")
     release_activate.add_argument("release_key")
@@ -161,7 +166,12 @@ def main() -> int:
         result = _observed_release(
             "promote",
             args.release_key,
-            lambda: promote_release(args.release_key, args.target_status, actor=args.actor),
+            lambda: promote_release_governed(
+                args.release_key,
+                args.target_status,
+                actor=args.actor,
+                approval_evidence_ref=args.evidence_ref,
+            ),
         )
         print(json.dumps(result, indent=2))
         return 0

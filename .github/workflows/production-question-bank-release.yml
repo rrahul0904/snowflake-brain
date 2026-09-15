@@ -22,6 +22,10 @@ on:
         description: "Human/operator identity recorded in release audit events"
         required: true
         default: "release-operator"
+      approval_evidence_ref:
+        description: "Stable independent SME review evidence reference; required only for promote_sme"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -125,12 +129,38 @@ jobs:
           rm -f /tmp/snowpro-private-bank.json
           echo "Ephemeral private bank source removed."
 
-      - name: Require deliberate SME approval action
+      - name: Require independent SME approval evidence
         if: ${{ inputs.action == 'promote_sme' }}
-        run: >-
-          python scripts/question_bank_admin.py release-promote
-          "${{ inputs.release_key }}" sme_approved
-          --actor "${{ inputs.actor }}"
+        shell: bash
+        env:
+          APPROVAL_EVIDENCE_REF: ${{ inputs.approval_evidence_ref }}
+          APPROVER: ${{ inputs.actor }}
+        run: |
+          set -euo pipefail
+          [[ -n "${APPROVAL_EVIDENCE_REF//[[:space:]]/}" ]] || {
+            echo "approval_evidence_ref is required for promote_sme" >&2
+            exit 1
+          }
+          case "${APPROVER,,}" in
+            admin|operator|release-operator|system)
+              echo "promote_sme requires a named independent reviewer identity, not '${APPROVER}'" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Record genuine SME approval action
+        if: ${{ inputs.action == 'promote_sme' }}
+        shell: bash
+        env:
+          RELEASE_KEY: ${{ inputs.release_key }}
+          APPROVER: ${{ inputs.actor }}
+          APPROVAL_EVIDENCE_REF: ${{ inputs.approval_evidence_ref }}
+        run: |
+          set -euo pipefail
+          python scripts/question_bank_admin.py release-promote \
+            "${RELEASE_KEY}" sme_approved \
+            --actor "${APPROVER}" \
+            --evidence-ref "${APPROVAL_EVIDENCE_REF}"
 
       - name: Promote SME-approved release to staging
         if: ${{ inputs.action == 'promote_staging' }}
