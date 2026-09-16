@@ -2,14 +2,6 @@ name: PostgreSQL Production Smoke
 
 on:
   pull_request:
-    paths:
-      - "app/**"
-      - "migrations/postgres/**"
-      - "scripts/**"
-      - "requirements.txt"
-      - "docker-compose.yml"
-      - ".env.example"
-      - ".github/workflows/postgres-smoke.yml"
   workflow_dispatch:
 
 concurrency:
