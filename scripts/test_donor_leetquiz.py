@@ -16,6 +16,10 @@ checks = [
     ("frontend/views/admin-operations.js", "data-question-feedback-save"),
     ("scripts/question_source_intake.py", "human_supplied_transcript"),
     ("scripts/question_source_intake.py", "question_generation_allowed"),
+    ("app/public_discovery.py", "/discover/{certification_id}"),
+    ("app/public_discovery.py", "/sitemap.xml"),
+    ("scripts/audit_private_bank_quality.py", "EXPECTED_TOTAL = 1200"),
+    ("app/question_editorial.py", "EDITORIAL"),
 ]
 
 for path, token in checks:
