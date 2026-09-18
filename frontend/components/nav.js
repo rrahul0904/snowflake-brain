@@ -15,7 +15,7 @@ const aliases = new Map([
   ["#/domain", "#/curriculum"], ["#/skill", "#/curriculum"],
   ["#/quick-reference", "#/reference"], ["#/glossary", "#/reference"], ["#/exam-traps", "#/reference"],
   ["#/mock", "#/practice"], ["#/mock/start", "#/practice"], ["#/mock/session", "#/practice"], ["#/mock/result", "#/practice"], ["#/mock/history", "#/practice"],
-  ["#/diagnostic", "#/practice"], ["#/drill", "#/practice"], ["#/quiz", "#/practice"], ["#/mistakes", "#/practice"], ["#/due", "#/practice"],
+  ["#/practice-hub", "#/practice"], ["#/diagnostic", "#/practice"], ["#/drill", "#/practice"], ["#/quiz", "#/practice"], ["#/mistakes", "#/practice"], ["#/due", "#/practice"],
   ["#/readiness", "#/adaptive"], ["#/confidence", "#/curriculum"], ["#/study-plan", "#/curriculum"],
   ["#/article", "#/journal"], ["#/community", "#/journal"], ["#/account", "#/membership"], ["#/settings", "#/membership"], ["#/pricing", "#/pricing"],
 ]);
