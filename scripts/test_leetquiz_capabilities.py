@@ -57,7 +57,7 @@ def main() -> None:
     require("PUBLIC_PATH_ROUTES" in seo_shell and "updateDiscoveryMeta" in seo_shell, "public discovery routing metadata missing")
     require('application/ld+json' in index and 'rel="canonical"' in index, "structured/canonical metadata missing")
     require("Public peer-to-peer answer discussion is intentionally replaced" in docs, "discussion boundary/disposition missing")
-    require("automated QA" in docs.lower() and "independent SME approval" in docs, "content QA governance mapping missing")
+    require("automated qa" in docs.lower() and "independent sme approval" in docs.lower(), "content QA governance mapping missing")
 
     require("snowpro_core_cof_c03_private_bank_1200_beta_v2.json" not in frontend, "private artifact leaked to frontend")
     require("bank_pool" not in frontend and "source_refs" not in frontend, "private pool/provenance metadata leaked to frontend")
