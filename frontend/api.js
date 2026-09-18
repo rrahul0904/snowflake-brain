@@ -91,6 +91,9 @@ export const getAdaptiveRecommendations = (params = {}) => api(`/api/intelligenc
 export const getPracticeTests = (params = {}) => api(`/api/practice-tests?${new URLSearchParams(params)}`);
 export const getPracticeTestQuestions = (id, params = {}) => api(`/api/practice-tests/${encodeURIComponent(id)}/questions?${new URLSearchParams(params)}`);
 export const getQuestion = (id) => api(`/api/questions/${encodeURIComponent(id)}`);
+export const getQuestionExplorerHistory = (params = {}) => api(`/api/question-explorer/history?${new URLSearchParams(params)}`);
+export const getQuestionCoach = (id, params = {}) => api(`/api/question-explorer/${encodeURIComponent(id)}/coach?${new URLSearchParams(params)}`);
+export const reportQuestionIssue = (id, payload) => api(`/api/question-explorer/${encodeURIComponent(id)}/report`, { method: "POST", body: JSON.stringify(payload) });
 export const startQuiz = (payload) => api("/api/certification-quiz/start", { method: "POST", body: JSON.stringify(payload) });
 export const gradeQuiz = (payload) => api("/api/quiz/grade", { method: "POST", body: JSON.stringify(payload) });
 export const recordAttempt = (id, payload) => api(`/api/questions/${encodeURIComponent(id)}/attempt`, { method: "POST", body: JSON.stringify(payload) });
