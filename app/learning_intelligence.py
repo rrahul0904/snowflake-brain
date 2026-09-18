@@ -994,3 +994,85 @@ def mock_remediation(
             for item in prioritized[:3]
         ],
     }
+
+
+def daily_recall_streak(
+    conn: Any,
+    candidate_id: int,
+    track_id: str = "snowpro-core",
+) -> dict[str, Any]:
+    rows = conn.execute(
+        """
+        SELECT created_at,skill_id
+        FROM learning_events
+        WHERE candidate_id=? AND track_id=? AND event_type='daily_recall_completed'
+        ORDER BY created_at DESC
+        LIMIT 1000
+        """,
+        (candidate_id, track_id),
+    ).fetchall()
+    activity_dates: set[date] = set()
+    today_skills: set[str] = set()
+    today = _utc_now().date()
+    for row in rows:
+        raw = str(row["created_at"] or "")[:10]
+        try:
+            day = date.fromisoformat(raw)
+        except ValueError:
+            continue
+        activity_dates.add(day)
+        if day == today and row["skill_id"]:
+            today_skills.add(str(row["skill_id"]))
+
+    streak = 0
+    cursor = today
+    if cursor not in activity_dates:
+        cursor = today - timedelta(days=1)
+    while cursor in activity_dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+
+    return {
+        "track_id": track_id,
+        "streak_days": streak,
+        "completed_today": len(today_skills),
+        "today": today.isoformat(),
+        "last_activity_date": max(activity_dates).isoformat() if activity_dates else None,
+    }
+
+
+def record_daily_recall(
+    conn: Any,
+    candidate_id: int,
+    track_id: str,
+    skill_id: str,
+) -> dict[str, Any]:
+    normalized_skill = str(skill_id or "").strip()
+    if not normalized_skill:
+        raise ValueError("skill_id is required")
+    today = _utc_now().date().isoformat()
+    existing = conn.execute(
+        """
+        SELECT id FROM learning_events
+        WHERE candidate_id=? AND track_id=? AND skill_id=?
+          AND event_type='daily_recall_completed'
+          AND substr(created_at,1,10)=?
+        ORDER BY id DESC LIMIT 1
+        """,
+        (candidate_id, track_id, normalized_skill, today),
+    ).fetchone()
+    if not existing:
+        conn.execute(
+            """
+            INSERT INTO learning_events(event_type,track_id,skill_id,metadata_json,candidate_id)
+            VALUES ('daily_recall_completed',?,?,?,?)
+            """,
+            (
+                track_id,
+                normalized_skill,
+                json.dumps({"source": "clouding_academy_blitz"}, separators=(",", ":")),
+                candidate_id,
+            ),
+        )
+    result = daily_recall_streak(conn, candidate_id, track_id)
+    return {**result, "skill_id": normalized_skill, "recorded": not bool(existing)}
