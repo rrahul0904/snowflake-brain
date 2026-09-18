@@ -28,6 +28,7 @@ export function studySidebar(cert, active = "", activeSkillId = "", completedSki
     </div>
     <div class="v26-side-group"><small>Curriculum</small>${domains}</div>
     <div class="v26-side-group"><small>Practice</small>
+      ${side("#/practice-hub", "Practice Hub", cert.id, active === "practice-hub")}
       ${side("#/practice?mode=diagnostic", "Diagnostic Assessment", cert.id, active === "diagnostic")}
       ${side("#/practice?mode=drill", "Targeted Drill", cert.id, active === "drill")}
       ${side("#/mock/start?type=quick-mock", "Quick Mock", cert.id, active === "quick-mock")}
