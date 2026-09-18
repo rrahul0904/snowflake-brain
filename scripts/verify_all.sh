@@ -139,6 +139,9 @@ done < <(find frontend -type f -name '*.js' -print0)
 
 echo "All Snowflake Certification Guide checks passed."
 
+echo "== Private editorial source intake =="
+"$PYTHON_BIN" scripts/test_question_source_intake.py
+
 echo "== Served-question correction workflow =="
 "$PYTHON_BIN" scripts/test_question_feedback.py
 
