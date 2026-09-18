@@ -93,6 +93,9 @@ def main() -> None:
         for forbidden_key in ("correct_json", "options_json", "explanation", "bank_pool"):
             check(forbidden_key not in row, f"candidate report history leaked bank data: {forbidden_key}")
 
+    unauthorized_admin = client.get("/api/admin/question-feedback")
+    check(unauthorized_admin.status_code == 403, "ordinary candidate reached founder correction queue")
+
     queue = editorial_question_feedback(status="open")
     check(len(queue) == 1 and queue[0]["question_id"] == question_id, "editorial queue did not receive report")
     resolved = update_question_feedback(
