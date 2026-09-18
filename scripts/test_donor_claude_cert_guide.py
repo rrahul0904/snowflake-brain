@@ -10,6 +10,7 @@ checks = [
     ("frontend/views/exam-guide-v26.js", 'import { escapeHtml } from "../api.js";'),
     ("frontend/views/exam-guide-v26.js", "Exam Traps"),
     ("docs/DONOR_CLAUDE_CERT_GUIDE.md", "No parallel content store"),
+    ("app/security.py", '"/static/views/exam-guide-v26.js"'),
 ]
 
 for path, token in checks:
