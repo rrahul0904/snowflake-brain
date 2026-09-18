@@ -138,3 +138,7 @@ while IFS= read -r -d '' file; do
 done < <(find frontend -type f -name '*.js' -print0)
 
 echo "All Snowflake Certification Guide checks passed."
+
+echo "== Claude Certification Guide donor capability slice =="
+"$PYTHON_BIN" scripts/test_claude_guide_capabilities.py
+"$NODE_BIN" --check frontend/views/lesson-v26.js
