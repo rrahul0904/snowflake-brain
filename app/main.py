@@ -32,6 +32,7 @@ from .question_bank import import_question_bank_directory
 from .question_bank_releases import ensure_active_release_baseline, ensure_question_bank_release_schema
 from .question_versions import ensure_question_version_schema
 from .production_schema import assert_production_schema_ready
+from .public_discovery import router as public_discovery_router
 from .routers import (
     account,
     admin,
@@ -179,6 +180,7 @@ def metrics(request: Request) -> dict:
     return metrics_snapshot()
 
 
+app.include_router(public_discovery_router)
 app.include_router(skills.router, prefix="/api")
 # Candidate question/practice/mock ownership is intentionally singular. The
 # legacy questions, certification_practice and mock_exam routers remain as
