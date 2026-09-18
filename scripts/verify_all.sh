@@ -132,6 +132,9 @@ elif [[ $MEDIA_STATUS -ne 1 ]]; then
   exit 1
 fi
 
+echo "== Donor ES-module import smoke =="
+"$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+
 echo "== LeetQuiz donor contract =="
 "$PYTHON_BIN" scripts/test_donor_leetquiz.py
 
