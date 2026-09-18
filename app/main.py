@@ -48,6 +48,7 @@ from .routers import (
     labs,
     question_bank_candidate_state,
     question_bank_runtime,
+    question_feedback,
     skills,
 )
 from .security import SecurityBoundaryMiddleware
@@ -186,6 +187,7 @@ app.include_router(skills.router, prefix="/api")
 # becoming part of the candidate boundary.
 app.include_router(question_bank_runtime.router, prefix="/api")
 app.include_router(question_bank_candidate_state.router, prefix="/api")
+app.include_router(question_feedback.router, prefix="/api")
 app.include_router(affiliate.router, prefix="/api")
 app.include_router(intelligence.router, prefix="/api")
 app.include_router(adaptive.router, prefix="/api")
