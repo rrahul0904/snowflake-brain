@@ -75,6 +75,8 @@ export const getIntelligenceReadiness = (params = {}) => api(`/api/intelligence/
 export const getSkillMastery = (params = {}) => api(`/api/intelligence/skill-mastery?${new URLSearchParams(params)}`);
 export const getDiagnosticPlan = (params = {}) => api(`/api/intelligence/diagnostic?${new URLSearchParams(params)}`);
 export const getDueToday = (params = {}) => api(`/api/intelligence/due-today?${new URLSearchParams(params)}`);
+export const getDailyStreak = (params = {}) => api(`/api/intelligence/daily-streak?${new URLSearchParams(params)}`);
+export const recordDailyRecall = (payload) => api("/api/intelligence/daily-recall", { method: "POST", body: JSON.stringify(payload) });
 export const getTaskReview = (params = {}) => api(`/api/intelligence/task-review?${new URLSearchParams(params)}`);
 export const scheduleTaskReview = (payload) => api("/api/intelligence/task-review", { method: "POST", body: JSON.stringify(payload) });
 export const markTaskReviewed = (payload) => api("/api/intelligence/task-review/reviewed", { method: "POST", body: JSON.stringify(payload) });
