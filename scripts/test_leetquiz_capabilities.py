@@ -33,7 +33,8 @@ def main() -> None:
     require("candidate_question_history" in backend, "explorer must be limited to candidate-served history")
     require("candidate_was_served_question" in backend, "coach/report must enforce served-question ownership")
     require('"answer_revealed": False' in backend, "coach answer-leak guard missing")
-    require("correct_json" not in backend and "explanation" not in backend.split("@router.get("/question-explorer/{question_id}/coach")")[0], "history endpoint must not expose answer material")
+    history_section = backend.split('@router.get("/question-explorer/{question_id}/coach")')[0]
+    require("correct_json" not in history_section and "explanation" not in history_section, "history endpoint must not expose answer material")
     require("ensure_feedback_schema" in backend and "Question review:" in backend, "content correction workflow missing")
     require("question_explorer.router" in main_py, "question explorer router is not mounted")
 
