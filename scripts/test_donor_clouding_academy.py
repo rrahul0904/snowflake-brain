@@ -9,6 +9,9 @@ checks = [
     ("frontend/views/daily-session-v26.js", 'import { escapeHtml } from "../api.js";'),
     ("frontend/views/daily-session-v26.js", "Blitz recall"),
     ("frontend/views/daily-session-v26.js", "Architecture Builder"),
+    ("frontend/views/daily-session-v26.js", "recordDailyRecall"),
+    ("app/routers/intelligence.py", "/intelligence/daily-streak"),
+    ("scripts/test_daily_recall_streak.py", "localStorage"),
     ("docs/DONOR_CLOUDING_ACADEMY.md", "does not create a second curriculum"),
 ]
 
