@@ -139,5 +139,8 @@ done < <(find frontend -type f -name '*.js' -print0)
 
 echo "All Snowflake Certification Guide checks passed."
 
+echo "== Persisted daily recall streak =="
+"$PYTHON_BIN" scripts/test_daily_recall_streak.py
+
 echo "== Donor integration contract =="
 "$PYTHON_BIN" scripts/test_donor_clouding_academy.py
