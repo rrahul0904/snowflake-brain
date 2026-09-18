@@ -27,7 +27,7 @@ export default async function render(root,params={}){
    <a class="v26-practice-card" href="#/practice?track_id=${encodeURIComponent(track)}&mode=drill"><span>Repair</span><h2>Targeted Practice</h2><p>Filter by domain, task, difficulty and unanswered history.</p><div><b>Adaptive filters</b><em>Start →</em></div></a>
    <a class="v26-practice-card" href="#/mock/start?track_id=${encodeURIComponent(track)}&type=quick-mock"><span>Timed</span><h2>Quick Mock</h2><p>Persisted sitting with secure server-owned session state.</p><div><b>30 questions</b><em>Start →</em></div></a>
    <a class="v26-practice-card full" href="#/mock/start?track_id=${encodeURIComponent(track)}&type=full-mock"><span>Exam</span><h2>Full Mock</h2><p>Flags, autosave, resume, timer, grading and remediation.</p><div><b>Full simulation</b><em>Start →</em></div></a>
-   <a class="v26-practice-card" href="#/daily-session?track_id=${encodeURIComponent(track)}"><span>Blitz</span><h2>Recall Session</h2><p>Fast active recall before recognition-based practice.</p><div><b>Daily loop</b><em>Open →</em></div></a>
+   <a class="v26-practice-card" href="#/due?track_id=${encodeURIComponent(track)}"><span>Recall</span><h2>Due Today</h2><p>Use the existing spaced-review queue for fast active recall and reinforcement.</p><div><b>Persistent queue</b><em>Open →</em></div></a>
    <a class="v26-practice-card" href="#/labs?track_id=${encodeURIComponent(track)}"><span>Build</span><h2>Architecture Builder</h2><p>Apply Snowflake concepts in deterministic labs.</p><div><b>Hands-on</b><em>Open →</em></div></a>
  </div></section>
  <section class="v26-section"><div class="v26-section-heading"><p class="v26-kicker">Domain scoring</p><h2>Persistent evidence by task</h2></div>
