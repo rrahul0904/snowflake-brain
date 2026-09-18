@@ -1051,6 +1051,10 @@ def record_daily_recall(
     normalized_skill = str(skill_id or "").strip()
     if not normalized_skill:
         raise ValueError("skill_id is required")
+    from .skill_brain import flatten_skills
+    configured = {str(row.get("id") or "") for row in flatten_skills(track_id)}
+    if normalized_skill not in configured:
+        raise ValueError("Task is not configured for this certification")
     today = _utc_now().date().isoformat()
     existing = conn.execute(
         """
