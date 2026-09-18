@@ -44,6 +44,21 @@ def main() -> None:
     require('"#/question-explorer":"question-explorer-v26.js"' in router, "question explorer route missing")
     require("Question Explorer" in sidebar, "question explorer navigation missing")
 
+    intake = text("scripts/content_intake_admin.py")
+    seo_shell = text("frontend/app-complete.js")
+    index = text("frontend/index-v26.html")
+    docs = text("docs/LEETQUIZ_DONOR_INTEGRATION.md")
+    main = text("app/main.py")
+    for token in ("TEXT_SUFFIXES", "PDF_SUFFIXES", "IMAGE_SUFFIXES", "private_content/intake", "blocked_integrity_review", "pending_editorial_authoring"):
+        require(token in intake, f"private multimodal intake contract missing: {token}")
+    require("shell=True" not in intake, "content intake must not use shell interpolation")
+    require("release_boundary" in intake and "intake_only_not_candidate_visible" in intake, "intake/release separation missing")
+    require('@app.get("/robots.txt"' in main and '@app.get("/sitemap.xml"' in main, "SEO discovery endpoints missing")
+    require("PUBLIC_PATH_ROUTES" in seo_shell and "updateDiscoveryMeta" in seo_shell, "public discovery routing metadata missing")
+    require('application/ld+json' in index and 'rel="canonical"' in index, "structured/canonical metadata missing")
+    require("Public peer-to-peer answer discussion is intentionally replaced" in docs, "discussion boundary/disposition missing")
+    require("automated QA" in docs.lower() and "independent SME approval" in docs, "content QA governance mapping missing")
+
     require("snowpro_core_cof_c03_private_bank_1200_beta_v2.json" not in frontend, "private artifact leaked to frontend")
     require("bank_pool" not in frontend and "source_refs" not in frontend, "private pool/provenance metadata leaked to frontend")
     print("LEETQUIZ DONOR SLICE: PASS")
