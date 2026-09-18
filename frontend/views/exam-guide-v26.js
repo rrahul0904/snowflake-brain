@@ -1,4 +1,4 @@
-import { escapeHtml } from "../ui.js";
+import { escapeHtml } from "../api.js";
 export const VIEW_ID="claude-certification-guide-hub";
 async function api(path){const r=await fetch(path,{credentials:"same-origin"});if(!r.ok)throw new Error(`Request failed (${r.status})`);return r.json();}
 export default async function render(root,params={}){
