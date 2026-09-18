@@ -12,6 +12,8 @@ checks = [
     ("docs/DONOR_LEETQUIZ.md", "no public question inventory"),
     ("app/routers/question_feedback.py", "/questions/{question_id}/feedback"),
     ("frontend/views/practice-v26.js", "Report question"),
+    ("frontend/views/admin-operations.js", "Question Corrections"),
+    ("frontend/views/admin-operations.js", "data-question-feedback-save"),
     ("scripts/question_source_intake.py", "human_supplied_transcript"),
     ("scripts/question_source_intake.py", "question_generation_allowed"),
 ]
