@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 checks = [
     ("frontend/router-complete.js", '"#/exam-guide":"exam-guide-v26.js"'),
-    ("frontend/views/exam-guide-v26.js", "/api/skills/catalog"),
+    ("frontend/views/exam-guide-v26.js", "getCertificationCatalog"),
     ("frontend/views/exam-guide-v26.js", "Blueprint map"),
     ("frontend/views/exam-guide-v26.js", 'import { escapeHtml } from "../api.js";'),
     ("frontend/views/exam-guide-v26.js", "Exam Traps"),
