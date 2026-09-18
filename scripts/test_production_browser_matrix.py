@@ -176,6 +176,27 @@ def assert_credentials_layout(page: Page, profile: Profile) -> dict:
     return metrics
 
 
+def assert_donor_learning_routes(page: Page, profile: Profile, *, authenticated: bool) -> list[str]:
+    routes = (
+        [
+            ("#/practice-hub", "Practice Hub"),
+            ("#/daily-session", "Daily Certification Session"),
+            ("#/question-studio", "Question Studio"),
+        ]
+        if authenticated
+        else [("#/exam-guide", "Exam Guide")]
+    )
+    visited: list[str] = []
+    for route, heading in routes:
+        page.goto(f"{BASE_URL}/{route}?track_id=snowpro-core", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, route)
+        page.locator("h1").filter(has_text=heading).first.wait_for(state="visible", timeout=10_000)
+        assert_accessible_baseline(page, f"{profile.name} {route}")
+        assert_client_clean(page, f"{profile.name} {route}")
+        visited.append(route)
+    return visited
+
+
 def fetch_talent_profile(page: Page) -> dict:
     return page.evaluate(
         """async () => {
@@ -314,6 +335,8 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_accessible_baseline(page, f"{profile.name} membership")
         assert_client_clean(page, f"{profile.name} membership")
 
+        public_donor_routes = assert_donor_learning_routes(page, profile, authenticated=False)
+
         # Account action links must be public and fail safely when incomplete.
         page.goto(f"{BASE_URL}/#/account-action", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/account-action")
@@ -328,6 +351,7 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         # route transition. It is the release gate for request coalescing.
         home_budget = certify_authenticated_home_request_budget(page, profile)
         assert_client_clean(page, f"{profile.name} authenticated home")
+        authenticated_donor_routes = assert_donor_learning_routes(page, profile, authenticated=True)
 
         # Registration must visibly remain unverified in the normal account experience.
         page.goto(f"{BASE_URL}/#/account", wait_until="networkidle", timeout=20_000)
@@ -403,6 +427,8 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
             "credential_empty_cards": empty_credential_metrics["cards"],
             "credential_verified_cards": credential_metrics["verified"],
             "credential_discoverability": talent["body"]["recruiter_discoverable"],
+            "public_donor_routes": public_donor_routes,
+            "authenticated_donor_routes": authenticated_donor_routes,
         }
     finally:
         context.close()
