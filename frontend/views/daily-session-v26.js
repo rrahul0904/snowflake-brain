@@ -1,4 +1,4 @@
-import { escapeHtml } from "../ui.js";
+import { escapeHtml } from "../api.js";
 export const VIEW_ID="clouding-academy-daily";
 async function api(path){const r=await fetch(path,{credentials:"same-origin"});if(!r.ok)throw new Error(`Request failed (${r.status})`);return r.json();}
 function streakKey(track){return `snowflake-brain.blitz-streak.${track}`;}
