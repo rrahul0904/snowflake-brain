@@ -1,0 +1,41 @@
+.v26-hub-head{max-width:980px;margin:0 auto;padding:20px 0 30px}
+.v26-hub-head h1{font:500 clamp(42px,5.5vw,70px)/1.02 var(--serif);letter-spacing:-.045em;margin:8px 0 16px}
+.v26-hub-head>p:last-child{max-width:720px;color:var(--muted)}
+.v26-hub-kpis{max-width:980px;margin:0 auto 26px;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);border-left:1px solid var(--border)}
+.v26-hub-kpis article{padding:18px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.v26-hub-kpis span,.v26-hub-kpis small{display:block;color:var(--muted);font-size:9px}
+.v26-hub-kpis strong{display:block;font:600 28px var(--sans);margin:7px 0}
+.v26-hub-modes{max-width:980px;margin:0 auto 52px;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);border-left:1px solid var(--border)}
+.v26-hub-modes>a{min-height:210px;padding:24px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-decoration:none;display:flex;flex-direction:column}
+.v26-hub-modes>a>span{font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent-strong)}
+.v26-hub-modes h2{font:500 28px var(--serif);margin:18px 0 8px}
+.v26-hub-modes p{color:var(--muted);font-size:11px;line-height:1.6}
+.v26-hub-modes footer{display:flex;justify-content:space-between;margin-top:auto;padding-top:14px;border-top:1px solid var(--border);font-size:9px}
+.v26-hub-modes em{font-style:normal;color:var(--accent-strong)}
+.v26-hub-domains{max-width:980px;margin:0 auto 52px}
+.v26-hub-domains header h2{font:500 28px var(--serif);margin:5px 0 14px}
+.v26-hub-domains>div{display:grid}
+.v26-hub-domains article{display:grid;grid-template-columns:10px 1fr 80px 70px;gap:14px;align-items:center;padding:16px 4px;border-top:1px solid var(--border)}
+.v26-hub-domains article:last-child{border-bottom:1px solid var(--border)}
+.v26-hub-domains i{width:8px;height:8px;border-radius:50%;background:var(--domain)}
+.v26-hub-domains article span,.v26-hub-domains article small{display:block;color:var(--muted);font-size:9px}
+.v26-hub-domains article strong{font:500 16px var(--serif)}
+.v26-hub-domains article>b{font-size:17px}
+.v26-hub-domains article>a{color:var(--accent-strong);font-size:10px;text-decoration:none}
+.v26-hub-two{max-width:980px;margin:0 auto 52px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.v26-hub-mini{min-height:390px;padding:26px;border:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column}
+.v26-hub-mini>span{color:var(--muted);font-size:9px;margin-top:8px}
+.v26-hub-mini h2{font:500 26px/1.3 var(--serif);margin:30px 0 16px}
+.v26-hub-mini>p{color:var(--muted);font-size:11px;line-height:1.65}
+.v26-hub-mini .answer{padding:14px;border-left:2px solid var(--accent);background:var(--accent-soft);color:var(--text)}
+.v26-hub-mini>.v26-btn{align-self:flex-start;margin-top:auto}
+.v26-hub-mini footer{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
+.v26-hub-mini footer button{min-height:44px;border:1px solid var(--border);background:var(--bg);cursor:pointer}
+.v26-hub-mini select{min-height:44px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:0 10px;margin:4px 0 12px}
+.v26-hub-mini.done a{margin-top:auto;color:var(--accent-strong);font-size:10px;text-decoration:none}
+.v26-hub-resume{max-width:980px;margin:0 auto 80px;padding:28px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:30px;align-items:center}
+.v26-hub-resume h2{font:500 27px var(--serif);margin:6px 0}
+.v26-hub-resume p{color:var(--muted);font-size:11px;max-width:620px}
+.v26-hub-resume>div:last-child{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:800px){.v26-hub-kpis{grid-template-columns:1fr 1fr}.v26-hub-two,.v26-hub-resume{grid-template-columns:1fr}.v26-hub-resume>div:last-child{justify-content:flex-start}}
+@media(max-width:560px){.v26-hub-modes{grid-template-columns:1fr}.v26-hub-domains article{grid-template-columns:10px 1fr 60px}.v26-hub-domains article>a{grid-column:2}}
