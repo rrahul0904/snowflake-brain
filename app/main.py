@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .account_lifecycle import ensure_account_lifecycle_schema
@@ -62,6 +62,8 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 # browser across a Git-backed deployment.
 PUBLIC_SHELL_CACHE_CONTROL = "public, max-age=60, s-maxage=600, stale-while-revalidate=86400"
 PUBLIC_STATIC_CACHE_CONTROL = "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400"
+PUBLIC_BASE_URL = "https://snowflakecertificationguide.vercel.app"
+PUBLIC_DISCOVERY_PATHS = ("/", "/certifications", "/pricing", "/about", "/exam-guide", "/content-integrity")
 
 
 class PublicFrontendStaticFiles(StaticFiles):
@@ -215,6 +217,26 @@ _API_FALLBACK_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HE
 @app.api_route("/api/{full_path:path}", methods=_API_FALLBACK_METHODS, include_in_schema=False)
 def api_not_found(full_path: str = "") -> None:
     raise HTTPException(status_code=404, detail="Not found")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots() -> PlainTextResponse:
+    return PlainTextResponse(
+        "User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: "
+        + PUBLIC_BASE_URL
+        + "/sitemap.xml\n",
+        headers={"Cache-Control": PUBLIC_STATIC_CACHE_CONTROL},
+    )
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap() -> Response:
+    urls = "".join(
+        f"<url><loc>{PUBLIC_BASE_URL}{path}</loc><changefreq>weekly</changefreq></url>"
+        for path in PUBLIC_DISCOVERY_PATHS
+    )
+    body = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
+    return Response(content=body, media_type="application/xml", headers={"Cache-Control": PUBLIC_STATIC_CACHE_CONTROL})
 
 
 app.mount("/static", PublicFrontendStaticFiles(directory=FRONTEND_DIR), name="static")
