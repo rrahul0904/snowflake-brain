@@ -231,6 +231,13 @@ def study_lesson(track_id: str, skill_id: str) -> dict[str, Any] | None:
         "content": content,
         "content_quality": "curated" if curated else "generated_from_curriculum",
         "content_version": load_core_study_content().get("version") if curated else (configured_skill_map().get("supplement_version") or configured_skill_map().get("version")),
+        "source_trust": {
+            "certification_verified_at": (_catalog_by_track().get(track_id) or {}).get("source_verified_at"),
+            "official_certification_url": cert.get("official_source_url"),
+            "content_version": load_core_study_content().get("version") if curated else (configured_skill_map().get("supplement_version") or configured_skill_map().get("version")),
+            "source_count": len(content.get("sources") or []),
+            "source_policy": "official_snowflake_documentation_preferred",
+        },
     }
 
 
