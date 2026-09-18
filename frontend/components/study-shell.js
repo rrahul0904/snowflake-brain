@@ -25,6 +25,8 @@ export function studySidebar(cert, active = "", activeSkillId = "", completedSki
       ${side("#/mistakes", "Mistake Notebook", cert.id, active === "mistakes")}
       ${side("#/confidence", "Confidence Calibration", cert.id, active === "confidence")}
       ${side("#/study-plan", "Study Plan", cert.id, active === "plan")}
+      ${side("#/daily-session", "Daily Session", cert.id, active === "daily-session")}
+      ${side("#/blitz", "Blitz Recall", cert.id, active === "blitz")}
     </div>
     <div class="v26-side-group"><small>Curriculum</small>${domains}</div>
     <div class="v26-side-group"><small>Practice</small>
@@ -33,6 +35,7 @@ export function studySidebar(cert, active = "", activeSkillId = "", completedSki
       ${side("#/mock/start?type=quick-mock", "Quick Mock", cert.id, active === "quick-mock")}
       ${side("#/mock/start?type=full-mock", "Full Mock", cert.id, active === "full-mock")}
       ${side("#/exercises", "Build Exercises", cert.id, active === "exercises")}
+      ${side("#/architecture-builder", "Architecture Builder", cert.id, active === "architecture-builder")}
     </div>
     <div class="v26-side-group"><small>Look Up</small>
       ${side("#/quick-reference", "Quick Reference", cert.id, active === "quick-reference")}
