@@ -139,6 +139,9 @@ done < <(find frontend -type f -name '*.js' -print0)
 
 echo "All Snowflake Certification Guide checks passed."
 
+echo "== Public certification SEO/discovery =="
+"$PYTHON_BIN" scripts/test_public_discovery.py
+
 echo "== Private editorial source intake =="
 "$PYTHON_BIN" scripts/test_question_source_intake.py
 
