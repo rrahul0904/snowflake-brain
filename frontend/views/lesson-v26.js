@@ -34,7 +34,7 @@ export default async function mount(container, params = {}) {
   const prev = flat[index - 1];
   const next = flat[index + 1];
   const reviewLabel = taskReview?.status === "active" ? "✓ In Review Queue" : "Add to Review";
-  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · Domain ${item.domainIndex + 1} · ${Number(item.domain.weight || 0)}% exam weight</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><button class="v26-btn secondary ${taskReview?.status === "active" ? "is-scheduled" : ""}" type="button" data-add-review>${reviewLabel}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a><a class="v26-btn secondary" href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Open glossary</a><a class="v26-btn secondary" href="#/exam-traps?track_id=${encodeURIComponent(cert.id)}&domain=${encodeURIComponent(item.domain.id)}">Exam traps</a></div>${taskReview?.status === "active" ? `<p class="v26-review-schedule-note">Next concept review: ${escapeHtml(formatDue(taskReview.next_review_at))}</p>` : ""}</header>${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise, cert.id)}${sources(content.sources)}<section class="v26-lesson-section v26-lesson-practice-next"><p class="v26-kicker">Practice this concept</p><h2>Make the reasoning retrievable.</h2><p>Reading is only the first pass. Use a targeted drill to prove you can recognize this task under exam-style scenario pressure.</p><div class="v26-inline-actions"><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Practice this concept</a><a class="v26-btn secondary" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Open build labs</a></div></section><nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
+  const body = `<div class="v26-lesson"><div class="v26-breadcrumbs"><a href="#/curriculum?track_id=${encodeURIComponent(cert.id)}">Curriculum</a><span>/</span><a href="#/domain?track_id=${encodeURIComponent(cert.id)}&domain_id=${encodeURIComponent(item.domain.id)}">${escapeHtml(item.domain.title)}</a></div><header class="v26-lesson-head"><p class="v26-kicker">Task ${escapeHtml(taskCode)} · Domain ${item.domainIndex + 1} · ${Number(item.domain.weight || 0)}% exam weight</p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.objective || content.summary || "")}</p><div class="v26-inline-actions"><button class="v26-btn ${completed.has(item.id) ? "secondary" : "primary"}" type="button" data-complete>${completed.has(item.id) ? "✓ Completed" : "Mark Complete"}</button><button class="v26-btn secondary ${taskReview?.status === "active" ? "is-scheduled" : ""}" type="button" data-add-review>${reviewLabel}</button><a class="v26-btn secondary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Drill this task</a><a class="v26-btn secondary" href="#/glossary?track_id=${encodeURIComponent(cert.id)}">Open glossary</a><a class="v26-btn secondary" href="#/exam-traps?track_id=${encodeURIComponent(cert.id)}&domain=${encodeURIComponent(item.domain.id)}">Exam traps</a></div>${taskReview?.status === "active" ? `<p class="v26-review-schedule-note">Next concept review: ${escapeHtml(formatDue(taskReview.next_review_at))}</p>` : ""}</header>${taskWorkbench(cert, item, lesson)}${textList("What You Need to Know", content.what_you_need_to_know || [content.summary])}${keyConcept(content.key_concept)}${decisionRules(content.decision_rules)}${trapCards(content.trap_explanations, content.anti_patterns)}${workedExample(content.worked_example)}${scenario(content.scenario)}${buildExercise(content.build_exercise, cert.id)}${sourceTrust(lesson)}${sources(content.sources)}<section class="v26-lesson-section v26-lesson-practice-next"><p class="v26-kicker">Practice this concept</p><h2>Make the reasoning retrievable.</h2><p>Reading is only the first pass. Use a targeted drill to prove you can recognize this task under exam-style scenario pressure.</p><div class="v26-inline-actions"><a class="v26-btn primary" href="#/practice?track_id=${encodeURIComponent(cert.id)}&mode=drill&skill_id=${encodeURIComponent(item.id)}">Practice this concept</a><a class="v26-btn secondary" href="#/exercises?track_id=${encodeURIComponent(cert.id)}">Open build labs</a></div></section><nav class="v26-lesson-nav" aria-label="Task navigation">${prev ? `<a href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(prev.id)}"><span>Previous</span><strong>${escapeHtml(prev.title)}</strong></a>` : `<span></span>`}${next ? `<a class="next" href="#/skill?track_id=${encodeURIComponent(cert.id)}&skill_id=${encodeURIComponent(next.id)}"><span>Next</span><strong>${escapeHtml(next.title)}</strong></a>` : `<a class="next" href="#/practice?track_id=${encodeURIComponent(cert.id)}"><span>Next</span><strong>Practice what you learned</strong></a>`}</nav></div>`;
   container.innerHTML = studyLayout(cert, item.domain.id, body, item.id, completed);
   container.querySelector("[data-complete]")?.addEventListener("click", async (event) => {
     const nextState = !completed.has(item.id);
@@ -62,6 +62,7 @@ export default async function mount(container, params = {}) {
       event.currentTarget.disabled = false;
     }
   });
+  bindTaskWorkbench(container);
   bindScenario(container);
 }
 
@@ -100,7 +101,7 @@ function workedExample(example) {
 function scenario(item) {
   if (!item?.question) return "";
   const options = item.options || [];
-  return `<section class="v26-lesson-section"><h2>Practice Scenario</h2><div class="v26-scenario" data-scenario data-correct="${Number(item.correct_index || 0)}" data-explanation="${escapeHtml(item.explanation || "")}"><p>${escapeHtml(item.question)}</p><fieldset><legend class="sr-only">Choose one answer</legend>${options.map((option, index) => `<label><input type="radio" name="lesson-scenario" value="${index}"/><span>${String.fromCharCode(65 + index)}</span><b>${escapeHtml(option)}</b></label>`).join("")}</fieldset><button class="v26-btn secondary" type="button" data-check-scenario>Check Answer</button><p class="v26-scenario-result" data-scenario-result hidden aria-live="polite"></p></div></section>`;
+  return `<section class="v26-lesson-section" data-learning-mode="concept-check"><h2>Practice Scenario</h2><div class="v26-scenario" data-scenario data-correct="${Number(item.correct_index || 0)}" data-explanation="${escapeHtml(item.explanation || "")}"><p>${escapeHtml(item.question)}</p><fieldset><legend class="sr-only">Choose one answer</legend>${options.map((option, index) => `<label><input type="radio" name="lesson-scenario" value="${index}"/><span>${String.fromCharCode(65 + index)}</span><b>${escapeHtml(option)}</b></label>`).join("")}</fieldset><button class="v26-btn secondary" type="button" data-check-scenario>Check Answer</button><p class="v26-scenario-result" data-scenario-result hidden aria-live="polite"></p></div></section>`;
 }
 function bindScenario(container) {
   container.querySelector("[data-check-scenario]")?.addEventListener("click", () => {
@@ -116,10 +117,47 @@ function bindScenario(container) {
 function buildExercise(exercise, trackId) {
   if (!exercise || (!exercise.prompt && !exercise.title && !exercise.description)) return "";
   const checks = exercise.checks || [];
-  return `<section class="v26-lesson-section"><h2>Build Exercise</h2><div class="v26-build"><span>${escapeHtml(exercise.title || "Hands-on task")}</span><p>${escapeHtml(exercise.prompt || exercise.description || "")}</p>${exercise.starter_sql ? `<pre><code>${escapeHtml(exercise.starter_sql)}</code></pre>` : ""}${checks.length ? `<ul>${checks.map((check) => `<li>${escapeHtml(check)}</li>`).join("")}</ul>` : ""}<a href="#/exercises?track_id=${encodeURIComponent(trackId)}">Open the full Build Exercises workspace →</a></div></section>`;
+  return `<section class="v26-lesson-section" data-learning-mode="build-coach"><h2>Build Exercise</h2><div class="v26-build"><span>${escapeHtml(exercise.title || "Hands-on task")}</span><p>${escapeHtml(exercise.prompt || exercise.description || "")}</p>${exercise.starter_sql ? `<pre><code>${escapeHtml(exercise.starter_sql)}</code></pre>` : ""}${checks.length ? `<ul>${checks.map((check) => `<li>${escapeHtml(check)}</li>`).join("")}</ul>` : ""}<a href="#/exercises?track_id=${encodeURIComponent(trackId)}">Open the full Build Exercises workspace →</a></div></section>`;
 }
 function sources(rows = []) {
   if (!rows.length) return "";
   return `<section class="v26-lesson-section"><h2>Sources</h2><div class="v26-source-list">${rows.map((source) => { if (typeof source === "string") return `<span>${escapeHtml(source)}</span>`; const href = source.url || source.href; return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || source.label || href)} ↗</a>` : `<span>${escapeHtml(source.title || source.label || "Source")}</span>`; }).join("")}</div></section>`;
 }
 function formatDue(value) { if (!value) return "tomorrow"; const date = new Date(String(value).replace(" ", "T") + (String(value).includes("Z") ? "" : "Z")); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+
+
+function taskWorkbench(cert, item, lesson) {
+  const trust = lesson.source_trust || {};
+  const skill = encodeURIComponent(item.id);
+  const track = encodeURIComponent(cert.id);
+  return `<section class="v26-task-workbench">
+    <div class="v26-task-workbench-head"><div><p class="v26-kicker">Task Workbench</p><h2>Learn → check → simulate → build.</h2></div><span>Content ${escapeHtml(lesson.content_quality || "curated")} · ${escapeHtml(lesson.content_version || "versioned")}</span></div>
+    <div class="v26-task-workbench-grid">
+      <article><b>01</b><strong>Learn</strong><p>Work through the task lesson, decision rules, traps, and worked example.</p><em>Current view</em></article>
+      <article><b>02</b><strong>Concept Check</strong><p>Answer the embedded scenario before moving into a larger question set.</p><button type="button" data-workbench-scroll="concept-check">Open check ↓</button></article>
+      <article><b>03</b><strong>Exam Sim</strong><p>Put this task under exam-style pressure in a focused 10-question drill.</p><a href="#/practice?track_id=${track}&mode=drill&skill_id=${skill}&start=1&count=10">Start simulation →</a></article>
+      <article><b>04</b><strong>Build Coach</strong><p>Turn the concept into Snowflake SQL or an architecture decision with deterministic checks.</p><button type="button" data-workbench-scroll="build-coach">Open build coach ↓</button></article>
+    </div>
+    <div class="v26-task-workbench-links"><a href="#/quick-reference?track_id=${track}">Quick Reference</a><a href="#/glossary?track_id=${track}">Glossary</a><a href="#/exam-traps?track_id=${track}&domain=${encodeURIComponent(item.domain.id)}">Exam Trap Library</a><span>${trust.certification_verified_at ? `Certification facts verified ${escapeHtml(trust.certification_verified_at)}` : "Versioned source evidence"}</span></div>
+  </section>`;
+}
+
+function bindTaskWorkbench(container) {
+  container.querySelectorAll("[data-workbench-scroll]").forEach((button) => button.addEventListener("click", () => {
+    container.querySelector(`[data-learning-mode="${button.dataset.workbenchScroll}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+}
+
+function sourceTrust(lesson) {
+  const trust = lesson.source_trust || {};
+  return `<section class="v26-lesson-section v26-source-trust">
+    <div><span>Source trust</span><h2>Versioned curriculum with explicit evidence.</h2></div>
+    <dl>
+      <div><dt>Content quality</dt><dd>${escapeHtml(lesson.content_quality || "curated")}</dd></div>
+      <div><dt>Content version</dt><dd>${escapeHtml(lesson.content_version || "versioned")}</dd></div>
+      <div><dt>Certification facts verified</dt><dd>${escapeHtml(trust.certification_verified_at || "See source")}</dd></div>
+      <div><dt>Lesson sources</dt><dd>${Number(trust.source_count || 0)}</dd></div>
+    </dl>
+    ${trust.official_certification_url ? `<a href="${escapeHtml(trust.official_certification_url)}" target="_blank" rel="noopener noreferrer">Open official certification source ↗</a>` : ""}
+  </section>`;
+}
