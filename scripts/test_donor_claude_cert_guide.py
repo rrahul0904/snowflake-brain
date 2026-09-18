@@ -7,6 +7,7 @@ checks = [
     ("frontend/router-complete.js", '"#/exam-guide":"exam-guide-v26.js"'),
     ("frontend/views/exam-guide-v26.js", "/api/skills/catalog"),
     ("frontend/views/exam-guide-v26.js", "Blueprint map"),
+    ("frontend/views/exam-guide-v26.js", 'import { escapeHtml } from "../api.js";'),
     ("frontend/views/exam-guide-v26.js", "Exam Traps"),
     ("docs/DONOR_CLAUDE_CERT_GUIDE.md", "No parallel content store"),
 ]
