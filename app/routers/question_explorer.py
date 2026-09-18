@@ -87,7 +87,7 @@ def question_explorer_history(
         FROM seen
         JOIN questions q ON q.id=seen.question_id
         WHERE {" AND ".join(where)}
-        ORDER BY datetime(seen.last_served_at) DESC, q.id
+        ORDER BY seen.last_served_at DESC, q.id
         LIMIT ?
     """
     with connect() as conn:
