@@ -53,6 +53,7 @@ def main() -> None:
         "/static/views/certifications.js",
         "/static/views/membership-v26.js",
         "/static/views/info-v26.js",
+        "/static/views/exam-guide-v26.js",
         "/static/views/account-action-v26.js",
     ):
         response = client.get(path)
