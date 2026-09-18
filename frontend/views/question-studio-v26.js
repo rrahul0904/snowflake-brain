@@ -1,4 +1,4 @@
-import { escapeHtml } from "../ui.js";
+import { escapeHtml } from "../api.js";
 
 export const VIEW_ID = "leetquiz-question-studio";
 
