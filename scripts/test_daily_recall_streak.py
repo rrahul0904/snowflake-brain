@@ -45,6 +45,12 @@ def main() -> None:
     check(empty.status_code == 200, empty.text)
     check(empty.json()["streak_days"] == 0, "new candidate streak must start at zero")
 
+    invalid = client.post(
+        "/api/intelligence/daily-recall",
+        json={"track_id": "snowpro-core", "skill_id": "fabricated-task"},
+    )
+    check(invalid.status_code == 404, "fabricated recall task must be rejected")
+
     first = client.post(
         "/api/intelligence/daily-recall",
         json={"track_id": "snowpro-core", "skill_id": "snowflake-architecture"},
