@@ -1036,6 +1036,7 @@ def daily_recall_streak(
         "track_id": track_id,
         "streak_days": streak,
         "completed_today": len(today_skills),
+        "today_skill_ids": sorted(today_skills),
         "today": today.isoformat(),
         "last_activity_date": max(activity_dates).isoformat() if activity_dates else None,
     }
