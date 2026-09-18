@@ -19,7 +19,7 @@ checks = [
     ("app/public_discovery.py", "/discover/{certification_id}"),
     ("app/public_discovery.py", "/sitemap.xml"),
     ("scripts/audit_private_bank_quality.py", "EXPECTED_TOTAL = 1200"),
-    ("app/question_editorial.py", "EDITORIAL"),
+    ("app/question_editorial.py", "editorial_qa_runs"),
 ]
 
 for path, token in checks:
