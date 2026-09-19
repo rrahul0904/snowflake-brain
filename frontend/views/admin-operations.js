@@ -1,12 +1,25 @@
 import { escapeHtml } from "../api.js";
 
 export const VIEW_ID = "admin-operations";
-const sections = [["overview", "Overview"], ["registrations", "Registrations"], ["users", "Users"], ["subscriptions", "Subscriptions"], ["revenue", "Revenue"], ["usage", "Usage"], ["finops", "FinOps"], ["question-bank", "Question Bank"], ["learning", "Learning"], ["mocks", "Mocks"], ["auth", "Authentication"], ["system", "System"], ["database", "Database"], ["deployments", "Deployments"], ["audit", "Audit Log"], ["configuration", "Configuration"]];
+const sections = [["overview", "Overview"], ["registrations", "Registrations"], ["users", "Users"], ["subscriptions", "Subscriptions"], ["revenue", "Revenue"], ["usage", "Usage"], ["finops", "FinOps"], ["question-bank", "Question Bank"], ["question-feedback", "Question Corrections"], ["learning", "Learning"], ["mocks", "Mocks"], ["auth", "Authentication"], ["system", "System"], ["database", "Database"], ["deployments", "Deployments"], ["audit", "Audit Log"], ["configuration", "Configuration"]];
 const endpoint = (name) => `/api/admin/${name}`;
 const text = (value) => escapeHtml(value === null || value === undefined ? "—" : String(value));
 const number = (value) => value === null || value === undefined ? "—" : new Intl.NumberFormat().format(value);
 const money = (value) => value === null || value === undefined ? "Unavailable" : new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(value);
 const fetchAdmin = async (name) => { const response = await fetch(endpoint(name), { credentials: "same-origin" }); if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.detail?.message || body.detail || "Administrator access is required."); } return response.json(); };
+async function updateQuestionFeedback(id, status, resolutionNotes) {
+  const response = await fetch(`/api/admin/question-feedback/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, resolution_notes: resolutionNotes || "" }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail?.message || body.detail || "Unable to update question correction.");
+  }
+  return response.json();
+}
 function table(names, rows) { return rows.length ? `<div class="admin-table-wrap"><table><thead><tr>${names.map((name) => `<th>${text(name.replaceAll("_", " "))}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${names.map((name) => `<td>${text(row[name])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<p class="admin-empty">No records yet. Zero and unavailable states are shown honestly.</p>`; }
 function cards(items) { return `<div class="admin-kpis">${items.map(([label, value, note = ""]) => `<article><span>${text(label)}</span><strong>${value}</strong><small>${text(note)}</small></article>`).join("")}</div>`; }
 function details(data) { return `<dl>${Object.entries(data).map(([key, value]) => `<div><dt>${text(key.replaceAll("_", " "))}</dt><dd>${text(Array.isArray(value) ? value.join(", ") : value)}</dd></div>`).join("")}</dl>`; }
@@ -18,6 +31,7 @@ function render(name, data) {
   if (name === "revenue") return `<h2>Revenue <small>Evidence: ${text(data.evidence)}</small></h2>${cards([["Subscription revenue", money(data.subscription_revenue)], ["Exam pack revenue", money(data.exam_pack_revenue)], ["Refunds", money(data.refunds)], ["Net revenue", money(data.net_revenue)]])}<article class="admin-panel">${details({ failed_payments: data.failed_payments, evidence: data.evidence })}</article>`;
   if (name === "finops") return `${cards([["Monthly cost", money(data.summary.monthly_cost), data.summary.evidence.join(", ")], ["Cost / registered user", money(data.unit_economics.cost_per_registered_user)], ["Cost / paid user", money(data.unit_economics.cost_per_paid_user)]])}${table(["service_provider", "cost_category", "period_start", "amount", "evidence_classification", "measurement_source"], data.rows)}`;
   if (name === "question-bank") return `<div class="admin-grid"><article class="admin-panel"><h2>Release</h2>${details(data.release)}</article><article class="admin-panel"><h2>Quality</h2>${details(data.quality)}</article></div>${table(["bank_pool", "count"], data.pools)}`;
+  if (name === "question-feedback") return `<h2>Question Corrections <small>${number((data.feedback || []).length)} open</small></h2><p class="admin-note">Candidate reports are tied to questions they were actually served. Private question wording and answer keys are intentionally excluded from this queue.</p><div class="admin-feedback-queue">${(data.feedback || []).map((row) => `<article class="admin-panel" data-question-feedback-row="${row.id}"><div><span class="v26-kicker">${text(row.category)} · report #${number(row.id)}</span><h3>${text(row.question_id)}</h3><p>${text(row.description)}</p><small>Candidate: ${text(row.candidate_email)} · ${text(row.created_at)}</small></div><label><span>Status</span><select data-question-feedback-status><option value="triaged">Triaged</option><option value="resolved">Resolved</option><option value="rejected">Rejected</option></select></label><label><span>Resolution note</span><input type="text" maxlength="3000" data-question-feedback-note placeholder="Optional review note" /></label><button class="v26-btn secondary" type="button" data-question-feedback-save>Save decision</button><small data-question-feedback-result aria-live="polite"></small></article>`).join("") || '<p class="admin-empty">No open question corrections.</p>'}</div>`;
   if (name === "usage") return `<h2>Usage · last 30 days</h2>${table(["date", "questions_answered", "active_learners"], data.rows)}`;
   if (name === "learning") return `<h2>Learning activity <small>${text(data.reporting_timezone)}</small></h2>${table(["date", "questions_answered", "active_learners"], data.rows)}`;
   if (name === "mocks") return `<h2>Mock operations</h2>${cards([["Started today", number(data.starts_today)], ["Completed today", number(data.completed_today)], ["Stuck active", number(data.stuck_active)], ["Submission failures", number(data.submission_failures)]])}`;
@@ -32,7 +46,33 @@ function render(name, data) {
 export default async function adminOperations(root) {
   root.innerHTML = `<main class="admin-console"><aside class="admin-nav" aria-label="Admin sections"><p>Operations</p>${sections.map(([key, label]) => `<button type="button" data-admin="${key}">${label}</button>`).join("")}</aside><section class="admin-workspace"><header><div><p class="v26-kicker">Restricted control plane</p><h1>Administration</h1></div><p>Server-authorized reporting. Sensitive account data and private question text are excluded.</p></header><div data-admin-content aria-live="polite"></div></section></main>`;
   const content = root.querySelector("[data-admin-content]");
-  async function show(name) { root.querySelectorAll("[data-admin]").forEach((button) => button.classList.toggle("active", button.dataset.admin === name)); content.innerHTML = "Loading…"; try { content.innerHTML = render(name, await fetchAdmin(name)); } catch (error) { content.innerHTML = `<p class="admin-empty">${text(error.message || "Unable to load admin data.")}</p>`; } }
+  async function show(name) {
+    root.querySelectorAll("[data-admin]").forEach((button) => button.classList.toggle("active", button.dataset.admin === name));
+    content.innerHTML = "Loading…";
+    try {
+      content.innerHTML = render(name, await fetchAdmin(name));
+      if (name === "question-feedback") {
+        content.querySelectorAll("[data-question-feedback-save]").forEach((button) => button.addEventListener("click", async () => {
+          const row = button.closest("[data-question-feedback-row]");
+          const status = row?.querySelector("[data-question-feedback-status]")?.value || "triaged";
+          const note = row?.querySelector("[data-question-feedback-note]")?.value?.trim() || "";
+          const result = row?.querySelector("[data-question-feedback-result]");
+          button.disabled = true;
+          if (result) result.textContent = "Saving…";
+          try {
+            await updateQuestionFeedback(row.dataset.questionFeedbackRow, status, note);
+            if (result) result.textContent = "Saved.";
+            await show("question-feedback");
+          } catch (error) {
+            button.disabled = false;
+            if (result) result.textContent = error.message || "Unable to save.";
+          }
+        }));
+      }
+    } catch (error) {
+      content.innerHTML = `<p class="admin-empty">${text(error.message || "Unable to load admin data.")}</p>`;
+    }
+  }
   root.querySelectorAll("[data-admin]").forEach((button) => button.addEventListener("click", () => show(button.dataset.admin)));
   await show("overview");
 }
