@@ -132,6 +132,36 @@ elif [[ $MEDIA_STATUS -ne 1 ]]; then
   exit 1
 fi
 
+echo "== Public certification SEO/discovery =="
+"$PYTHON_BIN" scripts/test_public_discovery.py
+
+echo "== Private editorial source intake =="
+"$PYTHON_BIN" scripts/test_question_source_intake.py
+
+echo "== Served-question correction workflow =="
+"$PYTHON_BIN" scripts/test_question_feedback.py
+
+echo "== Persisted daily recall streak =="
+"$PYTHON_BIN" scripts/test_daily_recall_streak.py
+
+echo "== Donor ES-module import smoke =="
+"$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+
+echo "== LeetQuiz donor contract =="
+"$PYTHON_BIN" scripts/test_donor_leetquiz.py
+
+echo "== Claude Certification Guide donor contract =="
+"$PYTHON_BIN" scripts/test_donor_claude_cert_guide.py
+
+echo "== Clouding Academy donor contract =="
+"$PYTHON_BIN" scripts/test_donor_clouding_academy.py
+
+echo "== AcademyOS AI donor contract =="
+"$PYTHON_BIN" scripts/test_donor_academyos_ai.py
+
+echo "== Combined donor learning suite =="
+"$PYTHON_BIN" scripts/test_donor_learning_suite_integration.py
+
 echo "== Frontend syntax =="
 while IFS= read -r -d '' file; do
   "$NODE_BIN" --check "$file"
