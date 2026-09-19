@@ -61,6 +61,7 @@ _SERIAL_ID_TABLES = {
     "question_bank_release_events",
     "exam_entitlement_reservations",
     "feedback_submissions",
+    "question_feedback",
     "editorial_qa_runs",
     "editorial_findings",
     "editorial_review_events",
