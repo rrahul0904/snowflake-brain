@@ -12,6 +12,8 @@ checks = [
     ("frontend/views/daily-session-v26.js", "recordDailyRecall"),
     ("app/routers/intelligence.py", "/intelligence/daily-streak"),
     ("scripts/test_daily_recall_streak.py", "localStorage"),
+    ("scripts/test_daily_recall_streak.py", "primary_skill"),
+    ("scripts/test_daily_recall_streak.py", "configured_skills"),
     ("docs/DONOR_CLOUDING_ACADEMY.md", "does not create a second curriculum"),
 ]
 
