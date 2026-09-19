@@ -21,6 +21,9 @@ checks = [
     ("app/public_discovery.py", "/sitemap.xml"),
     ("scripts/audit_private_bank_quality.py", "EXPECTED_TOTAL = 1200"),
     ("app/question_editorial.py", "editorial_qa_runs"),
+    ("app/production_schema.py", "\"question_feedback\""),
+    ("app/account_lifecycle.py", "\"question_corrections\""),
+    ("app/account_lifecycle.py", "DELETE FROM question_feedback"),
 ]
 
 for path, token in checks:
