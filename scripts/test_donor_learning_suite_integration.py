@@ -32,8 +32,8 @@ views = {
         "unanswered_only",
     ),
     "frontend/views/exam-guide-v26.js": (
-        'import { escapeHtml } from "../api.js";',
-        "/api/skills/catalog",
+        "getCertificationCatalog",
+        "Source verification:",
         "Blueprint map",
     ),
     "frontend/views/daily-session-v26.js": (
