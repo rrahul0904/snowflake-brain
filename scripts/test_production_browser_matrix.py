@@ -184,13 +184,20 @@ def assert_donor_learning_routes(page: Page, profile: Profile, *, authenticated:
             ("#/question-studio", "Question Studio"),
         ]
         if authenticated
-        else [("#/exam-guide", "Exam Guide")]
+        else [("#/exam-guide", None)]
     )
     visited: list[str] = []
     for route, heading in routes:
         page.goto(f"{BASE_URL}/{route}?track_id=snowpro-core", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, route)
-        page.locator("h1").filter(has_text=heading).first.wait_for(state="visible", timeout=10_000)
+        if route == "#/exam-guide":
+            page.locator(".v26-exam-fact-grid").wait_for(state="visible", timeout=10_000)
+            page.locator("h1").first.wait_for(state="visible", timeout=10_000)
+            guide_text = page.locator("#view-root").inner_text()
+            if "Source verification:" not in guide_text or "Official Snowflake page" not in guide_text:
+                raise AssertionError("public exam guide provenance contract missing")
+        else:
+            page.locator("h1").filter(has_text=heading).first.wait_for(state="visible", timeout=10_000)
         assert_accessible_baseline(page, f"{profile.name} {route}")
         assert_client_clean(page, f"{profile.name} {route}")
         visited.append(route)
