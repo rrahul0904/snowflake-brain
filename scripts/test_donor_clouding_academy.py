@@ -6,7 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = [
     ("frontend/router-complete.js", '"#/daily-session":"daily-session-v26.js"'),
     ("frontend/views/daily-session-v26.js", "Daily Certification Session"),
-    ("frontend/views/daily-session-v26.js", 'import { escapeHtml } from "../api.js";'),
+    ("frontend/views/daily-session-v26.js", "getDailyStreak"),
+    ("frontend/views/daily-session-v26.js", "getSkillMap"),
     ("frontend/views/daily-session-v26.js", "Blitz recall"),
     ("frontend/views/daily-session-v26.js", "Architecture Builder"),
     ("frontend/views/daily-session-v26.js", "recordDailyRecall"),
