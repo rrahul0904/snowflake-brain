@@ -6,9 +6,10 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = [
     ("frontend/router-complete.js", '"#/question-studio":"question-studio-v26.js"'),
     ("frontend/views/question-studio-v26.js", "Question Studio"),
-    ("frontend/views/question-studio-v26.js", 'import { escapeHtml } from "../api.js";'),
-    ("frontend/views/question-studio-v26.js", "/api/skills/map"),
+    ("frontend/views/question-studio-v26.js", "getSkillMap"),
+    ("frontend/views/question-studio-v26.js", "getStudyLesson"),
     ("frontend/views/question-studio-v26.js", "unanswered_only"),
+    ("frontend/views/question-studio-v26.js", "Socratic Coach"),
     ("docs/DONOR_LEETQUIZ.md", "no public question inventory"),
     ("app/routers/question_feedback.py", "/questions/{question_id}/feedback"),
     ("frontend/views/practice-v26.js", "Report question"),
