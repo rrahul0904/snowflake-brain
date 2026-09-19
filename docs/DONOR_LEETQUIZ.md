@@ -12,6 +12,8 @@ Implemented:
 - mistake/adaptive repair handoff
 - candidate question-correction reports available only after the candidate was served the question
 - candidate correction history plus admin editorial triage/resolution API
+- correction reports participate in candidate data export and account deletion without exposing reviewer identity or answer data
+- hosted PostgreSQL schema verification treats the correction table as required candidate runtime state and grants only the normal candidate-write privilege class
 - private text/Markdown/PDF/image editorial intake with source/transcript hashing and official-source provenance
 - PDF/image intake fails closed without a human-supplied transcript; no OCR or model output is silently treated as authoritative text
 - all source intake remains `needs_review`, `import_ready=false`, and cannot auto-generate or activate questions
