@@ -94,6 +94,8 @@ export const getQuestion = (id) => api(`/api/questions/${encodeURIComponent(id)}
 export const startQuiz = (payload) => api("/api/certification-quiz/start", { method: "POST", body: JSON.stringify(payload) });
 export const gradeQuiz = (payload) => api("/api/quiz/grade", { method: "POST", body: JSON.stringify(payload) });
 export const recordAttempt = (id, payload) => api(`/api/questions/${encodeURIComponent(id)}/attempt`, { method: "POST", body: JSON.stringify(payload) });
+export const submitQuestionFeedback = (id, payload) => api(`/api/questions/${encodeURIComponent(id)}/feedback`, { method: "POST", body: JSON.stringify(payload) });
+export const getQuestionFeedback = (params = {}) => api(`/api/question-feedback?${new URLSearchParams(params)}`);
 export const recordMockSession = (payload) => api("/api/certification-mock/record", { method: "POST", body: JSON.stringify(payload) });
 export const getMockConfig = (params = {}) => api(`/api/mock/config?${new URLSearchParams(params)}`);
 export const startMockSession = (payload) => api("/api/mock/sessions", { method: "POST", body: JSON.stringify(payload) });
