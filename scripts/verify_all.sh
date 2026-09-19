@@ -141,6 +141,9 @@ echo "== Private editorial source intake =="
 echo "== Served-question correction workflow =="
 "$PYTHON_BIN" scripts/test_question_feedback.py
 
+echo "== Persisted daily recall streak =="
+"$PYTHON_BIN" scripts/test_daily_recall_streak.py
+
 echo "== Donor ES-module import smoke =="
 "$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
 
