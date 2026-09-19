@@ -76,7 +76,7 @@ def main() -> None:
 
     duplicate = client.post(
         "/api/intelligence/daily-recall",
-        json={"track_id": "snowpro-core", "skill_id": "snowflake-architecture"},
+        json={"track_id": "snowpro-core", "skill_id": primary_skill},
     )
     check(duplicate.status_code == 200, duplicate.text)
     check(duplicate.json()["recorded"] is False, "same skill/day recall must be idempotent")
