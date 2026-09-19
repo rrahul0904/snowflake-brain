@@ -45,6 +45,20 @@ def main() -> None:
     check(empty.status_code == 200, empty.text)
     check(empty.json()["streak_days"] == 0, "new candidate streak must start at zero")
 
+    skill_map = client.get("/api/skills/map")
+    check(skill_map.status_code == 200, skill_map.text)
+    certifications = skill_map.json().get("certifications") or []
+    core = next((row for row in certifications if row.get("id") == "snowpro-core"), None)
+    check(core is not None, "SnowPro Core skill map is missing")
+    configured_skills = [
+        str(skill.get("id") or "")
+        for domain in (core.get("domains") or [])
+        for skill in (domain.get("skills") or [])
+        if skill.get("id")
+    ]
+    check(configured_skills, "SnowPro Core has no configured recall tasks")
+    primary_skill = configured_skills[0]
+
     invalid = client.post(
         "/api/intelligence/daily-recall",
         json={"track_id": "snowpro-core", "skill_id": "fabricated-task"},
@@ -53,7 +67,7 @@ def main() -> None:
 
     first = client.post(
         "/api/intelligence/daily-recall",
-        json={"track_id": "snowpro-core", "skill_id": "snowflake-architecture"},
+        json={"track_id": "snowpro-core", "skill_id": primary_skill},
     )
     check(first.status_code == 200, first.text)
     check(first.json()["recorded"] is True, "first daily recall should persist")
@@ -70,7 +84,7 @@ def main() -> None:
 
     now = datetime.now(timezone.utc)
     with connect() as conn:
-        for offset, skill in ((1, "security-access-principles"), (2, "bulk-load-unload")):
+        for offset, skill in ((1, configured_skills[min(1, len(configured_skills) - 1)]), (2, configured_skills[min(2, len(configured_skills) - 1)])):
             created = (now - timedelta(days=offset)).strftime("%Y-%m-%d %H:%M:%S")
             conn.execute(
                 """
@@ -84,7 +98,7 @@ def main() -> None:
     check(persisted.status_code == 200, persisted.text)
     body = persisted.json()
     check(body["streak_days"] == 3, f"expected three persisted consecutive days: {body}")
-    check("snowflake-architecture" in body["today_skill_ids"], "today skill state is not persisted")
+    check(primary_skill in body["today_skill_ids"], "today skill state is not persisted")
 
     view = (ROOT / "frontend" / "views" / "daily-session-v26.js").read_text(encoding="utf-8")
     check("localStorage" not in view, "daily recall must not fall back to browser-local persistence")
