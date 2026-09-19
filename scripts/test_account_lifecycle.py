@@ -221,6 +221,7 @@ def check_google_unlink_safeguard() -> None:
 
 
 def seed_export_and_delete_data(candidate_id: int) -> None:
+    ensure_question_feedback_schema()
     with connect() as conn:
         conn.execute(
             """
@@ -262,7 +263,6 @@ def seed_export_and_delete_data(candidate_id: int) -> None:
             "INSERT INTO feedback_submissions(title,category,description,route,track_id,candidate_id) VALUES (?,?,?,?,?,?)",
             ("Lifecycle feedback", "account", "Regression row", "#/account", "snowpro-core", candidate_id),
         )
-        ensure_question_feedback_schema()
         conn.execute(
             "INSERT INTO question_feedback(question_id,candidate_id,category,description,status,resolution_notes) VALUES (?,?,?,?,?,?)",
             ("account-lifecycle-q1", candidate_id, "explanation", "Lifecycle correction", "resolved", "Reviewed"),
