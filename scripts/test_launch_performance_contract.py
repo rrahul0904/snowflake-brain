@@ -44,9 +44,9 @@ def test_first_paint_does_not_wait_for_auth() -> None:
 
 def test_static_frontend_build() -> None:
     config = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
-    assert config.get("buildCommand") == "python3 scripts/build_vercel_static.py"
+    assert config.get("buildCommand") == "python3 build_vercel_static.py"
 
-    subprocess.run([sys.executable, "scripts/build_vercel_static.py"], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, "build_vercel_static.py"], cwd=ROOT, check=True)
     index = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
     assert index.count('rel="stylesheet"') == 1
     assert "/static/styles/app.bundle.css" in index
