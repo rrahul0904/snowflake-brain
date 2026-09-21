@@ -229,6 +229,12 @@ def _rewrite_sql(statement: str) -> str:
         flags=re.IGNORECASE,
     )
     rewritten = re.sub(
+        r"\bdatetime\s*\(\s*'now'\s*,\s*'start of (day|month|year)'\s*\)",
+        lambda match: f"DATE_TRUNC('{match.group(1).lower()}', CURRENT_TIMESTAMP)",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
         r"\bdatetime\s*\(\s*'now'\s*,\s*\?\s*\)",
         r"(CURRENT_TIMESTAMP + CAST(? AS INTERVAL))",
         rewritten,
