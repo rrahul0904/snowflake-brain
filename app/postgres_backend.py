@@ -216,6 +216,36 @@ def _rewrite_sql(statement: str) -> str:
     )
     rewritten = re.sub(r"\bAUTOINCREMENT\b", "", rewritten, flags=re.IGNORECASE)
     rewritten = re.sub(r"\bIFNULL\s*\(", "COALESCE(", rewritten, flags=re.IGNORECASE)
+    # Shared application SQL intentionally retains a small SQLite-compatible
+    # surface for local/test parity. Translate its date/time helpers here so
+    # request-serving PostgreSQL never receives undefined SQLite functions.
+    rewritten = re.sub(
+        r"\bdatetime\s*\(\s*'now'\s*,\s*'([+-])\s*(\d+)\s+(minute|minutes|hour|hours|day|days)'\s*\)",
+        lambda match: (
+            f"(CURRENT_TIMESTAMP {'+' if match.group(1) == '+' else '-'} "
+            f"INTERVAL '{match.group(2)} {match.group(3).lower()}')"
+        ),
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
+        r"\bdatetime\s*\(\s*'now'\s*\)",
+        "CURRENT_TIMESTAMP",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
+        r"\bdate\s*\(\s*'now'\s*\)",
+        "CURRENT_DATE",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
+        r"\bdatetime\s*\(\s*([A-Za-z_][A-Za-z0-9_.]*|\?)\s*\)",
+        r"CAST(\1 AS TIMESTAMPTZ)",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
     scalar_atom = r"[A-Za-z0-9_.+-]+"
     rewritten = re.sub(
         rf"\bMAX\s*\(\s*({scalar_atom})\s*,\s*({scalar_atom})\s*\)",
