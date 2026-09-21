@@ -235,6 +235,12 @@ def _rewrite_sql(statement: str) -> str:
         flags=re.IGNORECASE,
     )
     rewritten = re.sub(
+        r"\bCOALESCE\s*\(\s*([A-Za-z_][A-Za-z0-9_.]*)\s*,\s*datetime\s*\(\s*'now'\s*\)\s*\)",
+        r"COALESCE(\1, CAST(CURRENT_TIMESTAMP AS TEXT))",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
         r"\bdatetime\s*\(\s*'now'\s*\)",
         "CURRENT_TIMESTAMP",
         rewritten,
