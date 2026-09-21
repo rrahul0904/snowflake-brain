@@ -5,9 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from app.postgres_backend import _rewrite_sql
-
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from app.postgres_backend import _rewrite_sql  # noqa: E402
 
 
 def test_postgres_datetime_compatibility() -> None:
@@ -25,6 +26,10 @@ def test_postgres_datetime_compatibility() -> None:
         "SELECT 1 WHERE datetime(observed_at) >= datetime('now', ?)": [
             "CAST(observed_at AS TIMESTAMPTZ)",
             "CURRENT_TIMESTAMP + CAST(%s AS INTERVAL)",
+        ],
+        "SELECT 1 WHERE datetime(started_at) >= datetime('now','start of month')": [
+            "CAST(started_at AS TIMESTAMPTZ)",
+            "DATE_TRUNC('month', CURRENT_TIMESTAMP)",
         ],
         "UPDATE candidate_sessions SET revoked_at=COALESCE(revoked_at,datetime('now')) WHERE candidate_id=?": [
             "COALESCE(revoked_at, CAST(CURRENT_TIMESTAMP AS TEXT))",
