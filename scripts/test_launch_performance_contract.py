@@ -26,6 +26,9 @@ def test_postgres_datetime_compatibility() -> None:
             "CAST(observed_at AS TIMESTAMPTZ)",
             "CURRENT_TIMESTAMP + CAST(%s AS INTERVAL)",
         ],
+        "UPDATE candidate_sessions SET revoked_at=COALESCE(revoked_at,datetime('now')) WHERE candidate_id=?": [
+            "COALESCE(revoked_at, CAST(CURRENT_TIMESTAMP AS TEXT))",
+        ],
     }
     for source, expected_fragments in cases.items():
         rewritten = _rewrite_sql(source)
