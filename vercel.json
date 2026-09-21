@@ -57,5 +57,5 @@
       ]
     }
   ],
-  "buildCommand": "python3 scripts/build_vercel_static.py"
+  "buildCommand": "python3 build_vercel_static.py"
 }
