@@ -114,6 +114,9 @@ echo "== Candidate learning intelligence loop =="
 echo "== Production observability and operational reliability =="
 "$PYTHON_BIN" scripts/test_production_observability.py
 
+echo "== Launch performance and PostgreSQL SQL compatibility =="
+"$PYTHON_BIN" scripts/test_launch_performance_contract.py
+
 echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 
