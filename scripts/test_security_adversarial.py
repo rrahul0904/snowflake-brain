@@ -104,6 +104,45 @@ def main() -> None:
                 check(traversal.status_code != 200, "path traversal returned a source file")
                 check("password_digest" not in traversal.text, "path traversal exposed authentication source")
 
+            # Cross-account object access must fail closed (BOLA / IDOR).
+            quiz = client.post(
+                "/api/certification-quiz/start",
+                json={"track_id": "snowpro-core", "mode": "diagnostic", "count": 1},
+            )
+            check(quiz.status_code == 200, f"candidate quiz setup failed: {quiz.text}")
+            questions = quiz.json().get("questions") or []
+            check(bool(questions), "candidate quiz returned no questions for isolation probe")
+            question_id = str(questions[0]["id"])
+            check(
+                client.post(f"/api/questions/{question_id}/bookmark", json={}).status_code == 200,
+                "candidate bookmark setup failed",
+            )
+            check(
+                client.post(
+                    f"/api/questions/{question_id}/notes",
+                    json={"body": "owner-only security note"},
+                ).status_code == 200,
+                "candidate note setup failed",
+            )
+            with TestClient(app) as peer:
+                peer_registration = peer.post(
+                    "/api/auth/register",
+                    json={
+                        "display_name": "Peer Candidate",
+                        "email": "peer-security-candidate@example.com",
+                        "password": "LongPeerPassword!123",
+                    },
+                )
+                check(peer_registration.status_code == 201, f"peer registration failed: {peer_registration.text}")
+                check(
+                    peer.get(f"/api/questions/{question_id}/bookmark").status_code == 404,
+                    "cross-account bookmark lookup exposed candidate state",
+                )
+                check(
+                    peer.get(f"/api/questions/{question_id}/notes").status_code == 404,
+                    "cross-account note lookup exposed candidate state",
+                )
+
             # Logout revokes the server-side session, not just the browser cookie.
             logout = client.post("/api/auth/logout")
             check(logout.status_code == 200, "logout failed")

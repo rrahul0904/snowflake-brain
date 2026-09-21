@@ -119,7 +119,13 @@ def validate_product_gaps() -> None:
     curriculum = read("frontend/views/curriculum-v26.js")
     check("data-sidebar-skill" in sidebar and "v26-task-complete" in sidebar, "sidebar completion marker missing")
     check("syncSidebarCompletion" in lesson and "completedSkillIds" in sidebar, "lesson completion does not update sidebar")
-    check("Promise.all" in curriculum and "getTaskProgress" in curriculum, "curriculum completion must use one progress fetch")
+    check(
+        "getHomeSummary" in curriculum
+        and "Promise.all" not in curriculum
+        and "getTaskProgress" not in curriculum
+        and "getSkillSummary" not in curriculum,
+        "curriculum completion must use one aggregate candidate-summary fetch",
+    )
 
     result = read("frontend/views/exam-result-v26.js")
     check('reviewFilter === "unanswered"' in result, "unanswered review filter missing")
