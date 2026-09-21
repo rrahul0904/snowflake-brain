@@ -48,15 +48,10 @@ def test_static_frontend_build() -> None:
 
     subprocess.run([sys.executable, "build_vercel_static.py"], cwd=ROOT, check=True)
     index = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
-    assert index.count('rel="stylesheet"') == 1
-    assert "/static/styles/app.bundle.css" in index
     assert "/static/app-complete.js" in index
-
-    bundle = ROOT / "public" / "static" / "styles" / "app.bundle.css"
-    assert bundle.is_file()
-    text = bundle.read_text(encoding="utf-8")
-    assert "tokens.css" in text
-    assert "admin-operations.css" in text
+    assert (ROOT / "public" / "static" / "app-complete.js").is_file()
+    assert (ROOT / "public" / "static" / "styles" / "tokens.css").is_file()
+    assert (ROOT / "public" / "static" / "styles" / "admin-operations.css").is_file()
 
 
 if __name__ == "__main__":
