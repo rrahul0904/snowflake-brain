@@ -22,6 +22,10 @@ def test_postgres_datetime_compatibility() -> None:
             "CAST(expires_at AS TIMESTAMPTZ)",
             "CAST(%s AS TIMESTAMPTZ)",
         ],
+        "SELECT 1 WHERE datetime(observed_at) >= datetime('now', ?)": [
+            "CAST(observed_at AS TIMESTAMPTZ)",
+            "CURRENT_TIMESTAMP + CAST(%s AS INTERVAL)",
+        ],
     }
     for source, expected_fragments in cases.items():
         rewritten = _rewrite_sql(source)
