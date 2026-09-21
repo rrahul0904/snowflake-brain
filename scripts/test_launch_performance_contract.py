@@ -42,6 +42,14 @@ def test_first_paint_does_not_wait_for_auth() -> None:
     )
 
 
+def test_curriculum_uses_single_summary_request() -> None:
+    source = (ROOT / "frontend" / "views" / "curriculum-v26.js").read_text(encoding="utf-8")
+    assert "getHomeSummary" in source
+    assert "getSkillSummary" not in source
+    assert "getTaskProgress" not in source
+    assert "getSkillMap" not in source
+
+
 def test_static_frontend_build() -> None:
     config = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
     assert config.get("buildCommand") == "python3 build_vercel_static.py"
@@ -57,5 +65,6 @@ def test_static_frontend_build() -> None:
 if __name__ == "__main__":
     test_postgres_datetime_compatibility()
     test_first_paint_does_not_wait_for_auth()
+    test_curriculum_uses_single_summary_request()
     test_static_frontend_build()
     print("Launch performance contract passed.")
