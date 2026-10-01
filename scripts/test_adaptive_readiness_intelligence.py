@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -22,6 +23,7 @@ from app.auth import create_candidate  # noqa: E402
 from app.config import DATABASE_BACKEND  # noqa: E402
 from app.database import connect, run_migrations  # noqa: E402
 from app.learning_intelligence import ensure_learning_intelligence_schema  # noqa: E402
+from app.mock_exam import save_answer, submit_session  # noqa: E402
 from app.question_bank import import_question_bank_payload  # noqa: E402
 from app.question_bank_releases import (  # noqa: E402
     activate_release,
@@ -156,10 +158,10 @@ def seed_candidate_evidence(candidate_id: int, question_ids: list[str]) -> None:
         conn.execute(
             """
             INSERT INTO exam_sessions(
-              track_id,candidate_id,mode,status,total_questions,raw_accuracy,weighted_accuracy,scaled_score,finished_at
-            ) VALUES (?,?,?,'submitted',100,?,?,?,datetime('now','-2 days'))
+              track_id,candidate_id,mode,status,total_questions,raw_accuracy,weighted_accuracy,scaled_score,finished_at,configuration_json
+            ) VALUES (?,?,?,'submitted',100,?,?,?,datetime('now','-2 days'),?)
             """,
-            ("snowpro-core", candidate_id, "exam_full_mock", 0.72, 0.72, 720),
+            ("snowpro-core", candidate_id, "exam_full_mock", 0.72, 0.72, 720, '{"source_kind":"legacy"}'),
         )
 
 
@@ -200,12 +202,54 @@ def main() -> None:
         seed_candidate_evidence(primary_id, question_ids)
         seed_sparse_candidate(sparse_id, question_ids[-1])
 
+        # Exercise the same finished-session state written by the canonical
+        # mock submit path, with a result score on the production 0–1000 scale.
+        with connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO exam_sessions(
+                  track_id,candidate_id,mode,status,total_questions,duration_seconds,
+                  configuration_json,finished_at
+                ) VALUES ('snowpro-core',?,'exam_quick_mock','in_progress',5,3600,'{}',NULL)
+                """,
+                (primary_id,),
+            )
+            canonical_session_id = int(cursor.lastrowid)
+            for position, question_id in enumerate(question_ids[:5], 1):
+                question = conn.execute(
+                    "SELECT options_json,correct_json FROM questions WHERE id=?", (question_id,)
+                ).fetchone()
+                conn.execute(
+                    """
+                    INSERT INTO exam_session_questions(
+                      session_id,question_id,position,options_json,correct_positions_json
+                    ) VALUES (?,?,?,?,?)
+                    """,
+                    (canonical_session_id, question_id, position, question["options_json"], question["correct_json"]),
+                )
+            first = conn.execute(
+                "SELECT correct_positions_json FROM exam_session_questions WHERE session_id=? AND position=1",
+                (canonical_session_id,),
+            ).fetchone()
+        save_answer(canonical_session_id, question_ids[0], json.loads(first["correct_positions_json"]))
+        submitted = submit_session(canonical_session_id)
+        assert submitted["status"] == "finished"
+        assert 0 <= submitted["scaled_score"] <= 1000
+
+        with connect() as conn:
+            canonical_mock = conn.execute(
+                "SELECT status,scaled_score FROM exam_sessions WHERE id=?", (canonical_session_id,)
+            ).fetchone()
+        assert canonical_mock["status"] == "finished"
+        assert int(canonical_mock["scaled_score"]) > 0
+
         primary_result = build_readiness(primary_id, "snowpro-core", persist=True)
         assert 0 <= primary_result["readiness_score"] <= 100
         assert primary_result["evidence_confidence"] in {"low", "medium", "high"}
         assert primary_result["runway_days"] is not None and 15 <= primary_result["runway_days"] <= 19
         assert 15 <= primary_result["recommended_daily_minutes"] <= 180
         assert primary_result["evidence"]["probable_guess_count"] >= 3
+        assert primary_result["evidence"]["recent_mock_count"] == 1, primary_result["evidence"]
         assert primary_result["evidence"]["srs_due"] == 2
         assert primary_result["evidence"]["srs_overdue"] >= 1
         assert primary_result["components"]["calibration"] < 100

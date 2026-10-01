@@ -23,7 +23,7 @@ Certification
 
 `app/main.py` owns the FastAPI application, production middleware, read-only schema verification, readiness endpoints and router registration. `frontend/index-v26.html` is the only active SPA shell and loads `frontend/app-complete.js` plus `frontend/router-complete.js`.
 
-Public SPA routes are limited to home, membership, about, changelog, privacy and secure account-action links. Certification study routes require a candidate session.
+Public SPA routes include home, the certification catalog, the source-verified Exam Guide, membership information, about, content-integrity, terms, changelog, privacy, and secure account-action links. Curriculum lessons, practice, labs, mock exams, readiness, candidate progress, Question Studio, Daily Session, Practice Hub, and candidate history require an authenticated candidate session.
 
 ## Configuration and authored content
 
@@ -114,6 +114,10 @@ Production requires HTTPS, secure cookies, PostgreSQL, account-email webhook del
 - `mock-start-v26.js`
 - `exam-session-v26.js`
 - `exam-result-v26.js`
+- `exam-guide-v26.js`
+- `question-studio-v26.js`
+- `daily-session-v26.js`
+- `practice-hub-v26.js`
 - `lookup-v26.js`
 - `exercises-v26.js`
 - `reference.js`

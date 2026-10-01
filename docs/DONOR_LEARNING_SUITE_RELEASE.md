@@ -2,11 +2,11 @@
 
 This document records the final hosted cutover contract for the combined LeetQuiz, Claude Certification Guide, Clouding Academy, and AcademyOS AI integration.
 
-## Repository certification
+## Historical certification snapshot
 
 The combined integration branch is `feat/donor-learning-suite-integration`.
 
-Current certified integration head:
+This section records the September 2026 certification snapshot for commit:
 
 - Git SHA: `dfaed09fc19ea1dbf60bd35d92bcdf98a88a95f8`
 - GitHub PR: #57
@@ -22,7 +22,15 @@ Current certified integration head:
 - Reverse Engineering Completeness: passed
 - Vercel build/deployment state: READY
 
-These checks certify the code, migrations, security contracts, browser integration, and isolated PostgreSQL convergence. They do **not** prove that the shared managed PostgreSQL database has already received a new migration.
+These checks are historical evidence for that SHA only. They do **not** certify later heads or prove that the shared managed PostgreSQL database received a new migration.
+
+## Current convergence audit (2026-10-01)
+
+The live `main` branch is `9b7dac244b978a67c3ac08449f970b921fcdb80f`. PR #57 is open as a draft at `8ae0ae3dbf3b9b70a57ce60b507f108ef1de5061`; GitHub reports its merge base clean and all 23 check runs on that exact head succeeded. The PR has no submitted reviews and no inline review comments. Main branch protection settings require authenticated access and were not independently revalidated.
+
+The candidate preview hostname is protected by Vercel Authentication: `/api/health`, `/api/ready`, and `/api/release` each return HTTP 302 to the access gate without an authorized preview session. The production hostname currently reports main SHA `9b7dac244b978a67c3ac08449f970b921fcdb80f`, deployment `dpl_ApsPkQf7R1HZ1tZXrap95nndn5rU`, and healthy PostgreSQL readiness. That production observation certifies the existing baseline only.
+
+The local source audit found three P1 defects in the candidate Practice Hub/readiness flow: it did not display canonical readiness and mock-history fields, and adaptive readiness ignored completed sessions because it queried the wrong status. These are being corrected and require new exact-SHA certification. No current candidate preview runtime, hosted database schema, Vercel deployment metadata, or runtime logs have been verified.
 
 ## Required hosted database cutover
 

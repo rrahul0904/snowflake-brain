@@ -149,6 +149,7 @@ echo "== Persisted daily recall streak =="
 
 echo "== Donor ES-module import smoke =="
 "$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+"$NODE_BIN" scripts/test_practice_hub_render.mjs
 
 echo "== LeetQuiz donor contract =="
 "$PYTHON_BIN" scripts/test_donor_leetquiz.py
