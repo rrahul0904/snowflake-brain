@@ -76,6 +76,21 @@ def _validate_request_url(url: str, *, allow_local: bool = False) -> str:
     return (parsed.hostname or "").lower()
 
 
+def _safe_cli_diagnostic(stderr: bytes) -> str:
+    lines = [line.strip() for line in stderr.decode("utf-8", "ignore").splitlines() if line.strip()]
+    diagnostic = lines[-1][:240] if lines else ""
+    token = os.environ.get("VERCEL_TOKEN", "")
+    if token:
+        diagnostic = diagnostic.replace(token, "[redacted]")
+    diagnostic = re.sub(
+        r"(?i)(authorization\s*:\s*bearer\s+|x-vercel-protection-bypass\s*[:=]\s*|(?:token|secret|password|cookie)\s*[:=]\s*)[^\s,;]+",
+        r"\1[redacted]",
+        diagnostic,
+    )
+    diagnostic = re.sub(r"([?&][^=\s&]+=)[^&\s]+", r"\1[redacted]", diagnostic)
+    return diagnostic
+
+
 def _vercel_cli_get(url: str, *, timeout: float) -> httpx.Response:
     scope = os.environ.get("VERCEL_SCOPE", "")
     with tempfile.TemporaryDirectory(prefix="vercel-probe-") as temp_dir:
@@ -119,17 +134,8 @@ def _vercel_cli_get(url: str, *, timeout: float) -> httpx.Response:
                 reason = "vercel_team_scope_denied"
             else:
                 reason = "vercel_cli_nonzero_exit"
-            # Keep a short clue for diagnosis while stripping values that could
-            # carry authentication material from CLI diagnostics.
-            safe_diagnostic = diagnostic.splitlines()[0][:180] if diagnostic else ""
-            token = os.environ.get("VERCEL_TOKEN", "")
-            if token:
-                safe_diagnostic = safe_diagnostic.replace(token, "[redacted]")
-            safe_diagnostic = re.sub(
-                r"(?i)(authorization\s*:\s*bearer\s+|x-vercel-protection-bypass\s*[:=]\s*)[^\s,;]+",
-                r"\1[redacted]",
-                safe_diagnostic,
-            )
+            # Keep only a short final clue and strip common credential forms.
+            safe_diagnostic = _safe_cli_diagnostic(result.stderr)
             raise RuntimeError(f"vercel_cli_request_failed:{reason}:{safe_diagnostic}")
 
         raw_headers = headers_path.read_bytes() if headers_path.exists() else b""

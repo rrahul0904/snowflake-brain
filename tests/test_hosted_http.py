@@ -46,7 +46,14 @@ def test_vercel_get_redacts_cli_error_to_safe_classification(monkeypatch) -> Non
         hosted_http.subprocess,
         "run",
         lambda command, **kwargs: subprocess.CompletedProcess(
-            command, 1, stdout=b"", stderr=b"Deployment protection bypass unavailable for project"
+            command,
+            1,
+            stdout=b"",
+            stderr=(
+                b"Vercel CLI 48.8.0 curl (beta)\n"
+                b"Deployment protection bypass unavailable for project\n"
+                b"Authorization: Bearer test-token\n"
+            ),
         ),
     )
 
@@ -56,6 +63,8 @@ def test_vercel_get_redacts_cli_error_to_safe_classification(monkeypatch) -> Non
             hosted_http.get(client, "https://snowflakecertificationguide-bpsukc6cm-rrahul0904-5013s-projects.vercel.app/api/health")
         except RuntimeError as exc:
             assert str(exc).startswith("vercel_cli_request_failed:protection_bypass_unavailable:")
+            assert "Authorization: Bearer [redacted]" in str(exc)
+            assert "test-token" not in str(exc)
         else:
             raise AssertionError("expected a sanitized Vercel CLI failure")
     finally:
