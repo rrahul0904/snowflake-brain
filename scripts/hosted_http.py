@@ -76,21 +76,6 @@ def _validate_request_url(url: str, *, allow_local: bool = False) -> str:
     return (parsed.hostname or "").lower()
 
 
-def _safe_cli_diagnostic(stderr: bytes) -> str:
-    lines = [line.strip() for line in stderr.decode("utf-8", "ignore").splitlines() if line.strip()]
-    diagnostic = lines[-1][:240] if lines else ""
-    token = os.environ.get("VERCEL_TOKEN", "")
-    if token:
-        diagnostic = diagnostic.replace(token, "[redacted]")
-    diagnostic = re.sub(
-        r"(?i)(authorization\s*:\s*bearer\s+|x-vercel-protection-bypass\s*[:=]\s*|(?:token|secret|password|cookie)\s*[:=]\s*)[^\s,;]+",
-        r"\1[redacted]",
-        diagnostic,
-    )
-    diagnostic = re.sub(r"([?&][^=\s&]+=)[^&\s]+", r"\1[redacted]", diagnostic)
-    return diagnostic
-
-
 def _vercel_cli_get(url: str, *, timeout: float) -> httpx.Response:
     scope = os.environ.get("VERCEL_SCOPE", "")
     with tempfile.TemporaryDirectory(prefix="vercel-probe-") as temp_dir:
@@ -126,7 +111,9 @@ def _vercel_cli_get(url: str, *, timeout: float) -> httpx.Response:
         if result.returncode != 0 or status_match is None:
             diagnostic = result.stderr.decode("utf-8", "ignore")
             classification = diagnostic.lower()
-            if "protection bypass" in classification or "deployment protection" in classification:
+            if "no-credentials-found" in classification or "no credentials found" in classification:
+                reason = "vercel_credentials_missing"
+            elif "protection bypass" in classification or "deployment protection" in classification:
                 reason = "protection_bypass_unavailable"
             elif "not authorized" in classification or "unauthorized" in classification or "401" in classification:
                 reason = "vercel_authorization_denied"
@@ -134,9 +121,8 @@ def _vercel_cli_get(url: str, *, timeout: float) -> httpx.Response:
                 reason = "vercel_team_scope_denied"
             else:
                 reason = "vercel_cli_nonzero_exit"
-            # Keep only a short final clue and strip common credential forms.
-            safe_diagnostic = _safe_cli_diagnostic(result.stderr)
-            raise RuntimeError(f"vercel_cli_request_failed:{reason}:{safe_diagnostic}")
+            # Never forward arbitrary CLI text; it may contain credentials.
+            raise RuntimeError(f"vercel_cli_request_failed:{reason}")
 
         raw_headers = headers_path.read_bytes() if headers_path.exists() else b""
         blocks: list[bytes] = []

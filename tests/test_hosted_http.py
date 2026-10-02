@@ -51,8 +51,7 @@ def test_vercel_get_redacts_cli_error_to_safe_classification(monkeypatch) -> Non
             stdout=b"",
             stderr=(
                 b"Vercel CLI 48.8.0 curl (beta)\n"
-                b"Deployment protection bypass unavailable for project\n"
-                b"Authorization: Bearer test-token\n"
+                b"Deployment protection bypass unavailable for project; token=test-token\n"
             ),
         ),
     )
@@ -62,11 +61,38 @@ def test_vercel_get_redacts_cli_error_to_safe_classification(monkeypatch) -> Non
         try:
             hosted_http.get(client, "https://snowflakecertificationguide-bpsukc6cm-rrahul0904-5013s-projects.vercel.app/api/health")
         except RuntimeError as exc:
-            assert str(exc).startswith("vercel_cli_request_failed:protection_bypass_unavailable:")
-            assert "Authorization: Bearer [redacted]" in str(exc)
+            assert str(exc) == "vercel_cli_request_failed:protection_bypass_unavailable"
             assert "test-token" not in str(exc)
         else:
             raise AssertionError("expected a sanitized Vercel CLI failure")
+    finally:
+        client.close()
+
+
+def test_vercel_missing_credentials_uses_fixed_reason_only(monkeypatch) -> None:
+    monkeypatch.setenv("VERCEL_TOKEN", "test-token")
+    monkeypatch.setattr(
+        hosted_http.subprocess,
+        "run",
+        lambda command, **kwargs: subprocess.CompletedProcess(
+            command,
+            1,
+            stdout=b"",
+            stderr=b"Learn More: https://err.sh/vercel/no-credentials-found?token=do-not-log",
+        ),
+    )
+    client = httpx.Client(timeout=5.0)
+    try:
+        try:
+            hosted_http.get(
+                client,
+                "https://snowflakecertificationguide-bpsukc6cm-rrahul0904-5013s-projects.vercel.app/api/health",
+            )
+        except RuntimeError as exc:
+            assert str(exc) == "vercel_cli_request_failed:vercel_credentials_missing"
+            assert "do-not-log" not in str(exc)
+        else:
+            raise AssertionError("expected missing-credentials classification")
     finally:
         client.close()
 
