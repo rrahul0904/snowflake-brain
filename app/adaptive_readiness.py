@@ -285,15 +285,23 @@ def _mocks(conn: Any, candidate_id: int, track_id: str) -> dict[str, Any]:
     if not _table_exists(conn, "exam_sessions"):
         return {"count": 0, "score": 0.5}
     rows = conn.execute(
-        "SELECT scaled_score,weighted_accuracy,raw_accuracy FROM exam_sessions WHERE candidate_id=? AND track_id=? AND status='submitted' ORDER BY finished_at DESC,id DESC LIMIT 5",
+        "SELECT mode,configuration_json,scaled_score,weighted_accuracy,raw_accuracy FROM exam_sessions WHERE candidate_id=? AND track_id=? AND status='finished' AND mode LIKE 'exam_%' AND COALESCE(REPLACE(configuration_json,' ',''),'{}') NOT LIKE '%\"source_kind\":\"legacy\"%' ORDER BY finished_at DESC,id DESC LIMIT 5",
         (candidate_id, track_id),
     ).fetchall()
     values: list[float] = []
     for row in rows:
+        # Legacy source exams remain visible in mock history for review, but
+        # mock_exam.submit_session deliberately excludes them from readiness.
+        try:
+            configuration = json.loads(row["configuration_json"] or "{}")
+        except (TypeError, ValueError):
+            configuration = {}
+        if configuration.get("source_kind") == "legacy":
+            continue
         value = row["scaled_score"]
         if value not in (None, ""):
             numeric = float(value)
-            values.append(max(0.0, min(1.0, numeric / (1000.0 if numeric > 100 else 100.0))))
+            values.append(max(0.0, min(1.0, numeric / float(1000))))
             continue
         weighted = row["weighted_accuracy"]
         raw = row["raw_accuracy"]

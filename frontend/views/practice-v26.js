@@ -1,6 +1,6 @@
 export const VIEW_ID = "v26-practice";
 
-import { escapeHtml, getDueToday, getMockConfig, getPracticeTests, getSkillMap, getSkillSummary, gradeQuiz, recordAttempt, startMockSession, startQuiz } from "../api.js";
+import { escapeHtml, getDueToday, getMockConfig, getPracticeTests, getSkillMap, getSkillSummary, gradeQuiz, recordAttempt, startMockSession, startQuiz, submitQuestionFeedback } from "../api.js";
 import { activeTrack } from "../ui.js";
 import { candidate, refreshCandidate } from "../auth.js";
 import { DOMAIN_COLORS, studyLayout } from "../components/study-shell.js";
@@ -182,5 +182,33 @@ function renderResult(container, result) {
     ? `#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=srs&refresh=${Date.now()}`
     : `#/practice?track_id=${encodeURIComponent(state.trackId)}&mode=${encodeURIComponent(state.mode)}`;
   container.innerHTML = `<main class="v26-page v26-practice-result"><a class="v26-back" href="#/practice?track_id=${encodeURIComponent(state.trackId)}">← Practice</a><header class="v26-page-intro centered"><p class="v26-kicker">${kicker}</p><h1>${percent}%</h1><p>${score}/${total} correct. Your answer history now updates the spaced-review queue, mistake notebook, and confidence calibration.</p></header><section class="v26-review-list">${(result.results || []).map((row, index) => review(row, index)).join("")}</section><div class="v26-result-actions"><a class="v26-btn primary" href="#/progress?track_id=${encodeURIComponent(state.trackId)}">Open Progress</a><a class="v26-btn secondary" href="${continueHref}">Continue</a></div></main>`;
+  bindQuestionFeedback(container);
 }
-function review(row, index) { const options = row.options || []; const selected = (row.selected || []).map((i) => options[i]).filter(Boolean).join("; ") || "No answer"; const correct = (row.correct || []).map((i) => options[i]).filter(Boolean).join("; ") || "Answer unavailable"; return `<details class="v26-review-card ${row.is_correct ? "correct" : "incorrect"}"><summary><span>${row.is_correct ? "✓" : "×"}</span><div><small>Question ${index + 1}</small><strong>${escapeHtml(row.question || "")}</strong></div></summary><div class="v26-review-body"><p><b>Your answer</b>${escapeHtml(selected)}</p><p><b>Correct answer</b>${escapeHtml(correct)}</p>${row.explanation ? `<p><b>Explanation</b>${escapeHtml(row.explanation)}</p>` : ""}</div></details>`; }
+function questionReportForm(questionId) {
+  return `<details class="v26-question-report"><summary>Report question</summary><div class="v26-question-report-body"><label><span>Issue</span><select data-report-category><option value="ambiguous">Ambiguous wording</option><option value="incorrect_answer">Incorrect answer</option><option value="outdated">Outdated Snowflake behavior</option><option value="explanation">Explanation issue</option><option value="typo">Typo / formatting</option><option value="other">Other</option></select></label><label><span>What should the editorial team review?</span><textarea data-report-description rows="3" maxlength="3000" placeholder="Describe the issue without sharing confidential exam content."></textarea></label><button class="v26-btn secondary" type="button" data-report-submit data-question-id="${escapeHtml(questionId)}">Send report</button><small data-report-status aria-live="polite"></small></div></details>`;
+}
+
+function bindQuestionFeedback(container) {
+  container.querySelectorAll("[data-report-submit]").forEach((button) => button.addEventListener("click", async () => {
+    const panel = button.closest(".v26-question-report");
+    const category = panel?.querySelector("[data-report-category]")?.value || "other";
+    const description = panel?.querySelector("[data-report-description]")?.value?.trim() || "";
+    const status = panel?.querySelector("[data-report-status]");
+    if (description.length < 3) {
+      if (status) status.textContent = "Please add a short description.";
+      return;
+    }
+    button.disabled = true;
+    if (status) status.textContent = "Sending…";
+    try {
+      await submitQuestionFeedback(button.dataset.questionId, { category, description });
+      if (status) status.textContent = "Report sent to the editorial review queue.";
+      button.textContent = "Reported ✓";
+    } catch (error) {
+      button.disabled = false;
+      if (status) status.textContent = error.message || "Unable to send report.";
+    }
+  }));
+}
+
+function review(row, index) { const options = row.options || []; const selected = (row.selected || []).map((i) => options[i]).filter(Boolean).join("; ") || "No answer"; const correct = (row.correct || []).map((i) => options[i]).filter(Boolean).join("; ") || "Answer unavailable"; const questionId = row.id || row.question_id || ""; return `<details class="v26-review-card ${row.is_correct ? "correct" : "incorrect"}"><summary><span>${row.is_correct ? "✓" : "×"}</span><div><small>Question ${index + 1}</small><strong>${escapeHtml(row.question || "")}</strong></div></summary><div class="v26-review-body"><p><b>Your answer</b>${escapeHtml(selected)}</p><p><b>Correct answer</b>${escapeHtml(correct)}</p>${row.explanation ? `<p><b>Explanation</b>${escapeHtml(row.explanation)}</p>` : ""}${questionId ? questionReportForm(questionId) : ""}</div></details>`; }

@@ -10,9 +10,11 @@ from ..database import connect
 from ..intelligence import command_brief, diagnostic_plan, mistake_queue, portfolio, readiness_model, skill_mastery
 from ..learning_intelligence import (
     confidence_calibration,
+    daily_recall_streak,
     due_today,
     mistake_notebook,
     mock_remediation,
+    record_daily_recall,
     set_study_preferences,
     study_plan,
     update_mistake,
@@ -89,6 +91,27 @@ def certification_due_today(
             "due_count": int(question_due.get("due_count") or 0) + int(task_due.get("task_due_count") or 0),
             "question_due_count": int(question_due.get("due_count") or 0),
         }
+
+
+@router.get("/intelligence/daily-streak")
+def certification_daily_streak(
+    track_id: str = "snowpro-core",
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    with connect() as conn:
+        return daily_recall_streak(conn, candidate["id"], track_id)
+
+
+@router.post("/intelligence/daily-recall")
+def certification_daily_recall(
+    payload: TaskReviewRequest,
+    candidate: dict = Depends(require_candidate),
+) -> dict[str, Any]:
+    try:
+        with connect() as conn:
+            return record_daily_recall(conn, candidate["id"], payload.track_id, payload.skill_id)
+    except ValueError as exc:
+        raise _task_review_error(exc) from exc
 
 
 @router.get("/intelligence/task-review")

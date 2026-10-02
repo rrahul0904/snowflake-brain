@@ -15,6 +15,27 @@ permissions:
   contents: read
 
 jobs:
+  unit-tests:
+    name: Python unit test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BRAIN_DB: /tmp/snowflake-unit.sqlite
+      ACCOUNT_EMAIL_DELIVERY_MODE: outbox
+      AUTH_COOKIE_SECURE: "false"
+      FORCE_HTTPS: "false"
+      BILLING_ENABLED: "false"
+      GOOGLE_AUTH_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install application and unit-test dependencies
+        run: pip install -r requirements.txt pytest
+      - name: Run Python unit test suite
+        run: pytest -q tests
+
   sqlite-security-convergence:
     name: SQLite security and convergence
     runs-on: ubuntu-latest
@@ -184,6 +205,7 @@ jobs:
   release-decision:
     name: Production GO decision
     needs:
+      - unit-tests
       - sqlite-security-convergence
       - postgres-convergence
       - browser-mobile-accessibility
@@ -192,6 +214,7 @@ jobs:
     steps:
       - name: Enforce zero blocking launch jobs
         env:
+          UNIT_RESULT: ${{ needs.unit-tests.result }}
           SQLITE_RESULT: ${{ needs.sqlite-security-convergence.result }}
           POSTGRES_RESULT: ${{ needs.postgres-convergence.result }}
           BROWSER_RESULT: ${{ needs.browser-mobile-accessibility.result }}
@@ -202,6 +225,7 @@ jobs:
           from pathlib import Path
 
           results = {
+              "python_unit_tests": os.environ["UNIT_RESULT"],
               "sqlite_security_convergence": os.environ["SQLITE_RESULT"],
               "postgres_convergence_restore": os.environ["POSTGRES_RESULT"],
               "browser_mobile_accessibility": os.environ["BROWSER_RESULT"],

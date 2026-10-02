@@ -30,6 +30,7 @@ from app.auth import create_candidate  # noqa: E402
 from app.config import DATABASE_BACKEND  # noqa: E402
 from app.database import connect  # noqa: E402
 from app.main import app  # noqa: E402
+from app.question_feedback import ensure_question_feedback_schema  # noqa: E402
 
 
 def token_from_action_url(url: str) -> str:
@@ -220,6 +221,7 @@ def check_google_unlink_safeguard() -> None:
 
 
 def seed_export_and_delete_data(candidate_id: int) -> None:
+    ensure_question_feedback_schema()
     with connect() as conn:
         conn.execute(
             """
@@ -261,6 +263,10 @@ def seed_export_and_delete_data(candidate_id: int) -> None:
             "INSERT INTO feedback_submissions(title,category,description,route,track_id,candidate_id) VALUES (?,?,?,?,?,?)",
             ("Lifecycle feedback", "account", "Regression row", "#/account", "snowpro-core", candidate_id),
         )
+        conn.execute(
+            "INSERT INTO question_feedback(question_id,candidate_id,category,description,status,resolution_notes) VALUES (?,?,?,?,?,?)",
+            ("account-lifecycle-q1", candidate_id, "explanation", "Lifecycle correction", "resolved", "Reviewed"),
+        )
         assert int(session.lastrowid) > 0
 
 
@@ -269,7 +275,7 @@ def check_export(candidate_id: int) -> None:
     required = {
         "profile", "memberships", "exam_history", "practice_attempts", "task_progress",
         "srs_state", "mistake_notebook", "study_preferences", "bookmarks", "notes",
-        "identities", "sessions", "account_audit", "billing_summary",
+        "identities", "sessions", "account_audit", "billing_summary", "question_corrections",
     }
     assert required <= set(payload)
     serialized = json.dumps(payload, sort_keys=True)
@@ -281,6 +287,8 @@ def check_export(candidate_id: int) -> None:
             raise AssertionError(f"Sensitive/internal field leaked into export: {forbidden}")
     assert payload["practice_attempts"] and payload["exam_history"]
     assert payload["srs_state"] and payload["mistake_notebook"] and payload["study_preferences"]
+    assert payload["question_corrections"] and payload["question_corrections"][0]["description"] == "Lifecycle correction"
+    assert "resolved_by" not in payload["question_corrections"][0]
 
 
 def check_subscription_aware_deletion(email: str, password: str, candidate_id: int) -> None:
@@ -313,7 +321,7 @@ def check_subscription_aware_deletion(email: str, password: str, candidate_id: i
     with connect() as conn:
         for table in (
             "candidate_accounts", "question_attempts", "exam_sessions", "candidate_srs_state",
-            "candidate_mistake_notebook", "candidate_study_preferences",
+            "candidate_mistake_notebook", "candidate_study_preferences", "question_feedback",
         ):
             assert not conn.execute(f"SELECT 1 FROM {table} WHERE {'id' if table == 'candidate_accounts' else 'candidate_id'}=?", (candidate_id,)).fetchone()
         receipt_row = conn.execute(

@@ -16,6 +16,7 @@ import httpx
 from .config import APP_BASE_URL, DATABASE_BACKEND
 from .database import connect
 from .observability import log_event, record_background_failure
+from .question_feedback import ensure_question_feedback_schema
 
 
 SCHEMA_VERSION = "20260815_040_account_lifecycle_v1"
@@ -500,6 +501,7 @@ def account_status(candidate_id: int) -> dict[str, Any]:
 
 def account_export_payload(candidate_id: int) -> dict[str, Any]:
     ensure_account_lifecycle_schema()
+    ensure_question_feedback_schema()
     with connect() as conn:
         account = conn.execute(
             "SELECT id,email,display_name,plan,status,password_login_enabled,email_verified,email_verified_at,password_changed_at,created_at,last_login_at FROM candidate_accounts WHERE id=?",
@@ -550,6 +552,10 @@ def account_export_payload(candidate_id: int) -> dict[str, Any]:
                 "SELECT question_id,body,created_at FROM candidate_notes WHERE candidate_id=? ORDER BY id",
                 (candidate_id,),
             ),
+            "question_corrections": rows(
+                "SELECT question_id,category,description,status,resolution_notes,created_at,updated_at FROM question_feedback WHERE candidate_id=? ORDER BY id",
+                (candidate_id,),
+            ),
             "identities": rows(
                 "SELECT provider,provider_email,provider_email_verified,created_at,last_login_at FROM candidate_identities WHERE candidate_id=? ORDER BY id",
                 (candidate_id,),
@@ -578,6 +584,7 @@ def account_export_payload(candidate_id: int) -> dict[str, Any]:
 
 def delete_account(candidate_id: int, *, confirmation: str, password: str | None = None) -> dict[str, Any]:
     ensure_account_lifecycle_schema()
+    ensure_question_feedback_schema()
     if str(confirmation or "").strip().upper() != "DELETE":
         raise AccountLifecycleError("Type DELETE to confirm account deletion.")
     with connect() as conn:
@@ -602,6 +609,7 @@ def delete_account(candidate_id: int, *, confirmation: str, password: str | None
         conn.execute("DELETE FROM exam_sessions WHERE candidate_id=?", (candidate_id,))
         conn.execute("DELETE FROM learning_events WHERE candidate_id=?", (candidate_id,))
         conn.execute("DELETE FROM feedback_submissions WHERE candidate_id=?", (candidate_id,))
+        conn.execute("DELETE FROM question_feedback WHERE candidate_id=?", (candidate_id,))
         conn.execute(
             "INSERT INTO account_deletion_receipts(receipt_id,reason) VALUES (?,'candidate_request')",
             (receipt_id,),

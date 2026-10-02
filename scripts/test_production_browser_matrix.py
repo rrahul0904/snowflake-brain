@@ -176,6 +176,34 @@ def assert_credentials_layout(page: Page, profile: Profile) -> dict:
     return metrics
 
 
+def assert_donor_learning_routes(page: Page, profile: Profile, *, authenticated: bool) -> list[str]:
+    routes = (
+        [
+            ("#/practice-hub", "Practice Hub"),
+            ("#/daily-session", "Daily Certification Session"),
+            ("#/question-studio", "Question Studio"),
+        ]
+        if authenticated
+        else [("#/exam-guide", None)]
+    )
+    visited: list[str] = []
+    for route, heading in routes:
+        page.goto(f"{BASE_URL}/{route}?track_id=snowpro-core", wait_until="networkidle", timeout=20_000)
+        wait_for_route(page, route)
+        if route == "#/exam-guide":
+            page.locator(".v26-exam-fact-grid").wait_for(state="visible", timeout=10_000)
+            page.locator("h1").first.wait_for(state="visible", timeout=10_000)
+            guide_text = page.locator("#view-root").inner_text()
+            if "Source verification:" not in guide_text or "Official Snowflake page" not in guide_text:
+                raise AssertionError("public exam guide provenance contract missing")
+        else:
+            page.locator("h1").filter(has_text=heading).first.wait_for(state="visible", timeout=10_000)
+        assert_accessible_baseline(page, f"{profile.name} {route}")
+        assert_client_clean(page, f"{profile.name} {route}")
+        visited.append(route)
+    return visited
+
+
 def fetch_talent_profile(page: Page) -> dict:
     return page.evaluate(
         """async () => {
@@ -273,6 +301,67 @@ def certify_authenticated_home_request_budget(page: Page, profile: Profile) -> d
     }
 
 
+def run_candidate_study_uat(page: Page, profile: Profile) -> dict:
+    """Exercise a real candidate study flow through the browser and persistence layer."""
+    page.goto(
+        f"{BASE_URL}/#/curriculum?track_id=snowpro-core",
+        wait_until="networkidle",
+        timeout=20_000,
+    )
+    wait_for_route(page, "#/curriculum")
+    page.get_by_role("heading", name="SnowPro domain map").wait_for(state="visible", timeout=10_000)
+    assert_accessible_baseline(page, f"{profile.name} curriculum UAT")
+    assert_client_clean(page, f"{profile.name} curriculum UAT")
+
+    page.goto(
+        f"{BASE_URL}/#/practice?track_id=snowpro-core&mode=drill&start=1&count=5",
+        wait_until="networkidle",
+        timeout=20_000,
+    )
+    wait_for_route(page, "#/practice")
+    page.locator(".v26-practice-session").wait_for(state="visible", timeout=10_000)
+    questions = page.locator(".v26-practice-session aside [data-jump]")
+    question_count = questions.count()
+    if question_count < 1:
+        raise AssertionError(f"{profile.name} UAT practice session has no questions")
+
+    choices = page.locator("input[name='practice-answer']")
+    if choices.count() < 1:
+        raise AssertionError(f"{profile.name} UAT first question has no answer choices")
+    choices.first.check()
+    page.locator("[data-confidence='3']").click()
+    page.locator("[data-submit]").click()
+
+    page.locator(".v26-practice-result").wait_for(state="visible", timeout=15_000)
+    result_heading = page.locator(".v26-practice-result h1").inner_text().strip()
+    if not result_heading.endswith("%"):
+        raise AssertionError(f"{profile.name} UAT result did not render a percentage: {result_heading!r}")
+    if "correct" not in page.locator(".v26-practice-result").inner_text().lower():
+        raise AssertionError(f"{profile.name} UAT result summary is incomplete")
+    assert_accessible_baseline(page, f"{profile.name} practice result UAT")
+    assert_client_clean(page, f"{profile.name} practice result UAT")
+
+    persisted = page.evaluate(
+        """async () => {
+          const response = await fetch('/api/candidate/home-summary?track_id=snowpro-core', {
+            credentials: 'same-origin'
+          });
+          const body = await response.json();
+          const attempts = (body.summary?.skills || [])
+            .reduce((total, item) => total + Number(item.attempts || 0), 0);
+          return {status: response.status, attempts};
+        }"""
+    )
+    if persisted["status"] != 200 or int(persisted["attempts"]) < 1:
+        raise AssertionError(f"{profile.name} UAT practice evidence did not persist: {persisted}")
+
+    return {
+        "practice_questions": question_count,
+        "result": result_heading,
+        "persisted_attempts": int(persisted["attempts"]),
+    }
+
+
 def run_profile(browser: Browser, profile: Profile) -> dict:
     context = browser.new_context(
         viewport=profile.viewport,
@@ -314,6 +403,8 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         assert_accessible_baseline(page, f"{profile.name} membership")
         assert_client_clean(page, f"{profile.name} membership")
 
+        public_donor_routes = assert_donor_learning_routes(page, profile, authenticated=False)
+
         # Account action links must be public and fail safely when incomplete.
         page.goto(f"{BASE_URL}/#/account-action", wait_until="networkidle", timeout=20_000)
         wait_for_route(page, "#/account-action")
@@ -328,6 +419,8 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
         # route transition. It is the release gate for request coalescing.
         home_budget = certify_authenticated_home_request_budget(page, profile)
         assert_client_clean(page, f"{profile.name} authenticated home")
+        authenticated_donor_routes = assert_donor_learning_routes(page, profile, authenticated=True)
+        candidate_uat = run_candidate_study_uat(page, profile)
 
         # Registration must visibly remain unverified in the normal account experience.
         page.goto(f"{BASE_URL}/#/account", wait_until="networkidle", timeout=20_000)
@@ -403,6 +496,9 @@ def run_profile(browser: Browser, profile: Profile) -> dict:
             "credential_empty_cards": empty_credential_metrics["cards"],
             "credential_verified_cards": credential_metrics["verified"],
             "credential_discoverability": talent["body"]["recruiter_discoverable"],
+            "public_donor_routes": public_donor_routes,
+            "authenticated_donor_routes": authenticated_donor_routes,
+            "candidate_uat": candidate_uat,
         }
     finally:
         context.close()
@@ -451,7 +547,9 @@ def main() -> None:
                 f"membership heading {item['membership_heading_px']} px; "
                 f"feature text {item['membership_feature_px']} px; "
                 f"verified credentials {item['credential_verified_cards']}; "
-                f"recruiter discoverability {item['credential_discoverability']}"
+                f"recruiter discoverability {item['credential_discoverability']}; "
+                f"candidate UAT {item['candidate_uat']['practice_questions']} questions -> "
+                f"{item['candidate_uat']['result']} with {item['candidate_uat']['persisted_attempts']} persisted attempts"
             )
     except Exception:
         if not REPORT_PATH.exists():

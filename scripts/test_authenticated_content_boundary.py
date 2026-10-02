@@ -53,6 +53,7 @@ def main() -> None:
         "/static/views/certifications.js",
         "/static/views/membership-v26.js",
         "/static/views/info-v26.js",
+        "/static/views/exam-guide-v26.js",
         "/static/views/account-action-v26.js",
     ):
         response = client.get(path)
@@ -94,6 +95,9 @@ def main() -> None:
         "/static/views/study-plan-v26.js",
         "/static/views/exam-traps-v26.js",
         "/static/views/account-v26.js",
+        "/static/views/question-studio-v26.js",
+        "/static/views/daily-session-v26.js",
+        "/static/views/practice-hub-v26.js",
     ):
         response = client.get(path)
         check(response.status_code == 401, f"anonymous protected view module leaked: {path}")
@@ -126,6 +130,9 @@ def main() -> None:
         "/static/views/confidence-v26.js",
         "/static/views/study-plan-v26.js",
         "/static/views/exam-traps-v26.js",
+        "/static/views/question-studio-v26.js",
+        "/static/views/daily-session-v26.js",
+        "/static/views/practice-hub-v26.js",
     ):
         response = client.get(path)
         check(response.status_code == 200, f"authenticated Free candidate should reach included content: {path} -> {response.status_code}")
