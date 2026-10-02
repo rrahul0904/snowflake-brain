@@ -14,6 +14,7 @@ import httpx
 
 def _vercel_cli_get(url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
     token = os.environ.get("VERCEL_TOKEN", "")
+    scope = os.environ.get("VERCEL_SCOPE", "")
     with tempfile.TemporaryDirectory(prefix="vercel-probe-") as temp_dir:
         headers_path = Path(temp_dir) / "headers.txt"
         body_path = Path(temp_dir) / "body.bin"
@@ -30,7 +31,10 @@ def _vercel_cli_get(url: str, *, follow_redirects: bool, timeout: float) -> http
                 "%{http_code}",
             ]
         )
-        command = ["vercel", "--token", token, "curl", url, "--", *curl_args]
+        command = ["vercel", "--token", token]
+        if scope:
+            command.extend(["--scope", scope])
+        command.extend(["curl", url, "--", *curl_args])
         try:
             result = subprocess.run(
                 command,
@@ -44,7 +48,16 @@ def _vercel_cli_get(url: str, *, follow_redirects: bool, timeout: float) -> http
         status_match = re.search(rb"(?:^|\s)(\d{3})\s*$", result.stdout)
         if result.returncode != 0 or status_match is None:
             # Do not include CLI output: it can contain deployment or account details.
-            raise RuntimeError("vercel_cli_request_failed")
+            diagnostic = result.stderr.decode("utf-8", "ignore").lower()
+            if "protection bypass" in diagnostic or "deployment protection" in diagnostic:
+                reason = "protection_bypass_unavailable"
+            elif "not authorized" in diagnostic or "unauthorized" in diagnostic or "401" in diagnostic:
+                reason = "vercel_authorization_denied"
+            elif "team" in diagnostic or "scope" in diagnostic:
+                reason = "vercel_team_scope_denied"
+            else:
+                reason = "vercel_cli_nonzero_exit"
+            raise RuntimeError(f"vercel_cli_request_failed:{reason}")
 
         raw_headers = headers_path.read_bytes() if headers_path.exists() else b""
         blocks: list[bytes] = []

@@ -66,10 +66,12 @@ jobs:
       - name: Soak hosted liveness/readiness and security headers
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: rrahul0904-5013s-projects
         run: python scripts/test_hosted_runtime_security.py
       - name: Probe hosted static/build/private-file exposure
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: rrahul0904-5013s-projects
         run: python scripts/test_hosted_static_exposure.py
       - name: Verify active production bank counts without reading question content
         env:
