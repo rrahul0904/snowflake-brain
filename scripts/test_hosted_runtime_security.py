@@ -46,6 +46,13 @@ def snapshot(response: httpx.Response) -> dict[str, object]:
     }
 
 
+def request_error(exc: Exception) -> str:
+    message = str(exc)
+    if message.startswith("vercel_cli_request_failed:") or message.startswith("vercel_cli_request_error:"):
+        return message
+    return type(exc).__name__
+
+
 def main() -> None:
     findings: list[str] = []
     probes: list[dict[str, object]] = []
@@ -57,7 +64,7 @@ def main() -> None:
                 try:
                     response = hosted_get(client, f"{BASE}{path}")
                 except Exception as exc:
-                    findings.append(f"{path}:request_error:{type(exc).__name__}")
+                    findings.append(f"{path}:request_error:{request_error(exc)}")
                     continue
                 row = {"iteration": index + 1, "path": path, **snapshot(response)}
                 probes.append(row)
@@ -93,7 +100,7 @@ def main() -> None:
         try:
             home = hosted_get(client, f"{BASE}/")
         except Exception as exc:
-            findings.append(f"home:request_error:{type(exc).__name__}")
+            findings.append(f"home:request_error:{request_error(exc)}")
         else:
             probes.append({"iteration": 1, "path": "/", **snapshot(home)})
             if home.status_code != 200:
