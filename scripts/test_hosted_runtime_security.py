@@ -17,14 +17,15 @@ from pathlib import Path
 import httpx
 
 try:
-    from .hosted_http import get as hosted_get
+    from .hosted_http import get as hosted_get, validate_security_base_url
 except ImportError:
-    from hosted_http import get as hosted_get
+    from hosted_http import get as hosted_get, validate_security_base_url
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / "artifacts" / "hosted-runtime-security.json"
 BASE = os.environ.get("SECURITY_BASE_URL", "https://snowflakecertificationguide.vercel.app").rstrip("/")
+validate_security_base_url(BASE)
 SOAK_REQUESTS = max(1, min(100, int(os.environ.get("SOAK_REQUESTS", "20"))))
 SOAK_DELAY_SECONDS = max(0.0, min(10.0, float(os.environ.get("SOAK_DELAY_SECONDS", "0.15"))))
 EXPECTED_BACKEND = os.environ.get("EXPECTED_DATABASE_BACKEND", "postgresql").strip().lower()

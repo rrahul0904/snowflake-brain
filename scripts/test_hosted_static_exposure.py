@@ -17,12 +17,13 @@ from pathlib import Path
 import httpx
 
 try:
-    from .hosted_http import get as hosted_get
+    from .hosted_http import get as hosted_get, validate_security_base_url
 except ImportError:
-    from hosted_http import get as hosted_get
+    from hosted_http import get as hosted_get, validate_security_base_url
 
 
 BASE = os.environ.get("SECURITY_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+validate_security_base_url(BASE, allow_local=not bool(os.environ.get("VERCEL_TOKEN")))
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / "artifacts" / "hosted-static-exposure.json"
 
