@@ -1,0 +1,130 @@
+{
+  "as_of": "2026-10-07",
+  "minimum_questions_per_exam": 2000,
+  "minimum_solutions_per_exam": 2000,
+  "certifications": [
+    {
+      "id": "associate-platform",
+      "name": "SnowPro Associate: Platform",
+      "code": "SOL-C01",
+      "level": "associate",
+      "status": "active_catalog_reconciliation",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn-sandbox.snowflake.com/en/certifications/snowpro-platform/?pdf_name=SnowProPlatformStudyGuide",
+      "notes": "Snowflake continued issuing the credential and exam vouchers in 2026; retained even though the current SnowPro catalog landing page does not display the Associate series."
+    },
+    {
+      "id": "core",
+      "name": "SnowPro Core",
+      "code": "COF-C03",
+      "level": "core",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-core-c03/"
+    },
+    {
+      "id": "specialty-gen-ai",
+      "name": "SnowPro Specialty: Gen AI",
+      "code": "GES-C02",
+      "level": "specialty",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-GenAI-C02/"
+    },
+    {
+      "id": "specialty-snowpark",
+      "name": "SnowPro Specialty: Snowpark",
+      "code": "SPS-C01",
+      "level": "specialty",
+      "status": "retiring",
+      "retirement_date": "2026-11-01",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-snowpark/"
+    },
+    {
+      "id": "specialty-native-apps",
+      "name": "SnowPro Specialty: Native Apps",
+      "code": "NAS-C02",
+      "level": "specialty",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-nativeapps-c02/"
+    },
+    {
+      "id": "advanced-mlops-engineer",
+      "name": "SnowPro Advanced: MLOps Engineer",
+      "code": "MLA-C01",
+      "level": "advanced",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-mlopsengineer/"
+    },
+    {
+      "id": "advanced-security-engineer",
+      "name": "SnowPro Advanced: Security Engineer",
+      "code": "SEA-C01",
+      "level": "advanced",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-securityengineer/"
+    },
+    {
+      "id": "advanced-architect",
+      "name": "SnowPro Advanced: Architect",
+      "code": "ARA-C01",
+      "level": "advanced",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-architect/"
+    },
+    {
+      "id": "advanced-data-engineer",
+      "name": "SnowPro Advanced: Data Engineer",
+      "code": "DEA-C02",
+      "level": "advanced",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-dataengineer-C02/"
+    },
+    {
+      "id": "advanced-data-scientist",
+      "name": "SnowPro Advanced: Data Scientist",
+      "code": "DSA-C03",
+      "level": "advanced",
+      "status": "retiring",
+      "retirement_date": "2026-11-01",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-datascientistC03/"
+    },
+    {
+      "id": "advanced-administrator",
+      "name": "SnowPro Advanced: Administrator",
+      "code": "ADA-C02",
+      "level": "advanced",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-administrator-c02/"
+    },
+    {
+      "id": "advanced-data-analyst",
+      "name": "SnowPro Advanced: Data Analyst",
+      "code": "DAA-C01",
+      "level": "advanced",
+      "status": "active",
+      "target_questions": 2000,
+      "target_solutions": 2000,
+      "official_exam_guide": "https://learn.snowflake.com/en/certifications/snowpro-advanced-dataanalyst/"
+    }
+  ]
+}
