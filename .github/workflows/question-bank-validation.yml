@@ -1,0 +1,29 @@
+name: Question Bank Validation
+
+on:
+  pull_request:
+    paths:
+      - 'data/question-banks/**'
+      - 'scripts/validate_question_banks.py'
+      - '.github/workflows/question-bank-validation.yml'
+  push:
+    paths:
+      - 'data/question-banks/**'
+      - 'scripts/validate_question_banks.py'
+      - '.github/workflows/question-bank-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate question and solution corpus
+        run: python scripts/validate_question_banks.py
