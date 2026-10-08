@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """Materialize 5,000 source-traceable Snowflake certification questions and solutions per exam."""
 from __future__ import annotations
-import argparse, hashlib, json, random, re, shutil
+import argparse, base64, gzip, hashlib, json, random, re, shutil
 from collections import defaultdict
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 BANK=ROOT/"data"/"question-banks"
-CATALOG=BANK/"generator"/"concepts.v1.json"
+CATALOG=BANK/"generator"/"concepts.v1.json.gz.b64"
 BLUEPRINT=BANK/"blueprints"/"2026-10-07.json"
 TARGETS=BANK/"coverage"/"authoring-targets.5000.json"
 CERTS=BANK/"certifications.json"
 OUT=BANK/"generated"
 
 def load(p): return json.loads(p.read_text(encoding="utf-8"))
-C=load(CATALOG); CONCEPTS=C["concepts"]; POOLS=C["pools"]; TARGET=int(C["target"]); AS_OF=C["as_of"]
+def load_catalog(p):
+    raw=base64.b64decode(p.read_text(encoding="utf-8").strip())
+    return json.loads(gzip.decompress(raw).decode("utf-8"))
+C=load_catalog(CATALOG); CONCEPTS=C["concepts"]; POOLS=C["pools"]; TARGET=int(C["target"]); AS_OF=C["as_of"]
 CONTEXTS=[tuple(x) for x in C["contexts"]]; CONSTRAINTS=[tuple(x) for x in C["constraints"]]
 ENV=C["env_scales"]; WORK=C["workload_patterns"]; CTRL=C["control_profiles"]
 ARCH=["scenario","architecture_decision","troubleshooting","single_select","distinction","operational"]
