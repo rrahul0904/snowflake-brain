@@ -1,0 +1,134 @@
+{
+  "as_of": "2026-10-07",
+  "purpose": "Freshness source manifest for certification questions. Release-specific facts are eligible only when they map to a locked exam objective; preview status must be preserved in the question or explanation.",
+  "sources": [
+    {
+      "date": "2026-10-07",
+      "type": "official_announcement",
+      "title": "Zero-copy integration for Workday Data Cloud (General availability)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-10-07-workday-data-cloud-zerocopy-ga",
+      "candidate_exams": ["ARA-C01", "DEA-C02", "COF-C03"],
+      "topics": ["zero-copy", "external data", "architecture", "data sourcing"]
+    },
+    {
+      "date": "2026-10-05",
+      "type": "official_announcement",
+      "title": "WITH GRANT OPTION for role grants",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-10-05-role-grant-option",
+      "candidate_exams": ["SEA-C01", "ADA-C02", "COF-C03", "SOL-C01"],
+      "topics": ["RBAC", "role hierarchy", "delegated grants"]
+    },
+    {
+      "date": "2026-10-02",
+      "type": "official_announcement",
+      "title": "Snowflake Native Apps: Observability for Cortex Agents",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-10-02-native-apps-agent-observability",
+      "candidate_exams": ["NAS-C02", "GES-C02", "SEA-C01"],
+      "topics": ["Native Apps", "Cortex Agents", "event sharing", "observability"]
+    },
+    {
+      "date": "2026-10-01",
+      "type": "official_announcement",
+      "title": "Remote app operations for Snowflake Native Apps (General availability)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-10-01-remote-app-operations-ga",
+      "candidate_exams": ["NAS-C02"],
+      "topics": ["Native Apps", "remote operations", "upgrade recovery", "consumer consent"]
+    },
+    {
+      "date": "2026-09-30",
+      "type": "official_announcement",
+      "title": "10.35 Release Notes: New ACCOUNT_USAGE.STREAMS view",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/10_35",
+      "candidate_exams": ["DEA-C02", "ADA-C02", "COF-C03"],
+      "topics": ["streams", "monitoring", "ACCOUNT_USAGE"]
+    },
+    {
+      "date": "2026-09-24",
+      "type": "official_announcement",
+      "title": "Code Bundles (Preview)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-09-24-code-bundles",
+      "candidate_exams": ["MLA-C01", "DEA-C02", "SPS-C01"],
+      "topics": ["Python", "Spark", "warehouse compute", "compute pools", "Snowpark Connect"]
+    },
+    {
+      "date": "2026-09-24",
+      "type": "official_announcement",
+      "title": "DCM Projects capability updates",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-09-24-dcm-projects-capability-updates",
+      "candidate_exams": ["DEA-C02", "ARA-C01", "ADA-C02"],
+      "topics": ["declarative change management", "pipes", "streams", "shares", "Code Bundles"]
+    },
+    {
+      "date": "2026-09-15",
+      "type": "official_announcement",
+      "title": "Cortex AI Gateway (Preview)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-09-15-cortex-ai-gateway",
+      "candidate_exams": ["GES-C02", "MLA-C01", "SEA-C01", "DSA-C03"],
+      "topics": ["AI governance", "model access", "observability", "cost attribution", "quotas"]
+    },
+    {
+      "date": "2026-09-09",
+      "type": "official_announcement",
+      "title": "10.32 Release Notes: PERIOD data type (General availability)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/10_32",
+      "candidate_exams": ["DAA-C01", "COF-C03"],
+      "topics": ["SQL", "PERIOD", "temporal ranges"]
+    },
+    {
+      "date": "2026-08-28",
+      "type": "official_announcement",
+      "title": "Snowflake recommends transitioning from Cortex Analyst to Cortex Agents",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-08-28-cortex-analyst-transition-cortex-agents",
+      "candidate_exams": ["GES-C02", "DSA-C03", "DAA-C01"],
+      "topics": ["Cortex Agents", "Cortex Analyst", "semantic views", "structured and unstructured retrieval"]
+    },
+    {
+      "date": "2026-08-26",
+      "type": "official_announcement",
+      "title": "Cortex Agents Coding Agent (General availability)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-08-26-cortex-agents-coding-agent-ga",
+      "candidate_exams": ["GES-C02", "MLA-C01"],
+      "topics": ["Cortex Agents", "code_toolset_all", "managed sandbox"]
+    },
+    {
+      "date": "2026-08-26",
+      "type": "official_announcement",
+      "title": "Organization user types (General availability)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-08-26-organization-user-types",
+      "candidate_exams": ["SOL-C01", "SEA-C01", "ADA-C02"],
+      "topics": ["organization users", "PERSON", "SERVICE", "identity"]
+    },
+    {
+      "date": "2026-08-19",
+      "type": "official_announcement",
+      "title": "10.29 Release Notes: Per-user quotas (General availability)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/10_29",
+      "candidate_exams": ["ADA-C02", "MLA-C01", "SEA-C01", "GES-C02"],
+      "topics": ["cost management", "per-user quotas", "AI spend", "warehouse spend"]
+    },
+    {
+      "date": "2026-07-15",
+      "type": "official_announcement",
+      "title": "10.24 Release Notes: Semantic view materializations (Public preview)",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/10_24",
+      "candidate_exams": ["DAA-C01", "GES-C02", "DSA-C03"],
+      "topics": ["semantic views", "materialization", "performance", "MAX_STALENESS"]
+    },
+    {
+      "date": "2026-06-25",
+      "type": "official_announcement",
+      "title": "10.22 Release Notes: Dynamic Tables and insert-only streams on Delta Direct tables",
+      "url": "https://docs.snowflake.com/en/release-notes/2026/10_22",
+      "candidate_exams": ["DEA-C02", "ARA-C01"],
+      "topics": ["dynamic tables", "streams", "Delta Direct", "pipelines"]
+    },
+    {
+      "date": "2026-06-02",
+      "type": "official_announcement",
+      "title": "Snowflake Pioneers New Open Framework for Interoperable Enterprise Data and AI",
+      "url": "https://www.snowflake.com/en/news/press-releases/snowflake-pioneers-new-open-framework-for-interoperable-enterprise-data-and-ai/",
+      "candidate_exams": ["ARA-C01", "DEA-C02", "SEA-C01"],
+      "topics": ["Horizon Catalog", "Iceberg v3", "interoperability", "governance"]
+    }
+  ]
+}
