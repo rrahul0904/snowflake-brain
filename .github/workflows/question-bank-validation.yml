@@ -40,11 +40,17 @@ jobs:
       - name: Run semantic, diversity, and publishing QA
         run: python scripts/qa_question_banks_advanced.py --report data/question-banks/generated/advanced-qa-report.json
 
-      - name: Package generated certification banks and QA receipt
+      - name: Package canonical publishing source
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: snowflake-certification-banks-5000-each
-          path: data/question-banks/generated/
+          path: |
+            data/question-banks/generated/
+            data/question-banks/seed/
+            data/question-banks/release-aware/
+            data/question-banks/certifications.json
+            data/question-banks/blueprints/2026-10-07.json
+            data/question-banks/status.json
           if-no-files-found: error
           retention-days: 30
