@@ -1,0 +1,130 @@
+{
+  "as_of": "2026-10-07",
+  "target_per_exam": 5000,
+  "allocation_basis": "Internal authoring allocation across Snowflake-published top-level certification abilities. These counts are NOT claimed to be official exam weights. Reweight only when a current Snowflake-owned study guide provides an authoritative domain weighting.",
+  "freshness_policy": {
+    "durable_minimum_per_exam": 4250,
+    "release_aware_maximum_per_exam": 750,
+    "note": "Release-aware content may use fewer than 750 items. Preview features must be labeled and must map to a locked objective. Durable documentation-grounded content remains the majority."
+  },
+  "quality_mix": {
+    "minimum_applied_or_scenario_fraction": 0.5,
+    "question_types": ["single_select", "multi_select", "scenario", "sql_reasoning", "architecture_decision", "troubleshooting"],
+    "difficulties": ["foundation", "exam", "advanced"],
+    "note": "Question-type distribution varies by exam role; do not force irrelevant SQL or architecture formats merely to satisfy a quota."
+  },
+  "exams": {
+    "SOL-C01": {
+      "allocations": [
+        {"objective":"Set up and navigate the Snowflake user interface and Snowflake Notebooks","target":834},
+        {"objective":"Create databases and stages, and use compute resources","target":834},
+        {"objective":"Load and leverage structured, semi-structured, and unstructured data","target":833},
+        {"objective":"Understand Snowflake roles and data access management","target":833},
+        {"objective":"Understand and manage the Snowflake account structure","target":833},
+        {"objective":"Call Snowflake Cortex LLM functions","target":833}
+      ]
+    },
+    "COF-C03": {
+      "allocations": [
+        {"objective":"Use the Snowflake AI Data Cloud architecture","target":715},
+        {"objective":"Manage Snowflake accounts and virtual warehouses","target":715},
+        {"objective":"Perform data loading, unloading, and transformation","target":714},
+        {"objective":"Use structured, semi-structured, and unstructured data","target":714},
+        {"objective":"Monitor and optimize performance","target":714},
+        {"objective":"Enable data collaboration and protection","target":714},
+        {"objective":"Establish Snowflake connectivity","target":714}
+      ]
+    },
+    "GES-C02": {
+      "allocations": [
+        {"objective":"Define and implement Snowflake Gen AI principles, capabilities, and best practices","target":1250},
+        {"objective":"Use Snowflake Cortex AI features and functions, including LLMs, to meet customer use cases","target":1250},
+        {"objective":"Build and fine-tune open-source models with Snowpark Container Services and Snowflake Model Registry","target":1250},
+        {"objective":"Use Snowflake document processing functions to build, manage, and optimize document parsing pipelines","target":1250}
+      ]
+    },
+    "SPS-C01": {
+      "allocations": [
+        {"objective":"Perform data transformations using Snowpark DataFrame functions","target":1000},
+        {"objective":"Query data sources as Snowpark DataFrame objects","target":1000},
+        {"objective":"Connect to Snowflake using a Snowpark session object","target":1000},
+        {"objective":"Process results client-side or persist results in Snowflake through Snowpark DataFrame actions","target":1000},
+        {"objective":"Design a sequence of operations or conditional logic with Snowpark stored procedures","target":1000}
+      ],
+      "lifecycle_note":"Exam retires 2026-11-01; preserve current-bank accuracy and archive after retirement unless Snowflake publishes a successor blueprint."
+    },
+    "NAS-C02": {
+      "allocations": [
+        {"objective":"Design Native App architectures based on business and technical requirements","target":1250},
+        {"objective":"Build Native App components including manifests, setup scripts, and application logic","target":1250},
+        {"objective":"Deploy apps to Snowflake Marketplace and support installation and troubleshooting","target":1250},
+        {"objective":"Manage version release workflows, release management privileges, and application upgrades","target":1250}
+      ]
+    },
+    "MLA-C01": {
+      "allocations": [
+        {"objective":"Operationalize, scale, and automate machine learning workflows within the Snowflake AI Data Cloud","target":1000},
+        {"objective":"Architect and manage ML infrastructure, including feature engineering, model training, and deployment pipelines","target":1000},
+        {"objective":"Deploy, monitor, and govern ML models across production environments using Snowflake-native capabilities","target":1000},
+        {"objective":"Implement CI/CD and pipeline orchestration to automate end-to-end ML lifecycle management","target":1000},
+        {"objective":"Apply governance, security, and cost management practices throughout ML workflows","target":1000}
+      ]
+    },
+    "SEA-C01": {
+      "allocations": [
+        {"objective":"Design and enforce data protection, privacy, and governance across Snowflake","target":1000},
+        {"objective":"Implement and manage user identity and access control mechanisms","target":1000},
+        {"objective":"Audit and monitor security policies, controls, and regulatory compliance requirements","target":1000},
+        {"objective":"Assess threats and risks, and execute robust security incident response protocols","target":1000},
+        {"objective":"Leverage Snowflake AI/ML capabilities to enhance security posture","target":1000}
+      ]
+    },
+    "ARA-C01": {
+      "allocations": [
+        {"objective":"Design an end-to-end data flow from source to consumption using the Snowflake Platform","target":1250},
+        {"objective":"Design and deploy a data architecture that meets business, security, and compliance requirements","target":1250},
+        {"objective":"Select appropriate Snowflake and third-party tools to optimize architecture performance","target":1250},
+        {"objective":"Design and deploy a shared data set using the Snowflake Marketplace and Data Exchange","target":1250}
+      ]
+    },
+    "DEA-C02": {
+      "allocations": [
+        {"objective":"Source data from Data Lakes, APIs, and on-premises","target":1000},
+        {"objective":"Transform, replicate, and share data across cloud platforms","target":1000},
+        {"objective":"Design end-to-end near real-time streams","target":1000},
+        {"objective":"Design scalable compute solutions for Data Engineer workloads","target":1000},
+        {"objective":"Evaluate performance metrics","target":1000}
+      ]
+    },
+    "DSA-C03": {
+      "allocations": [
+        {"objective":"Outline data science concepts","target":1000},
+        {"objective":"Implement Snowflake data science best practices","target":1000},
+        {"objective":"Prepare data and use feature engineering in Snowflake","target":1000},
+        {"objective":"Train and use machine learning models","target":1000},
+        {"objective":"Use GenAI and LLM capabilities in Snowflake","target":1000}
+      ],
+      "lifecycle_note":"Exam retires 2026-11-01; preserve current-bank accuracy and archive after retirement unless Snowflake publishes a successor blueprint."
+    },
+    "ADA-C02": {
+      "allocations": [
+        {"objective":"Manage and administer Snowflake accounts, data security, and governance","target":1000},
+        {"objective":"Manage and maintain database objects and virtual warehouses","target":1000},
+        {"objective":"Perform database monitoring, tuning, and optimization","target":1000},
+        {"objective":"Perform data sharing and use the Snowflake Marketplace","target":1000},
+        {"objective":"Implement disaster recovery, perform backups, and replicate data","target":1000}
+      ]
+    },
+    "DAA-C01": {
+      "allocations": [
+        {"objective":"Prepare and load data","target":715},
+        {"objective":"Perform simple data transformations for data analysis","target":715},
+        {"objective":"Build and troubleshoot advanced SQL queries in Snowflake","target":714},
+        {"objective":"Use Snowflake built-in functions and create User-Defined Functions (UDFs)","target":714},
+        {"objective":"Perform descriptive and diagnostic data analyses","target":714},
+        {"objective":"Perform predictive data analysis","target":714},
+        {"objective":"Prepare and present data to meet business requirements","target":714}
+      ]
+    }
+  }
+}
