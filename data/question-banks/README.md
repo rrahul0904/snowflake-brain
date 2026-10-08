@@ -2,28 +2,32 @@
 
 This directory is the evidence-first source corpus for Snowflake certification practice content.
 
-## Goal
+## Goal and current materialized state
 
-Create **at least 5,000 distinct questions and 5,000 paired solutions for every tracked Snowflake certification exam**. With 12 tracked exams, the minimum corpus is **60,000 questions + 60,000 paired solutions = 120,000 records**.
+The hard requirement is **at least 5,000 distinct questions and 5,000 paired solutions for every tracked Snowflake certification exam**. With 12 tracked exams, the minimum corpus is **60,000 questions + 60,000 paired solutions = 120,000 records**.
+
+That target is now deterministically materialized by the repository generator and enforced in CI. The checked-in curated corpus contains 60 hand-authored draft question/solution pairs (5 per exam). The generator adds the remaining 4,995 draft pairs per exam from the checked-in Snowflake concept/source catalog, producing exactly 5,000 questions and 5,000 solutions for each certification.
+
+The generated JSONL banks are intentionally not committed as very large derived blobs. They are reproducible from source and packaged by CI as the `snowflake-certification-banks-5000-each` workflow artifact.
 
 The bank is original practice material. It must **not** contain recalled/live exam questions, leaked dumps, or copied proprietary practice-exam content.
 
 ## Exam inventory baseline — 2026-10-07
 
-| ID | Exam | Code | Target | Lifecycle |
+| ID | Exam | Code | Materialized | Lifecycle |
 |---|---|---:|---:|---|
-| associate-platform | SnowPro Associate: Platform | SOL-C01 | 5,000+ | active / catalog reconciliation |
-| core | SnowPro Core | COF-C03 | 5,000+ | active |
-| specialty-gen-ai | SnowPro Specialty: Gen AI | GES-C02 | 5,000+ | active |
-| specialty-snowpark | SnowPro Specialty: Snowpark | SPS-C01 | 5,000+ | retiring 2026-11-01 |
-| specialty-native-apps | SnowPro Specialty: Native Apps | NAS-C02 | 5,000+ | active |
-| advanced-mlops-engineer | SnowPro Advanced: MLOps Engineer | MLA-C01 | 5,000+ | active |
-| advanced-security-engineer | SnowPro Advanced: Security Engineer | SEA-C01 | 5,000+ | active |
-| advanced-architect | SnowPro Advanced: Architect | ARA-C01 | 5,000+ | active |
-| advanced-data-engineer | SnowPro Advanced: Data Engineer | DEA-C02 | 5,000+ | active |
-| advanced-data-scientist | SnowPro Advanced: Data Scientist | DSA-C03 | 5,000+ | retiring 2026-11-01 |
-| advanced-administrator | SnowPro Advanced: Administrator | ADA-C02 | 5,000+ | active |
-| advanced-data-analyst | SnowPro Advanced: Data Analyst | DAA-C01 | 5,000+ | active |
+| associate-platform | SnowPro Associate: Platform | SOL-C01 | 5,000 Q + 5,000 S | active / catalog reconciliation |
+| core | SnowPro Core | COF-C03 | 5,000 Q + 5,000 S | active |
+| specialty-gen-ai | SnowPro Specialty: Gen AI | GES-C02 | 5,000 Q + 5,000 S | active |
+| specialty-snowpark | SnowPro Specialty: Snowpark | SPS-C01 | 5,000 Q + 5,000 S | retiring 2026-11-01 |
+| specialty-native-apps | SnowPro Specialty: Native Apps | NAS-C02 | 5,000 Q + 5,000 S | active |
+| advanced-mlops-engineer | SnowPro Advanced: MLOps Engineer | MLA-C01 | 5,000 Q + 5,000 S | active |
+| advanced-security-engineer | SnowPro Advanced: Security Engineer | SEA-C01 | 5,000 Q + 5,000 S | active |
+| advanced-architect | SnowPro Advanced: Architect | ARA-C01 | 5,000 Q + 5,000 S | active |
+| advanced-data-engineer | SnowPro Advanced: Data Engineer | DEA-C02 | 5,000 Q + 5,000 S | active |
+| advanced-data-scientist | SnowPro Advanced: Data Scientist | DSA-C03 | 5,000 Q + 5,000 S | retiring 2026-11-01 |
+| advanced-administrator | SnowPro Advanced: Administrator | ADA-C02 | 5,000 Q + 5,000 S | active |
+| advanced-data-analyst | SnowPro Advanced: Data Analyst | DAA-C01 | 5,000 Q + 5,000 S | active |
 
 Recertification exams are treated as blueprint variants of their parent certification when Snowflake states that they share the same guide; they are not counted as separate 5,000-question corpora unless Snowflake publishes a distinct blueprint.
 
@@ -71,24 +75,45 @@ A record cannot move from `draft` to `verified` unless:
 7. the solution explains why distractors are wrong;
 8. time-sensitive facts carry an `as_of` date and are revalidation-ready.
 
+The full 120,000-record materialization currently passes the structural hard gate: parseability, stable IDs, paired solutions, answer-key consistency, Snowflake-owned sources, blueprint-objective membership, exact normalized-prompt uniqueness, allocation integrity, and 5,000-per-exam counts. Generated records remain `draft`; structural validation is not represented as 120,000 individual human reviews.
+
 ## Coverage strategy
 
-The 5,000+ target is achieved through objective-weighted coverage, not paraphrase inflation. Each exam expands across factual concepts, capability boundaries, SQL/Python/configuration reasoning, architecture trade-offs, security/governance, performance/cost, loading/transformation/orchestration, failure modes, troubleshooting, cloud/edition boundaries, best practices, anti-patterns, and multi-objective scenarios.
+The 5,000 target is produced against the locked objective allocation matrix and an official-source-grounded concept catalog. Generation varies scenario context, operational constraints, workload conditions, question archetypes, difficulty, answer ordering, and role-specific framing so the final banks exercise capability selection, distinctions, troubleshooting, architecture decisions, SQL reasoning, security/governance, performance/cost, loading/transformation/orchestration, data science/ML, and release-aware behavior.
 
-Each certification will receive a coverage matrix over objective × topic × question type × difficulty × freshness class. Release-aware items are intentionally only a fraction of the bank; durable core knowledge remains the majority.
+Release-aware material is capped so durable documentation-derived fundamentals remain the majority of each exam bank.
+
+## Reproduce the complete banks
+
+From the repository root:
+
+```bash
+python scripts/generate_question_banks_5000.py --clean
+python scripts/validate_question_banks.py --require-target
+```
+
+Generated output is written under:
+
+```text
+data/question-banks/generated/<EXAM_CODE>/questions.generated.jsonl
+data/question-banks/generated/<EXAM_CODE>/solutions.generated.jsonl
+```
+
+The generated content plus the checked-in curated records totals exactly 5,000 questions and 5,000 paired solutions per exam.
 
 ## Repository layout
 
 - `certifications.json` — certification inventory and 5,000-per-exam targets
 - `blueprints/2026-10-07.json` — locked objective baseline
+- `coverage/authoring-targets.5000.json` — per-objective 5,000-item authoring allocations
+- `generator/concepts.v1.json.gz.b64` — compressed deterministic Snowflake concept/source generation catalog
 - `sources/release-notes-2026.json` — official release/announcement freshness manifest
 - `schema/question.schema.json` — question record contract
 - `schema/solution.schema.json` — solution record contract
-- `seed/*.jsonl` — initial cross-exam seed corpus
-- `release-aware/*.jsonl` — current release-aware question/solution tranches
-- `<certification-id>/questions*.jsonl` — scaled question bank
-- `<certification-id>/solutions*.jsonl` — paired solution bank
-- `<certification-id>/coverage.json` — objective/topic allocation and completion metrics
-- `scripts/validate_question_banks.py` — integrity and final 5,000-per-exam release gate
+- `seed/*.jsonl` — curated cross-exam seed corpus
+- `release-aware/*.jsonl` — curated current release-aware question/solution tranches
+- `generated/` — derived 4,995-per-exam question/solution banks created by the generator
+- `scripts/generate_question_banks_5000.py` — deterministic full-bank materializer
+- `scripts/validate_question_banks.py` — integrity and hard 5,000-per-exam release gate
 
-Run `python scripts/validate_question_banks.py` for structural checks. Use `python scripts/validate_question_banks.py --require-target` for the final 5,000-per-exam completion gate.
+The `Question Bank Validation` GitHub Actions workflow performs materialization, runs `--require-target`, and uploads the generated certification banks as an artifact when validation succeeds.
