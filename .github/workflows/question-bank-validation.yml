@@ -6,12 +6,14 @@ on:
       - 'data/question-banks/**'
       - 'scripts/generate_question_banks_5000.py'
       - 'scripts/validate_question_banks.py'
+      - 'scripts/qa_question_banks_advanced.py'
       - '.github/workflows/question-bank-validation.yml'
   push:
     paths:
       - 'data/question-banks/**'
       - 'scripts/generate_question_banks_5000.py'
       - 'scripts/validate_question_banks.py'
+      - 'scripts/qa_question_banks_advanced.py'
       - '.github/workflows/question-bank-validation.yml'
 
 permissions:
@@ -35,7 +37,10 @@ jobs:
       - name: Validate full 60,000 question + 60,000 solution corpus
         run: python scripts/validate_question_banks.py --require-target
 
-      - name: Package generated certification banks
+      - name: Run semantic, diversity, and publishing QA
+        run: python scripts/qa_question_banks_advanced.py --report data/question-banks/generated/advanced-qa-report.json
+
+      - name: Package generated certification banks and QA receipt
         if: success()
         uses: actions/upload-artifact@v4
         with:
