@@ -1,0 +1,25 @@
+{
+  "as_of": "2026-10-07",
+  "branch": "feature/all-snowpro-question-banks",
+  "minimum_target_questions": 24000,
+  "minimum_target_solutions": 24000,
+  "seed_questions": 36,
+  "seed_solutions": 36,
+  "verified_questions": 0,
+  "verified_solutions": 0,
+  "status": "seed_created_qa_pending",
+  "by_certification": {
+    "associate-platform": {"questions": 3, "solutions": 3, "target": 2000},
+    "core": {"questions": 3, "solutions": 3, "target": 2000},
+    "specialty-gen-ai": {"questions": 3, "solutions": 3, "target": 2000},
+    "specialty-snowpark": {"questions": 3, "solutions": 3, "target": 2000, "retirement_date": "2026-11-01"},
+    "specialty-native-apps": {"questions": 3, "solutions": 3, "target": 2000},
+    "advanced-mlops-engineer": {"questions": 3, "solutions": 3, "target": 2000},
+    "advanced-security-engineer": {"questions": 3, "solutions": 3, "target": 2000},
+    "advanced-architect": {"questions": 3, "solutions": 3, "target": 2000},
+    "advanced-data-engineer": {"questions": 3, "solutions": 3, "target": 2000},
+    "advanced-data-scientist": {"questions": 3, "solutions": 3, "target": 2000, "retirement_date": "2026-11-01"},
+    "advanced-administrator": {"questions": 3, "solutions": 3, "target": 2000},
+    "advanced-data-analyst": {"questions": 3, "solutions": 3, "target": 2000}
+  }
+}
