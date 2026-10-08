@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - 'data/question-banks/**'
+      - 'scripts/generate_question_banks_5000.py'
       - 'scripts/validate_question_banks.py'
       - '.github/workflows/question-bank-validation.yml'
   push:
     paths:
       - 'data/question-banks/**'
+      - 'scripts/generate_question_banks_5000.py'
       - 'scripts/validate_question_banks.py'
       - '.github/workflows/question-bank-validation.yml'
 
@@ -21,9 +23,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate question and solution corpus
-        run: python scripts/validate_question_banks.py
+
+      - name: Materialize 5,000 question and solution pairs per certification
+        run: python scripts/generate_question_banks_5000.py --clean
+
+      - name: Validate full 60,000 question + 60,000 solution corpus
+        run: python scripts/validate_question_banks.py --require-target
+
+      - name: Package generated certification banks
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snowflake-certification-banks-5000-each
+          path: data/question-banks/generated/
+          if-no-files-found: error
+          retention-days: 30
