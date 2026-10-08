@@ -2,32 +2,30 @@
 
 This directory is the evidence-first source corpus for Snowflake certification practice content.
 
-## Goal and current materialized state
+## Goal and current publishing state
 
-The hard requirement is **at least 5,000 distinct questions and 5,000 paired solutions for every tracked Snowflake certification exam**. With 12 tracked exams, the minimum corpus is **60,000 questions + 60,000 paired solutions = 120,000 records**.
+The repository materializes **5,000 distinct questions and 5,000 paired solutions for every tracked Snowflake certification exam**. With 12 tracked exams, the canonical corpus is **60,000 questions + 60,000 paired solutions = 120,000 records**.
 
-That target is now deterministically materialized by the repository generator and enforced in CI. The checked-in curated corpus contains 60 hand-authored draft question/solution pairs (5 per exam). The generator adds the remaining 4,995 draft pairs per exam from the checked-in Snowflake concept/source catalog, producing exactly 5,000 questions and 5,000 solutions for each certification.
-
-The generated JSONL banks are intentionally not committed as very large derived blobs. They are reproducible from source and packaged by CI as the `snowflake-certification-banks-5000-each` workflow artifact.
+As of **2026-10-08**, the 5,000-per-certification target is materialized, the advanced automated QA gate passes, and a Word/PDF publishing set has been produced for all 12 tracked certifications. See `publishing/2026-10-08.json` for the publishing receipt and corpus fingerprints.
 
 The bank is original practice material. It must **not** contain recalled/live exam questions, leaked dumps, or copied proprietary practice-exam content.
 
-## Exam inventory baseline — 2026-10-07
+## Exam inventory baseline
 
-| ID | Exam | Code | Materialized | Lifecycle |
+| ID | Exam | Code | Target | Lifecycle |
 |---|---|---:|---:|---|
-| associate-platform | SnowPro Associate: Platform | SOL-C01 | 5,000 Q + 5,000 S | active / catalog reconciliation |
-| core | SnowPro Core | COF-C03 | 5,000 Q + 5,000 S | active |
-| specialty-gen-ai | SnowPro Specialty: Gen AI | GES-C02 | 5,000 Q + 5,000 S | active |
-| specialty-snowpark | SnowPro Specialty: Snowpark | SPS-C01 | 5,000 Q + 5,000 S | retiring 2026-11-01 |
-| specialty-native-apps | SnowPro Specialty: Native Apps | NAS-C02 | 5,000 Q + 5,000 S | active |
-| advanced-mlops-engineer | SnowPro Advanced: MLOps Engineer | MLA-C01 | 5,000 Q + 5,000 S | active |
-| advanced-security-engineer | SnowPro Advanced: Security Engineer | SEA-C01 | 5,000 Q + 5,000 S | active |
-| advanced-architect | SnowPro Advanced: Architect | ARA-C01 | 5,000 Q + 5,000 S | active |
-| advanced-data-engineer | SnowPro Advanced: Data Engineer | DEA-C02 | 5,000 Q + 5,000 S | active |
-| advanced-data-scientist | SnowPro Advanced: Data Scientist | DSA-C03 | 5,000 Q + 5,000 S | retiring 2026-11-01 |
-| advanced-administrator | SnowPro Advanced: Administrator | ADA-C02 | 5,000 Q + 5,000 S | active |
-| advanced-data-analyst | SnowPro Advanced: Data Analyst | DAA-C01 | 5,000 Q + 5,000 S | active |
+| associate-platform | SnowPro Associate: Platform | SOL-C01 | 5,000 | active / catalog reconciliation |
+| core | SnowPro Core | COF-C03 | 5,000 | active |
+| specialty-gen-ai | SnowPro Specialty: Gen AI | GES-C02 | 5,000 | active |
+| specialty-snowpark | SnowPro Specialty: Snowpark | SPS-C01 | 5,000 | retiring 2026-11-01 |
+| specialty-native-apps | SnowPro Specialty: Native Apps | NAS-C02 | 5,000 | active |
+| advanced-mlops-engineer | SnowPro Advanced: MLOps Engineer | MLA-C01 | 5,000 | active |
+| advanced-security-engineer | SnowPro Advanced: Security Engineer | SEA-C01 | 5,000 | active |
+| advanced-architect | SnowPro Advanced: Architect | ARA-C01 | 5,000 | active |
+| advanced-data-engineer | SnowPro Advanced: Data Engineer | DEA-C02 | 5,000 | active |
+| advanced-data-scientist | SnowPro Advanced: Data Scientist | DSA-C03 | 5,000 | retiring 2026-11-01 |
+| advanced-administrator | SnowPro Advanced: Administrator | ADA-C02 | 5,000 | active |
+| advanced-data-analyst | SnowPro Advanced: Data Analyst | DAA-C01 | 5,000 | active |
 
 Recertification exams are treated as blueprint variants of their parent certification when Snowflake states that they share the same guide; they are not counted as separate 5,000-question corpora unless Snowflake publishes a distinct blueprint.
 
@@ -43,77 +41,44 @@ Use Snowflake-owned sources in this order:
 
 Community content may identify topics or misconceptions but is never an authoritative answer source.
 
-## Freshness layer
-
-Durable exam fundamentals and release-specific facts are tracked separately. A release-aware question is eligible only when the feature maps to a locked exam objective. Every time-sensitive item must preserve:
-
-- source publication/release date;
-- `as_of` date;
-- lifecycle state such as Preview, Public Preview, Private Preview, or General Availability;
-- retirement/deprecation information where applicable.
-
-The source manifest at `sources/release-notes-2026.json` maps current Snowflake releases and announcements to candidate certification objectives.
-
-Release-aware content must remain proportionate: it should deepen current-product coverage without crowding out durable architecture, SQL, administration, data engineering, security, analytics, ML, and platform fundamentals. Preview-only behavior must never be presented as a durable GA fact.
-
-## Evidence contract
+## Evidence and quality contract
 
 Every question contains a stable ID, certification/exam code, locked blueprint objective, topic/subtopic, question type, difficulty, prompt/options, answer key, Snowflake-owned sources, freshness metadata, lifecycle notes where necessary, and QA status.
 
 Every paired solution contains the matching question ID, correct answer, explanation, reasoning, distractor analysis, exam trap/misconception, official-source references, and optional runnable SQL/Python.
 
-## Quality gates
+Automated release gates enforce parseability, stable IDs, question/solution pairing, answer-key consistency, Snowflake-owned source URLs, blueprint membership, exact normalized-prompt uniqueness, 5,000-per-exam counts, diversity, release-aware lifecycle requirements, and within-exam semantic near-duplicate detection. The 2026-10-08 advanced QA receipt reports **0 blocking errors** and **0 within-exam semantic near-duplicate pairs**.
 
-A record cannot move from `draft` to `verified` unless:
+A record does **not** become individually `verified` merely because these automated gates pass. Generated records remain `draft` until explicitly promoted after source and ambiguity review. This distinction is preserved in `status.json` and in the published documents.
 
-1. the answer is supported by current Snowflake-owned documentation;
-2. the question maps to a locked exam-guide objective;
-3. no option is ambiguous under the documented assumptions;
-4. no recalled or leaked certification content was used;
-5. duplicate and near-duplicate checks pass;
-6. deprecated/preview/edition/cloud/region-specific behavior is labeled explicitly;
-7. the solution explains why distractors are wrong;
-8. time-sensitive facts carry an `as_of` date and are revalidation-ready.
+## Freshness layer
 
-The full 120,000-record materialization currently passes the structural hard gate: parseability, stable IDs, paired solutions, answer-key consistency, Snowflake-owned sources, blueprint-objective membership, exact normalized-prompt uniqueness, allocation integrity, and 5,000-per-exam counts. Generated records remain `draft`; structural validation is not represented as 120,000 individual human reviews.
+Durable exam fundamentals and release-specific facts are tracked separately. A release-aware question is eligible only when the feature maps to a locked exam objective. Every time-sensitive item must preserve source publication/release date, `as_of` date, lifecycle state, and retirement/deprecation information where applicable.
 
-## Coverage strategy
+Release-aware content remains a minority of the bank so that current-product coverage does not crowd out durable architecture, SQL, administration, data engineering, security, analytics, ML, and platform fundamentals.
 
-The 5,000 target is produced against the locked objective allocation matrix and an official-source-grounded concept catalog. Generation varies scenario context, operational constraints, workload conditions, question archetypes, difficulty, answer ordering, and role-specific framing so the final banks exercise capability selection, distinctions, troubleshooting, architecture decisions, SQL reasoning, security/governance, performance/cost, loading/transformation/orchestration, data science/ML, and release-aware behavior.
+## Repository layout
 
-Release-aware material is capped so durable documentation-derived fundamentals remain the majority of each exam bank.
+- `certifications.json` - certification inventory and 5,000-per-exam targets
+- `blueprints/2026-10-07.json` - locked objective baseline
+- `coverage/authoring-targets.5000.json` - internal objective-level authoring allocation
+- `generator/` - deterministic Snowflake concept/source catalog
+- `seed/*.jsonl` - curated durable seed corpus
+- `release-aware/*.jsonl` - curated release-aware corpus
+- `generated/` - derived 4,995-per-exam materialization output (CI artifact; not required to be committed)
+- `schema/` - question/solution contracts
+- `publishing/2026-10-08.json` - publishing receipt and corpus hashes
+- `status.json` - current completion/QA status
+- `scripts/generate_question_banks_5000.py` - deterministic materializer
+- `scripts/validate_question_banks.py` - structural/final 5,000-per-exam release gate
+- `scripts/qa_question_banks_advanced.py` - semantic, diversity, content, and publishing QA
 
-## Reproduce the complete banks
-
-From the repository root:
+Run:
 
 ```bash
 python scripts/generate_question_banks_5000.py --clean
 python scripts/validate_question_banks.py --require-target
+python scripts/qa_question_banks_advanced.py --report data/question-banks/generated/advanced-qa-report.json
 ```
 
-Generated output is written under:
-
-```text
-data/question-banks/generated/<EXAM_CODE>/questions.generated.jsonl
-data/question-banks/generated/<EXAM_CODE>/solutions.generated.jsonl
-```
-
-The generated content plus the checked-in curated records totals exactly 5,000 questions and 5,000 paired solutions per exam.
-
-## Repository layout
-
-- `certifications.json` — certification inventory and 5,000-per-exam targets
-- `blueprints/2026-10-07.json` — locked objective baseline
-- `coverage/authoring-targets.5000.json` — per-objective 5,000-item authoring allocations
-- `generator/concepts.v1.json.gz.b64` — compressed deterministic Snowflake concept/source generation catalog
-- `sources/release-notes-2026.json` — official release/announcement freshness manifest
-- `schema/question.schema.json` — question record contract
-- `schema/solution.schema.json` — solution record contract
-- `seed/*.jsonl` — curated cross-exam seed corpus
-- `release-aware/*.jsonl` — curated current release-aware question/solution tranches
-- `generated/` — derived 4,995-per-exam question/solution banks created by the generator
-- `scripts/generate_question_banks_5000.py` — deterministic full-bank materializer
-- `scripts/validate_question_banks.py` — integrity and hard 5,000-per-exam release gate
-
-The `Question Bank Validation` GitHub Actions workflow performs materialization, runs `--require-target`, and uploads the generated certification banks as an artifact when validation succeeds.
+The `Question Bank Validation` GitHub Actions workflow performs these steps and packages the canonical publishing source as `snowflake-certification-banks-5000-each`.
