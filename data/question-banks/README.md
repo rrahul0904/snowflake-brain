@@ -50,6 +50,8 @@ Durable exam fundamentals and release-specific facts are tracked separately. A r
 
 The source manifest at `sources/release-notes-2026.json` maps current Snowflake releases and announcements to candidate certification objectives.
 
+Release-aware content must remain proportionate: it should deepen current-product coverage without crowding out durable architecture, SQL, administration, data engineering, security, analytics, ML, and platform fundamentals. Preview-only behavior must never be presented as a durable GA fact.
+
 ## Evidence contract
 
 Every question contains a stable ID, certification/exam code, locked blueprint objective, topic/subtopic, question type, difficulty, prompt/options, answer key, Snowflake-owned sources, freshness metadata, lifecycle notes where necessary, and QA status.
