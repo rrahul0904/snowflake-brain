@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snowflake-brain.local/schema/question.schema.json",
+  "title": "Snowflake Certification Question",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "certification_id",
+    "exam_code",
+    "blueprint_objective",
+    "topic",
+    "question_type",
+    "difficulty",
+    "prompt",
+    "options",
+    "answer_key",
+    "sources",
+    "as_of",
+    "status"
+  ],
+  "properties": {
+    "id": {"type": "string", "minLength": 8},
+    "certification_id": {"type": "string", "minLength": 2},
+    "exam_code": {"type": "string", "minLength": 3},
+    "blueprint_domain": {"type": ["string", "null"]},
+    "blueprint_objective": {"type": "string", "minLength": 3},
+    "topic": {"type": "string", "minLength": 2},
+    "subtopic": {"type": ["string", "null"]},
+    "question_type": {
+      "type": "string",
+      "enum": ["single_select", "multi_select", "scenario", "sql_reasoning", "architecture_decision", "troubleshooting"]
+    },
+    "difficulty": {"type": "string", "enum": ["foundation", "exam", "advanced"]},
+    "prompt": {"type": "string", "minLength": 12},
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "text"],
+        "properties": {
+          "key": {"type": "string", "minLength": 1, "maxLength": 3},
+          "text": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "answer_key": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "title", "url"],
+        "properties": {
+          "type": {"type": "string", "enum": ["official_exam_guide", "official_docs", "official_learning", "official_announcement"]},
+          "title": {"type": "string", "minLength": 2},
+          "url": {"type": "string", "format": "uri"},
+          "section": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "as_of": {"type": "string", "format": "date"},
+    "lifecycle_note": {"type": ["string", "null"]},
+    "status": {"type": "string", "enum": ["draft", "source_checked", "verified", "retired"]},
+    "tags": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+  }
+}
