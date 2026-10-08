@@ -3,6 +3,7 @@
   "branch": "feature/all-snowpro-question-banks",
   "minimum_target_questions": 60000,
   "minimum_target_solutions": 60000,
+  "minimum_target_records": 120000,
   "current_questions": 48,
   "current_solutions": 48,
   "seed_questions": 36,
@@ -12,6 +13,12 @@
   "verified_questions": 0,
   "verified_solutions": 0,
   "status": "blueprints_locked_release_aware_expansion_in_progress",
+  "next_milestones": [
+    "Build per-exam objective/topic coverage matrices for 5000 questions each",
+    "Expand durable documentation-derived questions before increasing release-aware density",
+    "Add near-duplicate detection and source-freshness checks",
+    "Promote records from draft only after source and ambiguity QA"
+  ],
   "by_certification": {
     "associate-platform": {"questions": 4, "solutions": 4, "target": 5000},
     "core": {"questions": 4, "solutions": 4, "target": 5000},
