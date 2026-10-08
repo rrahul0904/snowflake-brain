@@ -1,0 +1,46 @@
+{
+  "publishing_date": "2026-10-08",
+  "source_branch": "feature/all-snowpro-question-banks",
+  "validated_source_sha": "c6e051764e0bcd3e78b6b51dde7c1e78315f09b0",
+  "question_bank_validation_run_id": 37800266268,
+  "canonical_source_artifact_id": 11559839547,
+  "canonical_source_artifact_sha256": "5fec4aa20d18c5a2d4878e263cc1a83001f12d6298edc28acb02c5a265270314",
+  "corpus": {
+    "certifications": 12,
+    "questions": 60000,
+    "solutions": 60000,
+    "questions_per_certification": 5000,
+    "solutions_per_certification": 5000,
+    "question_sha256": "98ac438136f0fb09e6b921080423828ae64bd30f7f4364edf79556c67eff9cb9",
+    "solution_sha256": "f0bad61ea7340dc25399518b26152198ec34f76922b18d7eda7b4d1b168104e0"
+  },
+  "advanced_qa": {
+    "status": "pass",
+    "blocking_errors": 0,
+    "within_exam_semantic_near_duplicate_pairs": 0,
+    "cross_exam_high_similarity_pairs_reported": 214,
+    "cross_exam_similarity_is_non_blocking": true
+  },
+  "published_documents": {
+    "certification_docx_files": 12,
+    "certification_pdf_files": 12,
+    "master_index_docx": true,
+    "master_index_pdf": true,
+    "docx_question_markers_per_certification": 5000,
+    "docx_solution_markers_per_certification": 5000,
+    "pdf_question_markers_per_certification": 5000,
+    "pdf_solution_markers_per_certification": 5000,
+    "pdf_q5000_s5000_terminal_markers_checked": true,
+    "publishing_validation": "pass"
+  },
+  "content_status": {
+    "automated_qa_complete": true,
+    "individually_human_reviewed_records": false,
+    "generated_record_status": "draft",
+    "note": "Automated structural, blueprint, source-domain, pairing, exact-duplicate, within-exam semantic near-duplicate, diversity, target-count, and publishing completeness gates passed. Generated records are not represented as individually human-reviewed or verified."
+  },
+  "lifecycle_notes": {
+    "SPS-C01": "Tracked as retiring 2026-11-01",
+    "DSA-C03": "Tracked as retiring 2026-11-01"
+  }
+}
