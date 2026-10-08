@@ -5,7 +5,7 @@ This validator intentionally uses only Python's standard library so it can run i
 without installing dependencies. It validates the invariants that matter most for the
 question-bank build: parseability, IDs, answer keys, paired solutions, official-source
 URLs, exam coverage, duplicate prompts, blueprint-objective membership, and optional
-2,000-per-exam completion gates.
+5,000-per-exam completion gates.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import argparse
 import json
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BANK_ROOT = ROOT / "data" / "question-banks"
 BLUEPRINT_PATH = BANK_ROOT / "blueprints" / "2026-10-07.json"
 ALLOWED_SOURCE_HOST_SUFFIXES = ("snowflake.com", "snowflakecomputing.com")
-MIN_PER_EXAM = 2000
+MIN_PER_EXAM = 5000
 
 
 def load_json(path: Path):
@@ -77,7 +77,7 @@ def main() -> int:
     parser.add_argument(
         "--require-target",
         action="store_true",
-        help="fail unless every tracked exam has at least 2,000 questions and paired solutions",
+        help="fail unless every tracked exam has at least 5,000 questions and paired solutions",
     )
     args = parser.parse_args()
 
