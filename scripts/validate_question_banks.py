@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Validate Snowflake certification question/solution corpus integrity.
 
-This validator intentionally uses only Python's standard library so it can run in CI
-without installing dependencies. It validates the invariants that matter most for the
-question-bank build: parseability, IDs, answer keys, paired solutions, official-source
-URLs, exam coverage, duplicate prompts, blueprint-objective membership, and optional
-5,000-per-exam completion gates.
+Standard-library-only validation for the evidence-first certification corpus. Checks
+parseability, IDs, pairing, answer keys, Snowflake-owned sources, blueprint objectives,
+5,000-item authoring allocations, release-aware lifecycle metadata, duplicate prompts,
+and optional final 5,000-per-exam completion gates.
 """
 
 from __future__ import annotations
@@ -21,6 +20,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 BANK_ROOT = ROOT / "data" / "question-banks"
 BLUEPRINT_PATH = BANK_ROOT / "blueprints" / "2026-10-07.json"
+ALLOCATION_PATH = BANK_ROOT / "coverage" / "authoring-targets.5000.json"
 ALLOWED_SOURCE_HOST_SUFFIXES = ("snowflake.com", "snowflakecomputing.com")
 MIN_PER_EXAM = 5000
 
@@ -72,6 +72,44 @@ def loc(record) -> str:
     return f"{record.get('__path', '?')}:{record.get('__line', '?')}"
 
 
+def validate_authoring_allocations(tracked, objective_sets, errors):
+    if not ALLOCATION_PATH.exists():
+        errors.append(f"missing allocation matrix: {ALLOCATION_PATH.relative_to(ROOT)}")
+        return
+
+    allocation = load_json(ALLOCATION_PATH)
+    if allocation.get("target_per_exam") != MIN_PER_EXAM:
+        errors.append(
+            f"allocation target_per_exam is {allocation.get('target_per_exam')}; expected {MIN_PER_EXAM}"
+        )
+
+    exam_allocations = allocation.get("exams", {})
+    extras = sorted(set(exam_allocations) - set(tracked))
+    if extras:
+        errors.append(f"allocation matrix contains untracked exams: {', '.join(extras)}")
+
+    for code in tracked:
+        item = exam_allocations.get(code)
+        if not item:
+            errors.append(f"allocation matrix missing tracked exam {code}")
+            continue
+        rows = item.get("allocations", [])
+        total = sum(row.get("target", 0) for row in rows)
+        if total != MIN_PER_EXAM:
+            errors.append(f"{code}: authoring allocations sum to {total}, expected {MIN_PER_EXAM}")
+        objectives = [row.get("objective") for row in rows]
+        if len(objectives) != len(set(objectives)):
+            errors.append(f"{code}: duplicate objective in authoring allocation matrix")
+        actual = set(objectives)
+        expected = objective_sets[code]
+        missing = sorted(expected - actual)
+        extra = sorted(actual - expected)
+        if missing:
+            errors.append(f"{code}: allocation missing blueprint objectives: {missing}")
+        if extra:
+            errors.append(f"{code}: allocation has non-blueprint objectives: {extra}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -87,6 +125,7 @@ def main() -> int:
     blueprint = load_json(BLUEPRINT_PATH)
     tracked = {item["exam_code"]: item for item in blueprint["certifications"]}
     objective_sets = {code: set(item["objectives"]) for code, item in tracked.items()}
+    validate_authoring_allocations(tracked, objective_sets, errors)
 
     questions, parse_errors_q = load_jsonl_files("questions")
     solutions, parse_errors_s = load_jsonl_files("solutions")
@@ -137,6 +176,13 @@ def main() -> int:
         for source in q.get("sources", []):
             if not source_is_official(source.get("url", "")):
                 errors.append(f"{loc(q)}: non-Snowflake source URL: {source.get('url')}")
+
+        if "release-aware" in q.get("tags", []):
+            if not q.get("lifecycle_note"):
+                errors.append(f"{loc(q)}: release-aware question is missing lifecycle_note")
+            if not any(source.get("type") == "official_announcement" for source in q.get("sources", [])):
+                errors.append(f"{loc(q)}: release-aware question must cite an official_announcement source")
+
         normalized = normalize_prompt(q["prompt"])
         if normalized in prompt_seen:
             errors.append(
@@ -198,6 +244,7 @@ def main() -> int:
     print(f"Tracked exams: {len(tracked)}")
     print(f"Questions: {len(questions)}")
     print(f"Solutions: {len(solutions)}")
+    print(f"Authoring allocation target: {MIN_PER_EXAM} per exam")
     print("Counts by exam:")
     for code in tracked:
         print(f"  {code}: {q_counts[code]} questions / {s_counts[code]} solutions")
@@ -213,7 +260,7 @@ def main() -> int:
             print(f"  ERROR: {error}", file=sys.stderr)
         return 1
 
-    print("\nPASS: structural integrity checks succeeded.")
+    print("\nPASS: structural, blueprint, allocation, pairing, and freshness checks succeeded.")
     if not args.require_target:
         print("Target count gate was not requested; run with --require-target for final release gating.")
     return 0
