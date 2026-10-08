@@ -1,9 +1,10 @@
 {
   "as_of": "2026-10-07",
   "policy": {
-    "minimum_questions_per_exam": 2000,
-    "minimum_solutions_per_exam": 2000,
-    "source_policy": "Snowflake-owned exam guides, documentation, product docs, verified Snowflake credential metadata, and Snowflake training pages only for factual grounding. No exam dumps or recalled live questions.",
+    "minimum_questions_per_exam": 5000,
+    "minimum_solutions_per_exam": 5000,
+    "source_policy": "Use Snowflake-owned exam guides, documentation, server and feature release notes, official product announcements, verified Snowflake credential metadata, and Snowflake learning pages for factual grounding. No exam dumps, recalled live questions, or copied commercial practice questions.",
+    "freshness_policy": "Track release-specific facts separately from durable fundamentals. Preserve Preview, Public Preview, Private Preview, and General Availability state in lifecycle metadata. A release-aware item is eligible only when it maps to a locked exam objective.",
     "retirement_policy": "Retiring exams remain in the corpus until retirement, are clearly flagged, and are retained afterward as archived banks for historical learners unless replaced by a successor blueprint."
   },
   "certifications": [
