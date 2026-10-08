@@ -26,6 +26,20 @@ TYPE={"scenario":"scenario","architecture_decision":"architecture_decision","tro
 SQLISH={"variant","flatten","qualify","window_functions","pivot","unpivot","match_recognize","period","udf","stored_proc","copy_into"}
 ARCHISH={"virtual_warehouse","multi_cluster","replication","secure_sharing","dynamic_tables","snowpipe_streaming","iceberg","delta_direct","openflow","workday_zero_copy","spcs"}
 TROUBLE={"query_profile","resource_monitor","streams_view","streaming_monitor","trust_center","access_history","model_monitoring"}
+ROLE={
+    "SOL-C01":"Snowflake Associate Platform practitioner",
+    "COF-C03":"SnowPro Core practitioner",
+    "GES-C02":"Snowflake Gen AI practitioner",
+    "SPS-C01":"Snowpark developer",
+    "NAS-C02":"Snowflake Native App developer",
+    "MLA-C01":"Snowflake MLOps engineer",
+    "SEA-C01":"Snowflake security engineer",
+    "ARA-C01":"Snowflake solution architect",
+    "DEA-C02":"Snowflake data engineer",
+    "DSA-C03":"Snowflake data scientist",
+    "ADA-C02":"Snowflake administrator",
+    "DAA-C01":"Snowflake data analyst",
+}
 
 def rng(*parts):
     return random.Random(int(hashlib.sha256("|".join(parts).encode()).hexdigest()[:16],16))
@@ -59,11 +73,11 @@ def property_options(cid,ds,r):
         opts.append({"key":k,"text":text}); mp[k]=ident
         if ident=="CORRECT": ans.append(k)
     return opts,ans,mp
-def prompt(arch,c,ctx,constraint,serial):
+def prompt(arch,c,ctx,constraint,serial,role):
     scale=ENV[serial%len(ENV)]
     workload=WORK[(serial//len(ENV))%len(WORK)]
     control=CTRL[(serial//(len(ENV)*len(WORK)))%len(CTRL)]
-    detail=f"The environment is {scale}, has {workload}, and operates with {control}."
+    detail=f"A {role} is working in an environment that is {scale}, has {workload}, and operates with {control}."
     forms={
       "scenario":[
         "{ctx} needs to {need} and also wants to {constraint}. Which Snowflake capability best fits?",
@@ -105,7 +119,7 @@ def build(code,cert_id,obj,cid,serial,ordinal):
     q={"id":qid,"certification_id":cert_id,"exam_code":code,"blueprint_domain":None,
        "blueprint_objective":obj,"topic":c["label"],"subtopic":cid.replace("_"," "),
        "question_type":qtype(arch,cid),"difficulty":DIFF[(serial+ordinal)%3],
-       "prompt":prompt(arch,c,ctx,con,serial),"options":opts,"answer_key":ans,"sources":source,
+       "prompt":prompt(arch,c,ctx,con,serial,ROLE[code]),"options":opts,"answer_key":ans,"sources":source,
        "as_of":AS_OF,"lifecycle_note":c.get("lifecycle"),"status":"draft",
        "tags":["generated-v1",f"concept:{cid}",f"context:{ctx_id}",f"constraint:{con_id}",f"archetype:{arch}",
                f"source-class:{'release-aware' if c.get('release') else 'durable'}"]}
