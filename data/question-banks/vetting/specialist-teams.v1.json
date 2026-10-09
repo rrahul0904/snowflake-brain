@@ -1,0 +1,104 @@
+{
+  "as_of": "2026-10-09",
+  "review_model": {
+    "required_roles": [
+      "certification_lead",
+      "item_writer_domain_sme",
+      "blind_adversarial_reviewer",
+      "solution_evidence_reviewer"
+    ],
+    "optional_roles": ["quality_psychometric_reviewer"],
+    "blind_review_required": true,
+    "writer_cannot_self_approve": true,
+    "source_policy": "Snowflake-owned sources only for factual grounding; direct current product documentation preferred for product behavior.",
+    "target_per_exam": 5000
+  },
+  "teams": {
+    "SOL-C01": {
+      "name": "SnowPro Associate: Platform Specialist Team",
+      "level": "associate",
+      "mission": "Validate practical platform fundamentals for a new Snowflake practitioner without reducing the bank to terminology recall.",
+      "specialties": ["Snowsight and Notebooks", "databases and stages", "virtual warehouses", "data loading", "structured and semi-structured data", "RBAC basics", "account structure", "Cortex LLM function basics"],
+      "difficulty_mix": {"foundation": 20, "exam_parity": 45, "exam_plus": 25, "expert_stretch": 10}
+    },
+    "COF-C03": {
+      "name": "SnowPro Core Specialist Team",
+      "level": "core",
+      "mission": "Test cross-platform Snowflake competence across architecture, data movement, security, performance, collaboration, and connectivity.",
+      "specialties": ["Snowflake architecture", "account and warehouse management", "loading and transformation", "semi-structured data", "performance and concurrency", "data protection and sharing", "connectivity"],
+      "difficulty_mix": {"foundation": 15, "exam_parity": 45, "exam_plus": 30, "expert_stretch": 10}
+    },
+    "GES-C02": {
+      "name": "SnowPro Gen AI Specialist Team",
+      "level": "specialty",
+      "mission": "Test production-oriented Snowflake GenAI design and operations, not superficial AI terminology.",
+      "specialties": ["Cortex AI functions", "Cortex Analyst", "Cortex Search and RAG", "document processing", "model registry", "Snowpark Container Services", "GenAI security/cost/quality tradeoffs"],
+      "difficulty_mix": {"foundation": 10, "exam_parity": 40, "exam_plus": 35, "expert_stretch": 15}
+    },
+    "SPS-C01": {
+      "name": "Snowpark Specialist Team",
+      "level": "specialty",
+      "mission": "Test Snowpark programming behavior, execution semantics, DataFrames, sessions, actions, and stored procedures through code and operational scenarios.",
+      "specialties": ["Snowpark DataFrames", "lazy evaluation", "Session", "actions", "Python functions", "stored procedures", "server/client execution boundaries"],
+      "difficulty_mix": {"foundation": 10, "exam_parity": 40, "exam_plus": 35, "expert_stretch": 15},
+      "lifecycle": {"state": "retiring", "retirement_date": "2026-11-01"}
+    },
+    "NAS-C02": {
+      "name": "Native Apps Specialist Team",
+      "level": "specialty",
+      "mission": "Test Native App architecture, manifests, setup behavior, privileges, release channels, listings, upgrades, and troubleshooting as an app provider/consumer practitioner.",
+      "specialties": ["application packages", "manifest.yml", "setup scripts", "application roles", "privilege requests", "release directives", "listings", "upgrade lifecycle"],
+      "difficulty_mix": {"foundation": 10, "exam_parity": 40, "exam_plus": 35, "expert_stretch": 15}
+    },
+    "MLA-C01": {
+      "name": "Advanced MLOps Engineer Specialist Team",
+      "level": "advanced",
+      "mission": "Test production ML lifecycle engineering in Snowflake across feature engineering, training, registry, deployment, monitoring, CI/CD, governance, and cost.",
+      "specialties": ["Feature Store", "Model Registry", "training pipelines", "deployment", "model monitoring", "CI/CD", "governance", "security", "cost management"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20}
+    },
+    "SEA-C01": {
+      "name": "Advanced Security Engineer Specialist Team",
+      "level": "advanced",
+      "mission": "Test security architecture and incident-level reasoning across identity, access, governance, monitoring, risk, and AI-assisted security.",
+      "specialties": ["RBAC and database roles", "authentication and federation", "network controls", "masking", "row access", "tagging", "Access History", "Trust Center", "incident response", "compliance"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20}
+    },
+    "ARA-C01": {
+      "name": "Advanced Architect Specialist Team",
+      "level": "advanced",
+      "mission": "Test end-to-end Snowflake architecture judgment under performance, security, compliance, collaboration, availability, and operational constraints.",
+      "specialties": ["end-to-end data flow", "multi-account architecture", "workload isolation", "HA/DR", "replication", "security architecture", "Marketplace and Data Exchange", "tool selection", "cost/performance tradeoffs"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20}
+    },
+    "DEA-C02": {
+      "name": "Advanced Data Engineer Specialist Team",
+      "level": "advanced",
+      "mission": "Test production data engineering decisions across ingestion, transformation, streaming, replication, orchestration, scale, and performance.",
+      "specialties": ["COPY and Snowpipe", "Snowpipe Streaming", "Streams and Tasks", "Dynamic Tables", "replication", "external/lake data", "compute sizing", "query/profile metrics", "near-real-time design"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20}
+    },
+    "DSA-C03": {
+      "name": "Advanced Data Scientist Specialist Team",
+      "level": "advanced",
+      "mission": "Test Snowflake-native data science workflow reasoning from feature preparation through model training, evaluation, registry, and GenAI integration.",
+      "specialties": ["data preparation", "feature engineering", "Snowpark ML", "model training", "evaluation", "Model Registry", "GenAI/LLM use", "data science best practices"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20},
+      "lifecycle": {"state": "retiring", "retirement_date": "2026-11-01"}
+    },
+    "ADA-C02": {
+      "name": "Advanced Administrator Specialist Team",
+      "level": "advanced",
+      "mission": "Test operational administration under realistic security, warehouse, object, monitoring, sharing, replication, recovery, and governance constraints.",
+      "specialties": ["account administration", "RBAC/governance", "warehouses", "resource monitors and budgets", "object management", "performance", "sharing/Marketplace", "replication/failover", "backup/recovery"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20}
+    },
+    "DAA-C01": {
+      "name": "Advanced Data Analyst Specialist Team",
+      "level": "advanced",
+      "mission": "Test analytical problem solving with Snowflake SQL, functions, transformations, statistics, predictive analysis, and presentation choices.",
+      "specialties": ["data preparation", "advanced SQL", "window functions", "semi-structured analysis", "UDFs", "descriptive/diagnostic analysis", "predictive analysis", "business presentation"],
+      "difficulty_mix": {"foundation": 5, "exam_parity": 35, "exam_plus": 40, "expert_stretch": 20}
+    }
+  }
+}
