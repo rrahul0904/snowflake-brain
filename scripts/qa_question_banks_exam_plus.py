@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 import sys
 from collections import Counter, defaultdict
@@ -63,7 +62,6 @@ def tag_value(record: dict, prefix: str) -> str | None:
 
 
 def target_counts(mix: dict, total: int) -> dict:
-    # Percentages in specialist-teams.v1.json intentionally sum to 100.
     return {name: int(round(total * pct / 100.0)) for name, pct in mix.items()}
 
 
@@ -93,12 +91,18 @@ def main() -> int:
         "standard": "data/question-banks/vetting/exam-plus-quality-standard.md",
         "mode": "specialist_readiness",
         "important": "Automated readiness is not specialist approval. exam_plus_verified remains zero until blind specialist review records a promotion.",
+        "solution_depth_policy": {
+            "blocker": "A solution is incomplete when its combined explanation/reasoning is too shallow, its exam trap/evidence is missing, or distractor analysis does not cover every wrong option.",
+            "review_flags": "A concise explanation or concise reasoning is separately flagged for specialist review but is not a blocker when the full solution is pedagogically complete."
+        },
         "global": {},
         "by_exam": {},
     }
 
     total_source_blockers = 0
     total_solution_blockers = 0
+    total_terse_explanation_flags = 0
+    total_terse_reasoning_flags = 0
     total_foundation_excess = 0
     total_pending = 0
     total_pairs = 0
@@ -114,6 +118,8 @@ def main() -> int:
         applied = 0
         source_blockers = 0
         solution_blockers = 0
+        terse_explanation_flags = 0
+        terse_reasoning_flags = 0
         ambiguity_risk = 0
         rich_solution = 0
 
@@ -126,12 +132,21 @@ def main() -> int:
                 solution_blockers += 1
                 continue
 
+            explanation_words = words(s.get("explanation", ""))
+            reasoning_words = words(s.get("reasoning", ""))
+            combined_words = explanation_words + reasoning_words
+            if explanation_words < 8:
+                terse_explanation_flags += 1
+            if reasoning_words < 16:
+                terse_reasoning_flags += 1
+
             option_keys = {str(o.get("key")) for o in q.get("options", [])}
             wrong_keys = option_keys - set(q.get("answer_key", []))
             distractor_keys = {str(x.get("key")) for x in s.get("distractor_analysis", [])}
             solution_ok = (
-                words(s.get("explanation", "")) >= 8
-                and words(s.get("reasoning", "")) >= 16
+                explanation_words >= 4
+                and reasoning_words >= 10
+                and combined_words >= 24
                 and words(s.get("exam_trap", "")) >= 6
                 and wrong_keys == distractor_keys
                 and bool(s.get("sources"))
@@ -149,13 +164,10 @@ def main() -> int:
                 applied += 1
 
             prompt = (q.get("prompt") or "").lower()
-            # Heuristic only: these patterns are review flags, never automatic factual failures.
             if any(token in prompt for token in (" always ", " never ", " only ")) and q.get("question_type") == "single_select":
                 ambiguity_risk += 1
 
         target = target_counts(team["difficulty_mix"], total or 5000)
-        # The legacy corpus has foundation/exam/advanced. Treat legacy advanced only as
-        # an Exam+ *candidate*, never as verified Exam+ content.
         foundation_excess = max(0, diff.get("foundation", 0) - target["foundation"])
         high_reasoning_target = target["exam_plus"] + target["expert_stretch"]
         legacy_advanced_candidate_gap = max(0, high_reasoning_target - diff.get("advanced", 0))
@@ -168,6 +180,8 @@ def main() -> int:
         total_foundation_excess += foundation_excess
         total_source_blockers += source_blockers
         total_solution_blockers += solution_blockers
+        total_terse_explanation_flags += terse_explanation_flags
+        total_terse_reasoning_flags += terse_reasoning_flags
 
         report["by_exam"][code] = {
             "name": team["name"],
@@ -183,6 +197,8 @@ def main() -> int:
             "rich_solution_percent": round(rich_solution_pct, 2),
             "source_blockers": source_blockers,
             "solution_blockers": solution_blockers,
+            "terse_explanation_review_flags": terse_explanation_flags,
+            "terse_reasoning_review_flags": terse_reasoning_flags,
             "heuristic_ambiguity_review_flags": ambiguity_risk,
             "foundation_items_above_new_ceiling": foundation_excess,
             "additional_high_reasoning_items_needed_if_every_legacy_advanced_item_passes_specialist_review": legacy_advanced_candidate_gap,
@@ -201,6 +217,8 @@ def main() -> int:
         "pairs": total_pairs,
         "source_blockers": total_source_blockers,
         "solution_blockers": total_solution_blockers,
+        "terse_explanation_review_flags": total_terse_explanation_flags,
+        "terse_reasoning_review_flags": total_terse_reasoning_flags,
         "pairs_pending_specialist_disposition": total_pending,
         "foundation_items_above_new_ceilings": total_foundation_excess,
         "specialist_exam_parity_verified": tracker["global"]["exam_parity_verified"],
@@ -217,6 +235,8 @@ def main() -> int:
     print(f"Pairs: {total_pairs}")
     print(f"Source blockers: {total_source_blockers}")
     print(f"Solution completeness blockers: {total_solution_blockers}")
+    print(f"Terse explanation review flags: {total_terse_explanation_flags}")
+    print(f"Terse reasoning review flags: {total_terse_reasoning_flags}")
     print(f"Pending specialist dispositions: {total_pending}")
     print(f"Foundation items above new ceilings: {total_foundation_excess}")
     print(f"Exam+ program complete: {report['global']['exam_plus_program_complete']}")
