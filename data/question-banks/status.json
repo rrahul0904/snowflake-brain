@@ -35,13 +35,17 @@
     "promotion_note": "Source/answer vetting is complete, but this is not the new Exam+ specialist approval state."
   },
   "exam_plus": {
-    "status": "specialist_review_started",
+    "status": "specialist_review_started_remediation_required",
     "goal": "Certification-specialist question and solution banks that meet Snowflake exam parity and include a deliberate harder Exam+/expert-stretch layer.",
     "quality_standard": "vetting/exam-plus-quality-standard.md",
     "specialist_teams": "vetting/specialist-teams.v1.json",
     "review_tracker": "vetting/specialist-review-tracker.v1.json",
     "gap_baseline": "vetting/exam-plus-gap-baseline-2026-10-09.json",
+    "readiness_baseline": "vetting/exam-plus-readiness-baseline-2026-10-09.json",
     "readiness_script": "scripts/qa_question_banks_exam_plus.py",
+    "readiness_ci_run": 37878367355,
+    "source_blockers": 0,
+    "solution_completeness_blockers": 988,
     "pairs_pending_specialist_disposition": 60000,
     "exam_parity_verified": 0,
     "exam_plus_verified": 0,
@@ -64,6 +68,7 @@
   },
   "status": "source_vetted_corpus_complete_exam_plus_specialist_review_in_progress",
   "next_milestones": [
+    "Eliminate the 988 Exam+ solution-completeness blockers without weakening the quality threshold",
     "Run Wave 1 blind specialist review for COF-C03 and SOL-C01 and establish calibration anchors",
     "Upgrade or replace foundation items above each certification's new ceiling",
     "Build the explicit Exam+ and expert-stretch tiers with stronger scenario, troubleshooting, architecture, SQL/code, security, and tradeoff reasoning",
