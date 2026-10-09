@@ -1,0 +1,319 @@
+{
+  "as_of": "2026-10-09",
+  "purpose": "Calibration anchors for the new Exam+ specialist review program. These are proposed items, not production-promoted questions, until blind review and solution/evidence review are complete.",
+  "review_state": "awaiting_blind_review",
+  "items": [
+    {
+      "id": "CAL-SOL-C01-001",
+      "exam_code": "SOL-C01",
+      "blueprint_objective": "Create databases and stages, and use compute resources",
+      "target_tier": "exam_parity",
+      "prompt": "A team bulk-loads local CSV files into one Snowflake table. Multiple users must be able to stage and load the files, and the team wants a reusable stage object with independently grantable privileges. Which stage design is the best fit?",
+      "options": [
+        {"key":"A","text":"Use the table stage because it is a separately grantable database object"},
+        {"key":"B","text":"Use a named internal stage because it is a database object and offers flexible privilege management"},
+        {"key":"C","text":"Use each user's user stage because all users automatically share the same user stage"},
+        {"key":"D","text":"Do not use a stage; COPY INTO can upload files directly from each user's laptop"}
+      ],
+      "answer_key": ["B"],
+      "solution": {
+        "why_correct": "A named internal stage is a standalone database object and is the most flexible internal-stage choice when files must be accessed by multiple users and privilege management matters.",
+        "deciding_rule": "Table stages are implicit objects tied to their tables and have no grantable privileges of their own; named stages are independently manageable database objects.",
+        "distractor_analysis": {
+          "A":"A table stage is tied to the table and is not a separate database object with independently grantable stage privileges.",
+          "C":"A user stage belongs to an individual user and is not a shared stage for a team.",
+          "D":"For local files, files are uploaded to an internal stage before COPY INTO loads them into the table."
+        },
+        "exam_trap": "Confusing a table stage's convenient table association with the privilege flexibility of a named stage.",
+        "why_this_is_exam_plus": "The item requires selecting a stage based on sharing and privilege constraints, not simply recalling the three internal-stage types."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/data-load-local-file-system-create-stage","https://docs.snowflake.com/en/user-guide/data-load-local-file-system"]
+    },
+    {
+      "id": "CAL-SOL-C01-002",
+      "exam_code": "SOL-C01",
+      "blueprint_objective": "Create databases and stages, and use compute resources",
+      "target_tier": "exam_plus",
+      "prompt": "A small warehouse serves an intermittent internal application. The team wants it to suspend after inactivity to control credits, but they also want the next query to start it automatically. Which configuration best satisfies both requirements?",
+      "options": [
+        {"key":"A","text":"Set AUTO_SUSPEND to a nonzero value and keep AUTO_RESUME enabled"},
+        {"key":"B","text":"Set AUTO_SUSPEND to NULL and disable AUTO_RESUME"},
+        {"key":"C","text":"Set AUTO_SUSPEND to 0 and keep AUTO_RESUME enabled"},
+        {"key":"D","text":"Disable AUTO_RESUME and rely on result cache to restart the warehouse"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "A nonzero AUTO_SUSPEND value allows Snowflake to suspend the warehouse after inactivity, while AUTO_RESUME lets a new statement resume it automatically when compute is needed.",
+        "deciding_rule": "AUTO_SUSPEND controls inactivity-based suspension; AUTO_RESUME controls whether a suspended warehouse starts automatically for new work.",
+        "distractor_analysis": {
+          "B":"NULL means the warehouse never auto-suspends, and disabling AUTO_RESUME prevents automatic restart.",
+          "C":"A value of 0 means the warehouse never suspends, so it defeats the credit-control requirement.",
+          "D":"Result reuse does not provide a warehouse-start policy and cannot substitute for AUTO_RESUME."
+        },
+        "exam_trap": "Remembering only the AUTO_SUSPEND parameter while missing the independent AUTO_RESUME behavior.",
+        "why_this_is_exam_plus": "Two independent warehouse properties must be reasoned about together."
+      },
+      "sources": ["https://docs.snowflake.com/en/sql-reference/sql/create-warehouse"]
+    },
+    {
+      "id": "CAL-SOL-C01-003",
+      "exam_code": "SOL-C01",
+      "blueprint_objective": "Load and leverage structured, semi-structured, and unstructured data",
+      "target_tier": "exam_plus",
+      "prompt": "A named stage specifies CSV with FIELD_DELIMITER='|'. A COPY INTO statement loading from that stage explicitly specifies FILE_FORMAT=(TYPE=CSV FIELD_DELIMITER=','). Which delimiter is used for this load?",
+      "options": [
+        {"key":"A","text":"The pipe delimiter from the stage because stage settings always win"},
+        {"key":"B","text":"The comma delimiter from COPY INTO because file-format options specified in COPY take precedence"},
+        {"key":"C","text":"Both delimiters are merged because file-format options are cumulative"},
+        {"key":"D","text":"The load fails because Snowflake forbids overriding stage file-format options"}
+      ],
+      "answer_key": ["B"],
+      "solution": {
+        "why_correct": "For loading, file-format options specified directly in COPY INTO take precedence over options inherited from the stage definition.",
+        "deciding_rule": "The documented precedence for file-format options is COPY INTO, then stage definition, then table definition; file-format options are not cumulative across levels.",
+        "distractor_analysis": {
+          "A":"The stage is lower precedence than options explicitly supplied in COPY INTO.",
+          "C":"Snowflake documents file-format options as non-cumulative; a higher-precedence setting overrides lower-precedence file-format settings.",
+          "D":"Snowflake allows file-format options to be specified directly in COPY INTO."
+        },
+        "exam_trap": "Confusing copy-option cumulative behavior with file-format-option precedence.",
+        "why_this_is_exam_plus": "The candidate must know both precedence and the non-cumulative behavior of file-format settings."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/data-load-prepare","https://docs.snowflake.com/en/user-guide/data-load-local-file-system-copy"]
+    },
+    {
+      "id": "CAL-SOL-C01-004",
+      "exam_code": "SOL-C01",
+      "blueprint_objective": "Understand Snowflake roles and data access management",
+      "target_tier": "expert_stretch",
+      "prompt": "An analyst needs SELECT on a table. The organization wants access to be managed by job function rather than by granting privileges directly to individual users. Which sequence best follows Snowflake role-based access control?",
+      "options": [
+        {"key":"A","text":"Grant SELECT on the table to a functional role, then grant that role to the analyst"},
+        {"key":"B","text":"Grant OWNERSHIP on the table directly to the analyst, then revoke the analyst's role"},
+        {"key":"C","text":"Grant USAGE on a warehouse directly to the analyst; this automatically grants table SELECT"},
+        {"key":"D","text":"Create a new database clone for the analyst because roles cannot hold object privileges"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "Snowflake roles are privilege containers. Granting the object privilege to a job-function role and then granting the role to the user keeps authorization role-based and reusable.",
+        "deciding_rule": "Privileges on securable objects are granted to roles; roles are then granted to users or other roles according to the role hierarchy.",
+        "distractor_analysis": {
+          "B":"Directly transferring OWNERSHIP is excessive and contradicts the stated job-function access model.",
+          "C":"Warehouse USAGE permits warehouse use; it does not imply SELECT on unrelated tables.",
+          "D":"Roles absolutely can hold object privileges; cloning data is unrelated to the access-management requirement."
+        },
+        "exam_trap": "Treating warehouse access, object access, and ownership as interchangeable privileges.",
+        "why_this_is_exam_plus": "The item tests least-privilege role design and separation between compute and data privileges."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/security-access-control-overview"]
+    },
+    {
+      "id": "CAL-SOL-C01-005",
+      "exam_code": "SOL-C01",
+      "blueprint_objective": "Set up and navigate the Snowflake user interface and Snowflake Notebooks",
+      "target_tier": "exam_parity",
+      "prompt": "A user is building an interactive Python analysis in Snowflake and wants code, SQL, and narrative cells in a managed Snowflake workspace. Which Snowflake feature is intended for this workflow?",
+      "options": [
+        {"key":"A","text":"Snowflake Notebooks in Workspaces"},
+        {"key":"B","text":"Resource Monitor"},
+        {"key":"C","text":"Fail-safe"},
+        {"key":"D","text":"Database replication"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "Snowflake Notebooks in Workspaces provide an interactive notebook environment for Python, SQL, and narrative analysis within Snowflake.",
+        "deciding_rule": "Choose the Snowflake developer/analysis surface designed for notebook-style interactive work rather than administrative or recovery features.",
+        "distractor_analysis": {
+          "B":"Resource monitors control warehouse credit usage; they are not interactive development environments.",
+          "C":"Fail-safe is a data-recovery service, not a notebook interface.",
+          "D":"Replication copies supported account/database objects for continuity or distribution; it does not provide notebook authoring."
+        },
+        "exam_trap": "Overthinking a straightforward product-surface question and choosing an unrelated administrative feature.",
+        "why_this_is_exam_plus": "This is intentionally an exam-parity calibration item, not an expert item; the bank must still contain clear foundational application questions."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/ui-snowsight/notebooks-in-workspaces/notebooks-in-workspaces-overview"]
+    },
+    {
+      "id": "CAL-SOL-C01-006",
+      "exam_code": "SOL-C01",
+      "blueprint_objective": "Load and leverage structured, semi-structured, and unstructured data",
+      "target_tier": "expert_stretch",
+      "prompt": "A team uploads local JSON files to Snowflake and wants to inspect the staged data before loading only selected attributes into a target table. Which design best supports the workflow?",
+      "options": [
+        {"key":"A","text":"Stage the files, query the staged files using the appropriate file format, then use COPY INTO with a supported transformation"},
+        {"key":"B","text":"Use Fail-safe to query the local JSON files, then clone the result into the target table"},
+        {"key":"C","text":"Put the files directly into a virtual warehouse and query the warehouse as a VARIANT column"},
+        {"key":"D","text":"Create a resource monitor with a JSON file format and attach it to the table"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "Snowflake can query staged files when the file format is known, and COPY INTO supports a documented subset of transformations when loading selected or transformed values into a table.",
+        "deciding_rule": "Stages hold load files; file formats describe how to parse them; COPY INTO performs the load and supports selected transformations.",
+        "distractor_analysis": {
+          "B":"Fail-safe and cloning are recovery/copy mechanisms, not file-ingestion parsing mechanisms.",
+          "C":"A warehouse supplies compute and does not store uploaded files as a stage.",
+          "D":"A resource monitor controls warehouse credits and cannot act as a file format or ingestion mechanism."
+        },
+        "exam_trap": "Mixing storage/staging, compute, and recovery concepts because all participate in broader platform workflows.",
+        "why_this_is_exam_plus": "The candidate must connect staging, file parsing, staged-file querying, and load-time transformation in the correct sequence."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/querying-stage","https://docs.snowflake.com/en/user-guide/data-load-transform"]
+    },
+    {
+      "id": "CAL-COF-C03-001",
+      "exam_code": "COF-C03",
+      "blueprint_objective": "Manage Snowflake accounts and virtual warehouses",
+      "target_tier": "exam_plus",
+      "prompt": "A BI warehouse experiences short bursts of concurrent queries. The business prioritizes responsiveness over credit conservation and wants Snowflake to add clusters before queuing becomes significant. The warehouse is configured for auto-scale. Which scaling policy best matches the requirement?",
+      "options": [
+        {"key":"A","text":"STANDARD"},
+        {"key":"B","text":"ECONOMY"},
+        {"key":"C","text":"LEGACY"},
+        {"key":"D","text":"AUTO_SUSPEND"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "STANDARD scaling favors starting additional clusters to minimize queuing and therefore aligns with a responsiveness-first requirement.",
+        "deciding_rule": "For an auto-scale multi-cluster warehouse, STANDARD prioritizes responsiveness/throughput; ECONOMY prioritizes conserving credits by keeping running clusters more fully loaded.",
+        "distractor_analysis": {
+          "B":"ECONOMY is the better choice when credit conservation is more important than minimizing queuing.",
+          "C":"The legacy scaling policy has been removed; current documentation lists STANDARD and ECONOMY.",
+          "D":"AUTO_SUSPEND is a warehouse inactivity setting, not a multi-cluster scaling policy."
+        },
+        "exam_trap": "Choosing ECONOMY because it sounds efficient even though the stem explicitly prioritizes response time.",
+        "why_this_is_exam_plus": "The question requires mapping a business priority to the behavior of two current scaling policies and rejecting a formerly valid legacy concept."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/warehouses-multicluster","https://docs.snowflake.com/en/sql-reference/sql/create-warehouse"]
+    },
+    {
+      "id": "CAL-COF-C03-002",
+      "exam_code": "COF-C03",
+      "blueprint_objective": "Monitor and optimize performance",
+      "target_tier": "expert_stretch",
+      "prompt": "A dashboard repeatedly scans the same hot table from the same long-running warehouse. Query text varies enough that persisted query-result reuse is uncommon, but many blocks are reread. Which behavior can still improve scan performance, and what operational choice helps preserve it?",
+      "options": [
+        {"key":"A","text":"Warehouse data cache can reduce repeated table reads; keeping the warehouse running preserves that cache"},
+        {"key":"B","text":"Fail-safe cache reduces scans; extending Time Travel preserves it"},
+        {"key":"C","text":"Result cache always applies even when query text and conditions differ materially"},
+        {"key":"D","text":"Micro-partitions are copied into the client cache; increasing client memory preserves them"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "A running warehouse maintains a cache of table data, so later queries on the same warehouse can read cached data. Suspending the warehouse can remove the benefit of that warehouse-local cache.",
+        "deciding_rule": "Warehouse data cache and persisted query-result reuse are different mechanisms; the former can help even when the latter does not apply.",
+        "distractor_analysis": {
+          "B":"Fail-safe is for recovery and is unrelated to query scan caching.",
+          "C":"Persisted query-result reuse has eligibility conditions and should not be assumed for materially different queries.",
+          "D":"Micro-partitions are Snowflake storage structures; they are not copied to the client as a persistent client-side partition cache."
+        },
+        "exam_trap": "Treating every Snowflake cache as the persisted result cache.",
+        "why_this_is_exam_plus": "The item requires distinguishing two different cache layers and connecting warehouse lifecycle to cache persistence."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/performance-query-warehouse-cache"]
+    },
+    {
+      "id": "CAL-COF-C03-003",
+      "exam_code": "COF-C03",
+      "blueprint_objective": "Enable data collaboration and protection",
+      "target_tier": "exam_parity",
+      "prompt": "A table was accidentally changed yesterday and the change is still within the configured Time Travel retention period. What should the team use first to access the historical version?",
+      "options": [
+        {"key":"A","text":"Time Travel"},
+        {"key":"B","text":"Fail-safe through a normal SQL AT clause"},
+        {"key":"C","text":"Resource Monitor"},
+        {"key":"D","text":"Warehouse cache"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "Time Travel provides direct access to historical data within the configured retention period and is the normal first recovery mechanism for recent accidental changes.",
+        "deciding_rule": "Fail-safe begins after Time Travel retention and is a best-effort Snowflake recovery service, not a normal historical-query mechanism.",
+        "distractor_analysis": {
+          "B":"Fail-safe is not intended for direct historical querying after retention and should not replace Time Travel while the object is still within retention.",
+          "C":"Resource monitors control warehouse credit usage.",
+          "D":"Warehouse cache is a performance mechanism, not a historical-data recovery feature."
+        },
+        "exam_trap": "Assuming Fail-safe is a longer SQL-accessible version of Time Travel.",
+        "why_this_is_exam_plus": "This is an exam-parity calibration item that distinguishes two commonly confused protection mechanisms."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/data-time-travel","https://docs.snowflake.com/en/user-guide/data-failsafe"]
+    },
+    {
+      "id": "CAL-COF-C03-004",
+      "exam_code": "COF-C03",
+      "blueprint_objective": "Perform data loading, unloading, and transformation",
+      "target_tier": "exam_plus",
+      "prompt": "A local file has already been uploaded to a named internal stage. The stage references a named CSV file format. The target table exists, and the current warehouse is running. Which statement is correct for loading the staged file?",
+      "options": [
+        {"key":"A","text":"COPY INTO the table can reference the stage; the file format does not need to be repeated if the stage definition already supplies it"},
+        {"key":"B","text":"PUT must be executed again inside COPY INTO because COPY cannot read an internal stage"},
+        {"key":"C","text":"A virtual warehouse is unnecessary for COPY INTO from an internal stage"},
+        {"key":"D","text":"The file must first be converted into a Snowflake table stage because named stages cannot be load sources"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "COPY INTO can load from a named internal stage, and when the stage definition includes the file-format configuration, the statement can reference the stage without restating that configuration.",
+        "deciding_rule": "PUT stages local files; COPY INTO loads staged files. A running warehouse supplies compute for the load.",
+        "distractor_analysis": {
+          "B":"PUT and COPY are separate steps; COPY reads the files after they have already been staged.",
+          "C":"Bulk loading staged files into a table uses warehouse compute.",
+          "D":"Named internal stages are valid sources for COPY INTO and do not need conversion into a table stage."
+        },
+        "exam_trap": "Confusing the local-upload step with the table-load step.",
+        "why_this_is_exam_plus": "The item tests the complete local-load sequence and inheritance of stage file-format settings."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/data-load-local-file-system","https://docs.snowflake.com/en/user-guide/data-load-local-file-system-copy"]
+    },
+    {
+      "id": "CAL-COF-C03-005",
+      "exam_code": "COF-C03",
+      "blueprint_objective": "Manage Snowflake accounts and virtual warehouses",
+      "target_tier": "expert_stretch",
+      "prompt": "A multi-cluster warehouse has MIN_CLUSTER_COUNT=2 and MAX_CLUSTER_COUNT=2. An administrator changes SCALING_POLICY from STANDARD to ECONOMY expecting Snowflake to run fewer clusters during quiet periods. What is the key issue with that expectation?",
+      "options": [
+        {"key":"A","text":"Because MIN and MAX are equal, the warehouse is in Maximized mode; scaling policy does not control cluster start/stop behavior in that mode"},
+        {"key":"B","text":"ECONOMY is valid only when MIN_CLUSTER_COUNT is 1"},
+        {"key":"C","text":"STANDARD and ECONOMY affect warehouse size, not cluster count"},
+        {"key":"D","text":"Multi-cluster warehouses cannot use SCALING_POLICY"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "When MIN_CLUSTER_COUNT equals MAX_CLUSTER_COUNT, the warehouse runs in Maximized mode with all configured clusters running. Scaling policies apply to Auto-scale mode, where Snowflake decides when to start or stop clusters.",
+        "deciding_rule": "MIN < MAX implies Auto-scale; MIN = MAX implies Maximized mode. STANDARD/ECONOMY scaling policy governs Auto-scale behavior.",
+        "distractor_analysis": {
+          "B":"The determining condition is Auto-scale versus Maximized mode, not a requirement that MIN be exactly 1.",
+          "C":"Scaling policy affects cluster start/stop decisions in Auto-scale mode, not the warehouse's T-shirt size.",
+          "D":"Multi-cluster warehouses do support scaling policies when configured for Auto-scale."
+        },
+        "exam_trap": "Remembering the meaning of STANDARD versus ECONOMY but failing to check whether the warehouse is actually in Auto-scale mode.",
+        "why_this_is_exam_plus": "The candidate must combine parameter relationships with scaling-policy semantics rather than answering from a single fact."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/warehouses-multicluster","https://docs.snowflake.com/en/sql-reference/sql/create-warehouse"]
+    },
+    {
+      "id": "CAL-COF-C03-006",
+      "exam_code": "COF-C03",
+      "blueprint_objective": "Perform data loading, unloading, and transformation",
+      "target_tier": "expert_stretch",
+      "prompt": "A stage defines CSV parsing options. A COPY INTO statement overrides one file-format option and also specifies an ON_ERROR copy option. The team assumes every stage-level file-format setting will be merged with the COPY-level file-format setting. What should the reviewer point out?",
+      "options": [
+        {"key":"A","text":"File-format options are not cumulative across precedence levels; higher-precedence COPY file-format settings override lower-level file-format settings, while copy options have different cumulative/override behavior"},
+        {"key":"B","text":"All stage and COPY settings are always merged field by field"},
+        {"key":"C","text":"COPY INTO cannot specify file-format options when a stage already has a file format"},
+        {"key":"D","text":"ON_ERROR is a file-format option, so it follows exactly the same non-cumulative rules as FIELD_DELIMITER"}
+      ],
+      "answer_key": ["A"],
+      "solution": {
+        "why_correct": "Snowflake documents separate precedence behavior: file-format options set at a higher level replace lower-level file-format option sets, while copy options are cumulative with higher-precedence values overriding the same option below them.",
+        "deciding_rule": "Do not apply the same inheritance model to file-format options and copy options.",
+        "distractor_analysis": {
+          "B":"That is specifically incorrect for file-format options, which are not cumulative across levels.",
+          "C":"COPY INTO may specify file-format options directly and those settings have higher precedence.",
+          "D":"ON_ERROR is a copy option, not a file-format parsing option such as FIELD_DELIMITER."
+        },
+        "exam_trap": "Memorizing the precedence order without noticing that file-format and copy options combine differently.",
+        "why_this_is_exam_plus": "The item requires a second-order distinction between two configuration families that appear in the same load command."
+      },
+      "sources": ["https://docs.snowflake.com/en/user-guide/data-load-prepare"]
+    }
+  ]
+}
