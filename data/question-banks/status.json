@@ -32,20 +32,43 @@
     "additional_live_verified_concepts": "vetting/additional-live-verified-concepts.txt",
     "curated_review_policy": "vetting/curated-review-policy.json",
     "generated_records_individually_human_reviewed": false,
-    "promotion_note": "Generated records remain draft until independent individual review/promotion evidence is recorded."
+    "promotion_note": "Source/answer vetting is complete, but this is not the new Exam+ specialist approval state."
+  },
+  "exam_plus": {
+    "status": "specialist_review_started",
+    "goal": "Certification-specialist question and solution banks that meet Snowflake exam parity and include a deliberate harder Exam+/expert-stretch layer.",
+    "quality_standard": "vetting/exam-plus-quality-standard.md",
+    "specialist_teams": "vetting/specialist-teams.v1.json",
+    "review_tracker": "vetting/specialist-review-tracker.v1.json",
+    "gap_baseline": "vetting/exam-plus-gap-baseline-2026-10-09.json",
+    "readiness_script": "scripts/qa_question_banks_exam_plus.py",
+    "pairs_pending_specialist_disposition": 60000,
+    "exam_parity_verified": 0,
+    "exam_plus_verified": 0,
+    "expert_stretch_verified": 0,
+    "minimum_current_foundation_items_above_new_ceiling": 14984,
+    "explicit_expert_stretch_target": 10250,
+    "blind_review_required": true,
+    "writer_self_approval_allowed": false,
+    "completion_claim_allowed": false
   },
   "publishing": {
-    "status": "complete",
+    "status": "complete_source_vetted_edition",
     "certification_docx_files": 12,
     "certification_pdf_files": 12,
     "master_index_docx": true,
     "master_index_pdf": true,
     "publishing_validation": "pass",
-    "receipt": "publishing/2026-10-08.json"
+    "receipt": "publishing/2026-10-08.json",
+    "note": "Existing published books represent the source-vetted edition. They are not yet the future Exam+ specialist edition."
   },
-  "status": "target_materialized_advanced_qa_pass_publishing_complete_current_vetting_pass_independent_promotion_pending",
+  "status": "source_vetted_corpus_complete_exam_plus_specialist_review_in_progress",
   "next_milestones": [
-    "Perform independent individual ambiguity and answer-quality review before promoting generated records from draft to verified",
+    "Run Wave 1 blind specialist review for COF-C03 and SOL-C01 and establish calibration anchors",
+    "Upgrade or replace foundation items above each certification's new ceiling",
+    "Build the explicit Exam+ and expert-stretch tiers with stronger scenario, troubleshooting, architecture, SQL/code, security, and tradeoff reasoning",
+    "Promote only specialist-approved items to exam_parity_verified or exam_plus_verified",
+    "Regenerate Word/PDF books only after each certification reaches its Exam+ completion gate",
     "Revalidate sources and lifecycle metadata when Snowflake exam blueprints or product behavior change",
     "Reconcile certification lifecycle after SPS-C01 and DSA-C03 retirement date"
   ],
