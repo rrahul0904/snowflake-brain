@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply vetted canonical Snowflake source URLs to generated question/solution records."""
+"""Apply vetted canonical Snowflake source URLs to generated and curated records."""
 from __future__ import annotations
 
 import json
@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BANK = ROOT / "data" / "question-banks"
 GENERATED = BANK / "generated"
 OVERRIDES_PATH = BANK / "vetting" / "source-overrides.json"
+CURATED_POLICY_PATH = BANK / "vetting" / "curated-review-policy.json"
 
 
 def load_json(path: Path):
@@ -48,6 +49,7 @@ def rewrite_jsonl(path: Path, transform):
 
 def main():
     overrides = load_json(OVERRIDES_PATH).get("concepts", {})
+    curated_overrides = load_json(CURATED_POLICY_PATH).get("source_overrides_by_question_id", {})
     qid_to_concept = {}
     q_changed = 0
     s_changed = 0
@@ -77,6 +79,28 @@ def main():
             record["sources"] = after
             return record, before != after
         s_changed += rewrite_jsonl(path, transform_solution)
+
+    for path in sorted(list((BANK / "seed").glob("questions*.jsonl")) + list((BANK / "release-aware").glob("questions*.jsonl"))):
+        def transform_curated_question(record):
+            override = curated_overrides.get(record["id"])
+            if not override:
+                return record, False
+            before = record.get("sources", [])
+            after = canonical_source(before, override)
+            record["sources"] = after
+            return record, before != after
+        q_changed += rewrite_jsonl(path, transform_curated_question)
+
+    for path in sorted(list((BANK / "seed").glob("solutions*.jsonl")) + list((BANK / "release-aware").glob("solutions*.jsonl"))):
+        def transform_curated_solution(record):
+            override = curated_overrides.get(record["question_id"])
+            if not override:
+                return record, False
+            before = record.get("sources", [])
+            after = canonical_source(before, override)
+            record["sources"] = after
+            return record, before != after
+        s_changed += rewrite_jsonl(path, transform_curated_solution)
 
     print(f"Canonical source overrides applied: {q_changed} questions / {s_changed} solutions")
 
