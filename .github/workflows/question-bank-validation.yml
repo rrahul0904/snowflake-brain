@@ -9,6 +9,7 @@ on:
       - 'scripts/build_question_vetting_tracker.py'
       - 'scripts/validate_question_banks.py'
       - 'scripts/qa_question_banks_advanced.py'
+      - 'scripts/qa_question_banks_exam_plus.py'
       - '.github/workflows/question-bank-validation.yml'
   push:
     paths:
@@ -18,6 +19,7 @@ on:
       - 'scripts/build_question_vetting_tracker.py'
       - 'scripts/validate_question_banks.py'
       - 'scripts/qa_question_banks_advanced.py'
+      - 'scripts/qa_question_banks_exam_plus.py'
       - '.github/workflows/question-bank-validation.yml'
 
 permissions:
@@ -49,6 +51,9 @@ jobs:
 
       - name: Build 60,000-pair vetting tracker
         run: python scripts/build_question_vetting_tracker.py
+
+      - name: Run Exam+ specialist readiness audit
+        run: python scripts/qa_question_banks_exam_plus.py --report data/question-banks/generated/exam-plus-readiness-report.json
 
       - name: Package canonical publishing source and vetting evidence
         if: success()
