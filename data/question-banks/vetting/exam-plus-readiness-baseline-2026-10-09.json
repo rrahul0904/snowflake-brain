@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-10-09",
+  "ci_run": 37878367355,
+  "artifact_id": 11593930199,
+  "status": "exam_plus_not_complete_remediation_required",
+  "global": {
+    "pairs": 60000,
+    "source_blockers": 0,
+    "solution_completeness_blockers": 988,
+    "pairs_pending_specialist_disposition": 60000,
+    "foundation_items_above_new_ceilings": 14984,
+    "exam_plus_program_complete": false
+  },
+  "by_exam": {
+    "SOL-C01": {"applied_reasoning_percent":77.76,"rich_solution_percent":100.00,"solution_completeness_blockers":0,"foundation_excess":668,"pending_specialist":5000},
+    "COF-C03": {"applied_reasoning_percent":95.20,"rich_solution_percent":97.62,"solution_completeness_blockers":119,"foundation_excess":915,"pending_specialist":5000},
+    "GES-C02": {"applied_reasoning_percent":83.34,"rich_solution_percent":100.00,"solution_completeness_blockers":0,"foundation_excess":1165,"pending_specialist":5000},
+    "SPS-C01": {"applied_reasoning_percent":88.50,"rich_solution_percent":96.66,"solution_completeness_blockers":167,"foundation_excess":1166,"pending_specialist":5000},
+    "NAS-C02": {"applied_reasoning_percent":84.36,"rich_solution_percent":100.00,"solution_completeness_blockers":0,"foundation_excess":1165,"pending_specialist":5000},
+    "MLA-C01": {"applied_reasoning_percent":86.68,"rich_solution_percent":100.00,"solution_completeness_blockers":0,"foundation_excess":1415,"pending_specialist":5000},
+    "SEA-C01": {"applied_reasoning_percent":86.68,"rich_solution_percent":95.00,"solution_completeness_blockers":250,"foundation_excess":1415,"pending_specialist":5000},
+    "ARA-C01": {"applied_reasoning_percent":83.34,"rich_solution_percent":100.00,"solution_completeness_blockers":0,"foundation_excess":1415,"pending_specialist":5000},
+    "DEA-C02": {"applied_reasoning_percent":86.66,"rich_solution_percent":99.94,"solution_completeness_blockers":3,"foundation_excess":1415,"pending_specialist":5000},
+    "DSA-C03": {"applied_reasoning_percent":86.66,"rich_solution_percent":99.98,"solution_completeness_blockers":1,"foundation_excess":1415,"pending_specialist":5000},
+    "ADA-C02": {"applied_reasoning_percent":86.66,"rich_solution_percent":99.98,"solution_completeness_blockers":1,"foundation_excess":1415,"pending_specialist":5000},
+    "DAA-C01": {"applied_reasoning_percent":95.26,"rich_solution_percent":91.06,"solution_completeness_blockers":447,"foundation_excess":1415,"pending_specialist":5000}
+  },
+  "known_solution_blocker_causes": {
+    "short_explanation": 980,
+    "short_reasoning": 8,
+    "generated_short_explanation_concepts": {"oauth":534,"qualify":267,"unpivot":179},
+    "curated_short_reasoning_records": ["DAA-C01-0002","SEA-C01-0001","SPS-C01-0001","DEA-C02-0001","DEA-C02-0002","DEA-C02-0003","DSA-C03-0003","ADA-C02-0001"]
+  },
+  "remediation": [
+    "Expand the generated explanation contract so explanations teach the deciding Snowflake behavior instead of repeating a short fact.",
+    "Rewrite the eight curated short-reasoning solutions individually.",
+    "Re-run Exam+ readiness and require zero solution-completeness blockers before specialist promotion.",
+    "Do not treat the 988 records as factually wrong; they are quality-depth failures under the new higher standard."
+  ]
+}
