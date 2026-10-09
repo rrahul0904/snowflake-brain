@@ -71,6 +71,48 @@
       "title": "CREATE ICEBERG TABLE (Delta files in object storage)",
       "evidence_status": "live_verified",
       "reason": "Current official Delta Direct definition and table-creation reference."
+    },
+    "dynamic_tables": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/dynamic-tables-about",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/dynamic-tables/overview",
+      "title": "Dynamic tables",
+      "evidence_status": "live_verified",
+      "reason": "The former overview path now redirects to the current Dynamic Tables overview."
+    },
+    "future_grants": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/security-access-control-configure",
+      "canonical_url": "https://docs.snowflake.com/en/sql-reference/sql/grant-privilege",
+      "title": "GRANT privileges TO ROLE",
+      "evidence_status": "live_verified",
+      "reason": "Direct official reference documents ON FUTURE grants for future objects in databases and schemas."
+    },
+    "managed_access": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/security-access-control-configure",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/security-access-control-overview",
+      "title": "Overview of Access Control",
+      "evidence_status": "live_verified",
+      "reason": "Current access-control overview explicitly describes centralized grant decisions in managed access schemas."
+    },
+    "match_recognize": {
+      "original_url": "https://docs.snowflake.com/en/sql-reference/constructs/match_recognize",
+      "canonical_url": "https://docs.snowflake.com/en/sql-reference/constructs/match_recognize",
+      "title": "MATCH_RECOGNIZE",
+      "evidence_status": "live_verified",
+      "reason": "Current SQL reference documents declarative row-pattern recognition over ordered row sets."
+    },
+    "query_profile": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/ui-query-profile",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/ui-snowsight-activity",
+      "title": "Monitor query activity with Query History",
+      "evidence_status": "live_verified",
+      "reason": "The former Query Profile guide now redirects to the current Snowsight Query History page, which exposes Query Profile for executed queries."
+    },
+    "zero_copy_clone": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/object-clone",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/tables-storage-considerations",
+      "title": "Data storage considerations",
+      "evidence_status": "live_verified",
+      "reason": "Current official storage documentation directly states that zero-copy clones initially share underlying storage and only incur additional storage as data diverges."
     }
   }
 }
