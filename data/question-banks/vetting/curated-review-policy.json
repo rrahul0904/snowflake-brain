@@ -1,0 +1,17 @@
+{
+  "as_of": "2026-10-08",
+  "scope": "All curated records under data/question-banks/seed and data/question-banks/release-aware",
+  "review_status": "assistant_content_review_pass",
+  "notes": [
+    "Each curated question/solution pair was reviewed against its cited Snowflake-owned documentation or release note.",
+    "Certification/study-guide URLs are treated as blueprint/context evidence, not as the sole factual support for an answer when a direct Snowflake documentation page is available.",
+    "This review is an assistant audit and is not represented as independent human certification review or Snowflake endorsement."
+  ],
+  "source_overrides_by_question_id": {
+    "MLA-C01-0003": {
+      "canonical_url": "https://docs.snowflake.com/en/developer-guide/snowflake-ml/create-pipelines-deploy",
+      "title": "Create pipelines and deploy them",
+      "reason": "Direct Snowflake ML documentation states that Model Registry registration/versioning supports governed promotion workflows, audits, and rollback; this is stronger factual evidence than the certification guide alone."
+    }
+  }
+}

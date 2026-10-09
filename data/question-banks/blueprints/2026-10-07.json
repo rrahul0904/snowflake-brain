@@ -1,0 +1,175 @@
+{
+  "as_of": "2026-10-07",
+  "policy": {
+    "minimum_questions_per_exam": 5000,
+    "minimum_solutions_per_exam": 5000,
+    "source_policy": "Use Snowflake-owned exam guides, documentation, server and feature release notes, official product announcements, verified Snowflake credential metadata, and Snowflake learning pages for factual grounding. No exam dumps, recalled live questions, or copied commercial practice questions.",
+    "freshness_policy": "Track release-specific facts separately from durable fundamentals. Preserve Preview, Public Preview, Private Preview, and General Availability state in lifecycle metadata. A release-aware item is eligible only when it maps to a locked exam objective.",
+    "retirement_policy": "Retiring exams remain in the corpus until retirement, are clearly flagged, and are retained afterward as archived banks for historical learners unless replaced by a successor blueprint."
+  },
+  "certifications": [
+    {
+      "exam_code": "SOL-C01",
+      "name": "SnowPro Associate: Platform",
+      "catalog_state": "legacy-current-outside-main-catalog",
+      "objectives": [
+        "Set up and navigate the Snowflake user interface and Snowflake Notebooks",
+        "Create databases and stages, and use compute resources",
+        "Load and leverage structured, semi-structured, and unstructured data",
+        "Understand Snowflake roles and data access management",
+        "Understand and manage the Snowflake account structure",
+        "Call Snowflake Cortex LLM functions"
+      ],
+      "official_sources": [
+        "https://achieve.snowflake.com/58cf56d4-9426-455b-aa7d-de8181a18d21",
+        "https://www.snowflake.com/events/bank-of-america-platform-training/"
+      ]
+    },
+    {
+      "exam_code": "COF-C03",
+      "name": "SnowPro Core",
+      "catalog_state": "active",
+      "objectives": [
+        "Use the Snowflake AI Data Cloud architecture",
+        "Manage Snowflake accounts and virtual warehouses",
+        "Perform data loading, unloading, and transformation",
+        "Use structured, semi-structured, and unstructured data",
+        "Monitor and optimize performance",
+        "Enable data collaboration and protection",
+        "Establish Snowflake connectivity"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-core-c03/"]
+    },
+    {
+      "exam_code": "GES-C02",
+      "name": "SnowPro Specialty: Gen AI",
+      "catalog_state": "active",
+      "objectives": [
+        "Define and implement Snowflake Gen AI principles, capabilities, and best practices",
+        "Use Snowflake Cortex AI features and functions, including LLMs, to meet customer use cases",
+        "Build and fine-tune open-source models with Snowpark Container Services and Snowflake Model Registry",
+        "Use Snowflake document processing functions to build, manage, and optimize document parsing pipelines"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-GenAI-C02/"]
+    },
+    {
+      "exam_code": "SPS-C01",
+      "name": "SnowPro Specialty: Snowpark",
+      "catalog_state": "retiring",
+      "retirement_date": "2026-11-01",
+      "objectives": [
+        "Perform data transformations using Snowpark DataFrame functions",
+        "Query data sources as Snowpark DataFrame objects",
+        "Connect to Snowflake using a Snowpark session object",
+        "Process results client-side or persist results in Snowflake through Snowpark DataFrame actions",
+        "Design a sequence of operations or conditional logic with Snowpark stored procedures"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-snowpark/"]
+    },
+    {
+      "exam_code": "NAS-C02",
+      "name": "SnowPro Specialty: Native Apps",
+      "catalog_state": "active",
+      "objectives": [
+        "Design Native App architectures based on business and technical requirements",
+        "Build Native App components including manifests, setup scripts, and application logic",
+        "Deploy apps to Snowflake Marketplace and support installation and troubleshooting",
+        "Manage version release workflows, release management privileges, and application upgrades"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-nativeapps-c02/"]
+    },
+    {
+      "exam_code": "MLA-C01",
+      "name": "SnowPro Advanced: MLOps Engineer",
+      "catalog_state": "active",
+      "objectives": [
+        "Operationalize, scale, and automate machine learning workflows within the Snowflake AI Data Cloud",
+        "Architect and manage ML infrastructure, including feature engineering, model training, and deployment pipelines",
+        "Deploy, monitor, and govern ML models across production environments using Snowflake-native capabilities",
+        "Implement CI/CD and pipeline orchestration to automate end-to-end ML lifecycle management",
+        "Apply governance, security, and cost management practices throughout ML workflows"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-mlopsengineer/"]
+    },
+    {
+      "exam_code": "SEA-C01",
+      "name": "SnowPro Advanced: Security Engineer",
+      "catalog_state": "active",
+      "objectives": [
+        "Design and enforce data protection, privacy, and governance across Snowflake",
+        "Implement and manage user identity and access control mechanisms",
+        "Audit and monitor security policies, controls, and regulatory compliance requirements",
+        "Assess threats and risks, and execute robust security incident response protocols",
+        "Leverage Snowflake AI/ML capabilities to enhance security posture"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-securityengineer/"]
+    },
+    {
+      "exam_code": "ARA-C01",
+      "name": "SnowPro Advanced: Architect",
+      "catalog_state": "active",
+      "objectives": [
+        "Design an end-to-end data flow from source to consumption using the Snowflake Platform",
+        "Design and deploy a data architecture that meets business, security, and compliance requirements",
+        "Select appropriate Snowflake and third-party tools to optimize architecture performance",
+        "Design and deploy a shared data set using the Snowflake Marketplace and Data Exchange"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-architect/"]
+    },
+    {
+      "exam_code": "DEA-C02",
+      "name": "SnowPro Advanced: Data Engineer",
+      "catalog_state": "active",
+      "objectives": [
+        "Source data from Data Lakes, APIs, and on-premises",
+        "Transform, replicate, and share data across cloud platforms",
+        "Design end-to-end near real-time streams",
+        "Design scalable compute solutions for Data Engineer workloads",
+        "Evaluate performance metrics"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-dataengineer-C02/"]
+    },
+    {
+      "exam_code": "DSA-C03",
+      "name": "SnowPro Advanced: Data Scientist",
+      "catalog_state": "retiring",
+      "retirement_date": "2026-11-01",
+      "objectives": [
+        "Outline data science concepts",
+        "Implement Snowflake data science best practices",
+        "Prepare data and use feature engineering in Snowflake",
+        "Train and use machine learning models",
+        "Use GenAI and LLM capabilities in Snowflake"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-datascientistC03/"]
+    },
+    {
+      "exam_code": "ADA-C02",
+      "name": "SnowPro Advanced: Administrator",
+      "catalog_state": "active",
+      "objectives": [
+        "Manage and administer Snowflake accounts, data security, and governance",
+        "Manage and maintain database objects and virtual warehouses",
+        "Perform database monitoring, tuning, and optimization",
+        "Perform data sharing and use the Snowflake Marketplace",
+        "Implement disaster recovery, perform backups, and replicate data"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-administrator-c02/"]
+    },
+    {
+      "exam_code": "DAA-C01",
+      "name": "SnowPro Advanced: Data Analyst",
+      "catalog_state": "active",
+      "objectives": [
+        "Prepare and load data",
+        "Perform simple data transformations for data analysis",
+        "Build and troubleshoot advanced SQL queries in Snowflake",
+        "Use Snowflake built-in functions and create User-Defined Functions (UDFs)",
+        "Perform descriptive and diagnostic data analyses",
+        "Perform predictive data analysis",
+        "Prepare and present data to meet business requirements"
+      ],
+      "official_sources": ["https://learn.snowflake.com/en/certifications/snowpro-advanced-dataanalyst/"]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "as_of": "2026-10-09",
+  "program": "Snowflake Certification Exam+ Specialist Review",
+  "quality_standard": "vetting/exam-plus-quality-standard.md",
+  "team_registry": "vetting/specialist-teams.v1.json",
+  "baseline_gap": "vetting/exam-plus-gap-baseline-2026-10-09.json",
+  "global": {
+    "pairs": 60000,
+    "source_vetted_pairs": 60000,
+    "pairs_pending_specialist_disposition": 60000,
+    "exam_parity_verified": 0,
+    "exam_plus_verified": 0,
+    "expert_stretch_verified": 0,
+    "rewrite_required": 0,
+    "unresolved_disputes": 0,
+    "status": "specialist_review_started"
+  },
+  "review_waves": [
+    {"wave": 1, "exams": ["COF-C03", "SOL-C01"], "reason": "Establish cross-platform calibration and foundational wording standard."},
+    {"wave": 2, "exams": ["DEA-C02", "ADA-C02", "ARA-C01", "SEA-C01"], "reason": "Calibrate production engineering, operations, architecture, and security at Advanced level."},
+    {"wave": 3, "exams": ["GES-C02", "MLA-C01", "DAA-C01"], "reason": "Calibrate AI/ML and analytical reasoning with code, model, and SQL evidence."},
+    {"wave": 4, "exams": ["NAS-C02", "SPS-C01", "DSA-C03"], "reason": "Complete specialty and retiring-certification review while preserving lifecycle flags."}
+  ],
+  "by_exam": {
+    "SOL-C01": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_1"},
+    "COF-C03": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_1"},
+    "GES-C02": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_3"},
+    "SPS-C01": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_4_retiring_2026-11-01"},
+    "NAS-C02": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_4"},
+    "MLA-C01": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_3"},
+    "SEA-C01": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_2"},
+    "ARA-C01": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_2"},
+    "DEA-C02": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_2"},
+    "DSA-C03": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_4_retiring_2026-11-01"},
+    "ADA-C02": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_2"},
+    "DAA-C01": {"assigned":5000,"source_vetted":5000,"specialist_reviewed":0,"exam_parity_verified":0,"exam_plus_verified":0,"expert_stretch_verified":0,"rewrite_required":0,"pending":5000,"status":"queued_wave_3"}
+  },
+  "promotion_contract": {
+    "writer_self_approval_allowed": false,
+    "blind_key_agreement_required": true,
+    "official_source_required": true,
+    "distractor_specific_reasoning_required": true,
+    "exam_trap_required": true,
+    "lifecycle_check_required": true,
+    "corpus_sha_receipt_required": true
+  }
+}

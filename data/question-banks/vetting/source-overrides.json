@@ -1,0 +1,118 @@
+{
+  "as_of": "2026-10-08",
+  "policy": "Only Snowflake-owned documentation or release-note URLs may be canonical evidence. Overrides are used when the original concept URL moved, was superseded, or is less direct than the current official evidence page.",
+  "concepts": {
+    "scim": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/scim",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/scim-intro",
+      "title": "Snowflake SCIM support",
+      "evidence_status": "live_verified",
+      "reason": "Current official overview page for SCIM provisioning."
+    },
+    "snowpipe_streaming": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/snowpipe-streaming-overview",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/snowpipe-streaming/data-load-snowpipe-streaming-overview",
+      "title": "Snowpipe Streaming",
+      "evidence_status": "live_verified",
+      "reason": "Current official Snowpipe Streaming overview path."
+    },
+    "per_user_quota": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/cost-management/per-user-quotas",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/budgets/per-user-quotas",
+      "title": "Per-user quotas",
+      "evidence_status": "live_verified",
+      "reason": "Current official per-user quota documentation."
+    },
+    "trust_center": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/security-trust-center",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/trust-center/overview",
+      "title": "Trust Center",
+      "evidence_status": "live_verified",
+      "reason": "Current official Trust Center overview."
+    },
+    "snowpark_connect": {
+      "original_url": "https://docs.snowflake.com/en/developer-guide/snowpark-connect/index",
+      "canonical_url": "https://docs.snowflake.com/en/developer-guide/snowpark-connect/snowpark-connect-overview",
+      "title": "Run Apache Spark workloads on Snowflake with Snowpark Connect for Spark",
+      "evidence_status": "live_verified",
+      "reason": "Current overview explicitly states Spark DataFrame API support on Snowflake compute."
+    },
+    "app_roles": {
+      "original_url": "https://docs.snowflake.com/en/developer-guide/native-apps/requesting-privs",
+      "canonical_url": "https://docs.snowflake.com/en/sql-reference/sql/create-application-role",
+      "title": "CREATE APPLICATION ROLE",
+      "evidence_status": "live_verified",
+      "reason": "Direct official evidence for application-role access control and grants to consumer account roles."
+    },
+    "notebooks": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/ui-snowsight/notebooks",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/ui-snowsight/notebooks-in-workspaces/notebooks-in-workspaces-overview",
+      "title": "Snowflake Notebooks in Workspaces",
+      "evidence_status": "live_verified",
+      "reason": "Current GA notebook experience replacing the legacy notebooks path."
+    },
+    "marketplace": {
+      "original_url": "https://docs.snowflake.com/en/collaboration/provider-listings-about",
+      "canonical_url": "https://docs.snowflake.com/en/collaboration/collaboration-listings-about",
+      "title": "About listings",
+      "evidence_status": "live_verified",
+      "reason": "Current official listings overview covering Native Apps and data products."
+    },
+    "model_monitoring": {
+      "original_url": "https://docs.snowflake.com/en/developer-guide/snowpark-ml/model-registry/model-monitor",
+      "canonical_url": "https://docs.snowflake.com/en/developer-guide/snowflake-ml/model-registry/snowsight-ui",
+      "title": "Snowflake Model Registry user interface",
+      "evidence_status": "live_verified",
+      "reason": "Current official Model Registry documentation describes model-monitor dashboards and drift/accuracy metrics."
+    },
+    "delta_direct": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/tables-delta-direct",
+      "canonical_url": "https://docs.snowflake.com/en/sql-reference/sql/create-iceberg-table-delta",
+      "title": "CREATE ICEBERG TABLE (Delta files in object storage)",
+      "evidence_status": "live_verified",
+      "reason": "Current official Delta Direct definition and table-creation reference."
+    },
+    "dynamic_tables": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/dynamic-tables-about",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/dynamic-tables/overview",
+      "title": "Dynamic tables",
+      "evidence_status": "live_verified",
+      "reason": "The former overview path now redirects to the current Dynamic Tables overview."
+    },
+    "future_grants": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/security-access-control-configure",
+      "canonical_url": "https://docs.snowflake.com/en/sql-reference/sql/grant-privilege",
+      "title": "GRANT privileges TO ROLE",
+      "evidence_status": "live_verified",
+      "reason": "Direct official reference documents ON FUTURE grants for future objects in databases and schemas."
+    },
+    "managed_access": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/security-access-control-configure",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/security-access-control-overview",
+      "title": "Overview of Access Control",
+      "evidence_status": "live_verified",
+      "reason": "Current access-control overview explicitly describes centralized grant decisions in managed access schemas."
+    },
+    "match_recognize": {
+      "original_url": "https://docs.snowflake.com/en/sql-reference/constructs/match_recognize",
+      "canonical_url": "https://docs.snowflake.com/en/sql-reference/constructs/match_recognize",
+      "title": "MATCH_RECOGNIZE",
+      "evidence_status": "live_verified",
+      "reason": "Current SQL reference documents declarative row-pattern recognition over ordered row sets."
+    },
+    "query_profile": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/ui-query-profile",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/ui-snowsight-activity",
+      "title": "Monitor query activity with Query History",
+      "evidence_status": "live_verified",
+      "reason": "The former Query Profile guide now redirects to the current Snowsight Query History page, which exposes Query Profile for executed queries."
+    },
+    "zero_copy_clone": {
+      "original_url": "https://docs.snowflake.com/en/user-guide/object-clone",
+      "canonical_url": "https://docs.snowflake.com/en/user-guide/tables-storage-considerations",
+      "title": "Data storage considerations",
+      "evidence_status": "live_verified",
+      "reason": "Current official storage documentation directly states that zero-copy clones initially share underlying storage and only incur additional storage as data diverges."
+    }
+  }
+}

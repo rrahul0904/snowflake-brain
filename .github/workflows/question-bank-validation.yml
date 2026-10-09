@@ -1,0 +1,72 @@
+name: Question Bank Validation
+
+on:
+  pull_request:
+    paths:
+      - 'data/question-banks/**'
+      - 'scripts/generate_question_banks_5000.py'
+      - 'scripts/apply_question_source_overrides.py'
+      - 'scripts/build_question_vetting_tracker.py'
+      - 'scripts/validate_question_banks.py'
+      - 'scripts/qa_question_banks_advanced.py'
+      - 'scripts/qa_question_banks_exam_plus.py'
+      - '.github/workflows/question-bank-validation.yml'
+  push:
+    paths:
+      - 'data/question-banks/**'
+      - 'scripts/generate_question_banks_5000.py'
+      - 'scripts/apply_question_source_overrides.py'
+      - 'scripts/build_question_vetting_tracker.py'
+      - 'scripts/validate_question_banks.py'
+      - 'scripts/qa_question_banks_advanced.py'
+      - 'scripts/qa_question_banks_exam_plus.py'
+      - '.github/workflows/question-bank-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Materialize 5,000 question and solution pairs per certification
+        run: python scripts/generate_question_banks_5000.py --clean
+
+      - name: Apply vetted canonical Snowflake source remaps
+        run: python scripts/apply_question_source_overrides.py
+
+      - name: Validate full 60,000 question + 60,000 solution corpus
+        run: python scripts/validate_question_banks.py --require-target
+
+      - name: Run semantic, diversity, and publishing QA
+        run: python scripts/qa_question_banks_advanced.py --report data/question-banks/generated/advanced-qa-report.json
+
+      - name: Build 60,000-pair vetting tracker
+        run: python scripts/build_question_vetting_tracker.py
+
+      - name: Run Exam+ specialist readiness audit
+        run: python scripts/qa_question_banks_exam_plus.py --report data/question-banks/generated/exam-plus-readiness-report.json
+
+      - name: Package canonical publishing source and vetting evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snowflake-certification-banks-5000-each
+          path: |
+            data/question-banks/generated/
+            data/question-banks/seed/
+            data/question-banks/release-aware/
+            data/question-banks/vetting/
+            data/question-banks/certifications.json
+            data/question-banks/blueprints/2026-10-07.json
+            data/question-banks/status.json
+          if-no-files-found: error
+          retention-days: 30
