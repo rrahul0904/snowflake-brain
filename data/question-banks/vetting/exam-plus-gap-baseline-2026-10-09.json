@@ -1,0 +1,37 @@
+{
+  "as_of": "2026-10-09",
+  "scope": {"certifications": 12, "questions": 60000, "solutions": 60000, "target_per_exam": 5000},
+  "interpretation": {
+    "current_difficulty_labels": ["foundation", "exam", "advanced"],
+    "new_difficulty_labels": ["foundation", "exam_parity", "exam_plus", "expert_stretch"],
+    "important": "Existing advanced labels are candidates for specialist calibration only. They are not automatically promoted to exam_plus_verified or expert_stretch.",
+    "all_pairs_require_specialist_disposition": true
+  },
+  "totals": {
+    "pairs_pending_specialist_disposition": 60000,
+    "minimum_current_foundation_items_above_new_ceiling": 14989,
+    "explicit_expert_stretch_items_required_by_target_mix": 10250
+  },
+  "by_exam": {
+    "SOL-C01": {"current":{"foundation":1668,"exam":1667,"advanced":1665},"target":{"foundation":1000,"exam_parity":2250,"exam_plus":1250,"expert_stretch":500},"foundation_above_ceiling":668,"expert_stretch_target":500},
+    "COF-C03": {"current":{"foundation":1665,"exam":1670,"advanced":1665},"target":{"foundation":750,"exam_parity":2250,"exam_plus":1500,"expert_stretch":500},"foundation_above_ceiling":915,"expert_stretch_target":500},
+    "GES-C02": {"current":{"foundation":1665,"exam":1667,"advanced":1668},"target":{"foundation":500,"exam_parity":2000,"exam_plus":1750,"expert_stretch":750},"foundation_above_ceiling":1165,"expert_stretch_target":750},
+    "SPS-C01": {"current":{"foundation":1666,"exam":1668,"advanced":1666},"target":{"foundation":500,"exam_parity":2000,"exam_plus":1750,"expert_stretch":750},"foundation_above_ceiling":1166,"expert_stretch_target":750,"lifecycle":"retires 2026-11-01"},
+    "NAS-C02": {"current":{"foundation":1665,"exam":1668,"advanced":1667},"target":{"foundation":500,"exam_parity":2000,"exam_plus":1750,"expert_stretch":750},"foundation_above_ceiling":1165,"expert_stretch_target":750},
+    "MLA-C01": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000},
+    "SEA-C01": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000},
+    "ARA-C01": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000},
+    "DEA-C02": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000},
+    "DSA-C03": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000,"lifecycle":"retires 2026-11-01"},
+    "ADA-C02": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000},
+    "DAA-C01": {"current":{"foundation":1665,"exam":1665,"advanced":1670},"target":{"foundation":250,"exam_parity":1750,"exam_plus":2000,"expert_stretch":1000},"foundation_above_ceiling":1415,"expert_stretch_target":1000}
+  },
+  "remediation_priority": [
+    "Blind-review every item under its certification specialist team",
+    "Upgrade or replace foundation items above each certification ceiling",
+    "Create an explicit expert-stretch tier using multi-constraint and multi-feature reasoning",
+    "Strengthen distractors so each represents a plausible Snowflake misconception",
+    "Expand solutions with deciding rule, distractor-specific reasoning, caveats, and code/config evidence where useful",
+    "Record specialist disposition and exact corpus SHA before any Exam+ completion claim"
+  ]
+}
