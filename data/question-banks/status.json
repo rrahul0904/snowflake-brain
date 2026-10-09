@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-08",
+  "as_of": "2026-10-09",
   "branch": "feature/all-snowpro-question-banks",
   "minimum_target_questions": 60000,
   "minimum_target_solutions": 60000,
@@ -20,6 +20,20 @@
     "question_sha256": "98ac438136f0fb09e6b921080423828ae64bd30f7f4364edf79556c67eff9cb9",
     "solution_sha256": "f0bad61ea7340dc25399518b26152198ec34f76922b18d7eda7b4d1b168104e0"
   },
+  "vetting": {
+    "status": "complete_current_vetting_pass",
+    "paired_records_audited": 60000,
+    "record_level_blocking_errors": 0,
+    "generated_concepts_live_verified": 100,
+    "curated_pairs_individually_assistant_reviewed": 60,
+    "unresolved_holds": 0,
+    "source_overrides": "vetting/source-overrides.json",
+    "concept_evidence": "vetting/concept-evidence.json",
+    "additional_live_verified_concepts": "vetting/additional-live-verified-concepts.txt",
+    "curated_review_policy": "vetting/curated-review-policy.json",
+    "generated_records_individually_human_reviewed": false,
+    "promotion_note": "Generated records remain draft until independent individual review/promotion evidence is recorded."
+  },
   "publishing": {
     "status": "complete",
     "certification_docx_files": 12,
@@ -29,9 +43,9 @@
     "publishing_validation": "pass",
     "receipt": "publishing/2026-10-08.json"
   },
-  "status": "target_materialized_advanced_qa_pass_publishing_complete_human_review_pending",
+  "status": "target_materialized_advanced_qa_pass_publishing_complete_current_vetting_pass_independent_promotion_pending",
   "next_milestones": [
-    "Perform individual source and ambiguity review before promoting records from draft to verified",
+    "Perform independent individual ambiguity and answer-quality review before promoting generated records from draft to verified",
     "Revalidate sources and lifecycle metadata when Snowflake exam blueprints or product behavior change",
     "Reconcile certification lifecycle after SPS-C01 and DSA-C03 retirement date"
   ],
