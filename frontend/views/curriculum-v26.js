@@ -1,16 +1,15 @@
 export const VIEW_ID = "v26-curriculum";
 
-import { escapeHtml, getSkillMap, getSkillSummary, getTaskProgress } from "../api.js";
+import { escapeHtml, getHomeSummary } from "../api.js";
 import { activeTrack, setActiveTrack } from "../ui.js";
 import { DOMAIN_COLORS, studyLayout } from "../components/study-shell.js";
 
 export default async function mount(container, params = {}) {
   const trackId = params.track_id || activeTrack();
-  const [map, progress, summary] = await Promise.all([
-    getSkillMap(),
-    getTaskProgress({ track_id: trackId }).catch(() => ({ completed_skill_ids: [] })),
-    getSkillSummary({ track_id: trackId }).catch(() => ({ skills: [], domains: [] })),
-  ]);
+  const payload = await getHomeSummary({ track_id: trackId });
+  const map = payload.map || { certifications: [] };
+  const progress = payload.progress || { completed_skill_ids: [] };
+  const summary = payload.summary || { skills: [], domains: [] };
   const certs = map.certifications || [];
   const cert = certs.find((item) => item.id === trackId) || certs[0];
   if (!cert) throw new Error("Certification is not configured");

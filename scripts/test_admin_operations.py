@@ -30,8 +30,27 @@ def require(actual: int, expected: int, label: str) -> None:
 
 def paths() -> list[str]:
     result = sorted({str(context.path) for context in iter_route_contexts(app.routes) if str(context.path).startswith("/api/admin/") and isinstance(context.original_route, APIRoute) and "GET" in (context.original_route.methods or set())})
-    if len(result) != 16:
-        raise AssertionError(f"Expected 16 admin GET endpoints, found {len(result)}: {result}")
+    expected = sorted({
+        "/api/admin/audit",
+        "/api/admin/auth",
+        "/api/admin/configuration",
+        "/api/admin/database",
+        "/api/admin/deployments",
+        "/api/admin/finops",
+        "/api/admin/learning",
+        "/api/admin/mocks",
+        "/api/admin/overview",
+        "/api/admin/question-bank",
+        "/api/admin/question-feedback",
+        "/api/admin/registrations",
+        "/api/admin/revenue",
+        "/api/admin/subscriptions",
+        "/api/admin/system",
+        "/api/admin/usage",
+        "/api/admin/users",
+    })
+    if result != expected:
+        raise AssertionError(f"Admin GET endpoint contract drifted: expected {expected}, found {result}")
     return result
 
 

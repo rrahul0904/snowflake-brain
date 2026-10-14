@@ -45,6 +45,9 @@ echo "== V26 functional and visual contract =="
 echo "== Reverse-engineering completeness =="
 "$PYTHON_BIN" scripts/test_reverse_engineering_completeness.py
 
+echo "== Convergence governance artifacts =="
+"$PYTHON_BIN" scripts/test_convergence_governance_artifacts.py
+
 echo "== Final Study Command Center convergence =="
 "$PYTHON_BIN" scripts/test_final_convergence.py
 
@@ -114,6 +117,9 @@ echo "== Candidate learning intelligence loop =="
 echo "== Production observability and operational reliability =="
 "$PYTHON_BIN" scripts/test_production_observability.py
 
+echo "== Launch performance and PostgreSQL SQL compatibility =="
+"$PYTHON_BIN" scripts/test_launch_performance_contract.py
+
 echo "== Affiliate disclosure and permanent no-ad-network policy =="
 "$PYTHON_BIN" scripts/test_affiliate_no_ads.py
 
@@ -131,6 +137,41 @@ elif [[ $MEDIA_STATUS -ne 1 ]]; then
   echo "Retired media UI guard could not complete; refusing to silently skip a security check." >&2
   exit 1
 fi
+
+echo "== Public certification SEO/discovery =="
+"$PYTHON_BIN" scripts/test_public_discovery.py
+
+echo "== Private editorial source intake =="
+"$PYTHON_BIN" scripts/test_question_source_intake.py
+
+echo "== Served-question correction workflow =="
+"$PYTHON_BIN" scripts/test_question_feedback.py
+
+echo "== Persisted daily recall streak =="
+"$PYTHON_BIN" scripts/test_daily_recall_streak.py
+
+echo "== Donor ES-module import smoke =="
+if "$NODE_BIN" --experimental-default-type=module -e 'void 0' >/dev/null 2>&1; then
+  "$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+else
+  "$NODE_BIN" --input-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+fi
+"$NODE_BIN" scripts/test_practice_hub_render.mjs
+
+echo "== LeetQuiz donor contract =="
+"$PYTHON_BIN" scripts/test_donor_leetquiz.py
+
+echo "== Claude Certification Guide donor contract =="
+"$PYTHON_BIN" scripts/test_donor_claude_cert_guide.py
+
+echo "== Clouding Academy donor contract =="
+"$PYTHON_BIN" scripts/test_donor_clouding_academy.py
+
+echo "== AcademyOS AI donor contract =="
+"$PYTHON_BIN" scripts/test_donor_academyos_ai.py
+
+echo "== Combined donor learning suite =="
+"$PYTHON_BIN" scripts/test_donor_learning_suite_integration.py
 
 echo "== Frontend syntax =="
 while IFS= read -r -d '' file; do

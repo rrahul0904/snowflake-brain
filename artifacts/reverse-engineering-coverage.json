@@ -1,6 +1,6 @@
 {
   "schema_version": "snowflake-brain-reverse-engineering-coverage-v1",
-  "generated_at": "2026-09-01",
+  "generated_at": "2026-09-19T03:50:00Z",
   "product": "Snowflake Certification Guide",
   "baseline_release_head": "49b017e5926ac576930555b65ad7375abeb98c8d",
   "allowed_final_dispositions": [
@@ -19,8 +19,15 @@
       "requirement": "Sticky product shell with certification navigation, account controls, mock CTA, persistent theme, feedback, and restrained footer.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/components/nav.js", "frontend/app-complete.js", "frontend/components/feedback.js"],
-      "test_evidence": ["scripts/smoke_v26.py", "scripts/test_production_browser_matrix.py"],
+      "implementation_evidence": [
+        "frontend/components/nav.js",
+        "frontend/app-complete.js",
+        "frontend/components/feedback.js"
+      ],
+      "test_evidence": [
+        "scripts/smoke_v26.py",
+        "scripts/test_production_browser_matrix.py"
+      ],
       "route": "global",
       "backend_component": null,
       "frontend_component": "frontend/components/nav.js",
@@ -37,8 +44,15 @@
       "requirement": "Editorial-first home with concise hero, two CTAs, truthful proof, certification discovery, and globe.",
       "priority": "P0",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["frontend/views/home-v26.js", "frontend/components/home-command-center.js", "frontend/components/home-extras.js"],
-      "test_evidence": ["scripts/smoke_v26.py", "scripts/capture_v26_visuals.py"],
+      "implementation_evidence": [
+        "frontend/views/home-v26.js",
+        "frontend/components/home-command-center.js",
+        "frontend/components/home-extras.js"
+      ],
+      "test_evidence": [
+        "scripts/smoke_v26.py",
+        "scripts/capture_v26_visuals.py"
+      ],
       "route": "#/home",
       "backend_component": "app/routers/activity.py",
       "frontend_component": "frontend/views/home-v26.js",
@@ -55,8 +69,15 @@
       "requirement": "Public certification chooser clearly separates official certification existence from product study-guide availability.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/certifications.js", "app/security.py", "app/certification_content.py"],
-      "test_evidence": ["scripts/test_authenticated_content_boundary.py", "scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "frontend/views/certifications.js",
+        "app/security.py",
+        "app/certification_content.py"
+      ],
+      "test_evidence": [
+        "scripts/test_authenticated_content_boundary.py",
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/certifications",
       "backend_component": "app/certification_content.py",
       "frontend_component": "frontend/views/certifications.js",
@@ -73,8 +94,15 @@
       "requirement": "Certification cards and exam guides use source-verified facts and preserve unknown fields as null/not_verified rather than guessing.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["config/certification_catalog.json", "frontend/views/certifications.js", "frontend/views/info-v26.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py", "scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "config/certification_catalog.json",
+        "frontend/views/certifications.js",
+        "frontend/views/info-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py",
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/certifications, #/exam-guide",
       "backend_component": "app/certification_content.py",
       "frontend_component": "frontend/views/info-v26.js",
@@ -91,8 +119,14 @@
       "requirement": "COF-C03 curriculum exposes five weighted domains and nineteen task statements in the shared study shell.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["config/snowpro_core_cof_c03_blueprint.json", "frontend/views/curriculum-v26.js"],
-      "test_evidence": ["scripts/smoke_core_guide.py", "scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "config/snowpro_core_cof_c03_blueprint.json",
+        "frontend/views/curriculum-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/smoke_core_guide.py",
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/curriculum",
       "backend_component": "app/skill_brain.py",
       "frontend_component": "frontend/views/curriculum-v26.js",
@@ -109,8 +143,14 @@
       "requirement": "Domain detail shows weight, task rows, active sidebar expansion, and task completion state.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/curriculum-v26.js", "frontend/components/study-shell.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py", "scripts/capture_v26_visuals.py"],
+      "implementation_evidence": [
+        "frontend/views/curriculum-v26.js",
+        "frontend/components/study-shell.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py",
+        "scripts/capture_v26_visuals.py"
+      ],
       "route": "#/domain",
       "backend_component": "app/routers/skills.py",
       "frontend_component": "frontend/views/curriculum-v26.js",
@@ -127,8 +167,14 @@
       "requirement": "Task lesson includes objective, knowledge, key concept, decision rules, traps, worked example, practice scenario, build exercise, sources, completion, drill, and previous/next navigation.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/lesson-v26.js", "config/study_content_core.json"],
-      "test_evidence": ["scripts/smoke_core_guide.py", "scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/views/lesson-v26.js",
+        "config/study_content_core.json"
+      ],
+      "test_evidence": [
+        "scripts/smoke_core_guide.py",
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/skill",
       "backend_component": "app/certification_content.py",
       "frontend_component": "frontend/views/lesson-v26.js",
@@ -145,8 +191,14 @@
       "requirement": "Progress shows readiness, lesson/practice/drill evidence, domain progress, Due Today, mistakes, study plan, calibration, and mock remediation.",
       "priority": "P0",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["frontend/views/progress-v26.js", "app/learning_intelligence.py"],
-      "test_evidence": ["scripts/test_candidate_learning_intelligence.py", "scripts/test_adaptive_readiness_intelligence.py"],
+      "implementation_evidence": [
+        "frontend/views/progress-v26.js",
+        "app/learning_intelligence.py"
+      ],
+      "test_evidence": [
+        "scripts/test_candidate_learning_intelligence.py",
+        "scripts/test_adaptive_readiness_intelligence.py"
+      ],
       "route": "#/progress",
       "backend_component": "app/learning_intelligence.py",
       "frontend_component": "frontend/views/progress-v26.js",
@@ -163,8 +215,13 @@
       "requirement": "Targeted drill uses a dedicated pre-start screen, domain selection, summary signals, and no auto-launch.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/practice-v26.js"],
-      "test_evidence": ["scripts/test_candidate_learning_intelligence.py", "scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "frontend/views/practice-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_candidate_learning_intelligence.py",
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/practice?mode=drill",
       "backend_component": "app/routers/certification_practice.py",
       "frontend_component": "frontend/views/practice-v26.js",
@@ -181,8 +238,13 @@
       "requirement": "Diagnostic has a pre-start explanation, domain coverage, expectations, and deliberate start CTA.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/practice-v26.js"],
-      "test_evidence": ["scripts/smoke_v26.py", "scripts/test_question_bank_tiers.py"],
+      "implementation_evidence": [
+        "frontend/views/practice-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/smoke_v26.py",
+        "scripts/test_question_bank_tiers.py"
+      ],
       "route": "#/practice?mode=diagnostic",
       "backend_component": "app/routers/certification_practice.py",
       "frontend_component": "frontend/views/practice-v26.js",
@@ -199,8 +261,14 @@
       "requirement": "Practice provides diagnostic, targeted drill, SRS review, quick mock, and full mock while enforcing tier boundaries.",
       "priority": "P0",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["frontend/views/practice-v26.js", "app/entitlements.py"],
-      "test_evidence": ["scripts/test_question_bank_tiers.py", "scripts/test_exam_entitlement_concurrency.py"],
+      "implementation_evidence": [
+        "frontend/views/practice-v26.js",
+        "app/entitlements.py"
+      ],
+      "test_evidence": [
+        "scripts/test_question_bank_tiers.py",
+        "scripts/test_exam_entitlement_concurrency.py"
+      ],
       "route": "#/practice",
       "backend_component": "app/entitlements.py",
       "frontend_component": "frontend/views/practice-v26.js",
@@ -217,8 +285,13 @@
       "requirement": "Mock start detects interrupted sittings, supports resume/discard, quick/full selection, format, weights, instructions, and explicit start.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/mock-start-v26.js"],
-      "test_evidence": ["scripts/test_mock_exam.py", "scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "frontend/views/mock-start-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_mock_exam.py",
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/mock/start",
       "backend_component": "app/routers/mock_exam.py",
       "frontend_component": "frontend/views/mock-start-v26.js",
@@ -235,8 +308,15 @@
       "requirement": "Dedicated timed exam player preserves answers, flags, timer, free navigation, mobile navigator, autosave, resume, and answer secrecy before submit.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/exam-session-v26.js", "app/routers/question_bank_runtime.py"],
-      "test_evidence": ["scripts/test_mock_exam.py", "scripts/test_security_adversarial.py", "scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "frontend/views/exam-session-v26.js",
+        "app/routers/question_bank_runtime.py"
+      ],
+      "test_evidence": [
+        "scripts/test_mock_exam.py",
+        "scripts/test_security_adversarial.py",
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/mock/session",
       "backend_component": "app/routers/question_bank_runtime.py",
       "frontend_component": "frontend/views/exam-session-v26.js",
@@ -253,8 +333,13 @@
       "requirement": "Results expose score/readiness, domain performance, answer review, explanations, flagged state, remediation, history, and separate unanswered filtering.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/exam-result-v26.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py", "scripts/test_mock_exam.py"],
+      "implementation_evidence": [
+        "frontend/views/exam-result-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py",
+        "scripts/test_mock_exam.py"
+      ],
       "route": "#/mock/result, #/mock/history",
       "backend_component": "app/routers/mock_exam.py",
       "frontend_component": "frontend/views/exam-result-v26.js",
@@ -271,8 +356,13 @@
       "requirement": "Quick Reference has domain landing cards, print cue, usage note, and task-level decision/trap summaries.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/lookup-v26.js"],
-      "test_evidence": ["scripts/capture_v26_visuals.py", "scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/views/lookup-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/capture_v26_visuals.py",
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/quick-reference",
       "backend_component": "app/certification_content.py",
       "frontend_component": "frontend/views/lookup-v26.js",
@@ -289,8 +379,14 @@
       "requirement": "Glossary provides domain landing, searchable task-level terminology, aliases, task context, and lesson linkage.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/lookup-v26.js", "config/snowpro_core_cof_c03_blueprint.json"],
-      "test_evidence": ["scripts/capture_v26_visuals.py", "scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/views/lookup-v26.js",
+        "config/snowpro_core_cof_c03_blueprint.json"
+      ],
+      "test_evidence": [
+        "scripts/capture_v26_visuals.py",
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/glossary",
       "backend_component": "app/skill_brain.py",
       "frontend_component": "frontend/views/lookup-v26.js",
@@ -307,8 +403,15 @@
       "requirement": "Build exercises support scenario, difficulty/time, steps, starter SQL, hints, validation checks, expected output, solution, teardown, tags, and traps.",
       "priority": "P1",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["config/snowflake_lab_challenges.json", "app/routers/labs.py", "frontend/views/exercises-v26.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py", "scripts/verify_all.sh"],
+      "implementation_evidence": [
+        "config/snowflake_lab_challenges.json",
+        "app/routers/labs.py",
+        "frontend/views/exercises-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py",
+        "scripts/verify_all.sh"
+      ],
       "route": "#/exercises, #/labs",
       "backend_component": "app/routers/labs.py",
       "frontend_component": "frontend/views/exercises-v26.js",
@@ -325,8 +428,12 @@
       "requirement": "Reference page groups concise Snowflake resources and opens external documentation safely.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/reference.js"],
-      "test_evidence": ["scripts/capture_v26_visuals.py"],
+      "implementation_evidence": [
+        "frontend/views/reference.js"
+      ],
+      "test_evidence": [
+        "scripts/capture_v26_visuals.py"
+      ],
       "route": "#/reference",
       "backend_component": "app/affiliate_resources.py",
       "frontend_component": "frontend/views/reference.js",
@@ -343,8 +450,12 @@
       "requirement": "Journal provides certification-focused editorial cards and technical articles without copying reference articles.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/views/journal-v26.js"],
-      "test_evidence": ["scripts/capture_v26_visuals.py"],
+      "implementation_evidence": [
+        "frontend/views/journal-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/capture_v26_visuals.py"
+      ],
       "route": "#/journal",
       "backend_component": null,
       "frontend_component": "frontend/views/journal-v26.js",
@@ -361,8 +472,14 @@
       "requirement": "Floating feedback action opens an accessible title/category/description/email experience with persistent backend submission.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/components/feedback.js", "app/routers/feedback.py"],
-      "test_evidence": ["scripts/smoke_v26.py", "scripts/test_production_browser_matrix.py"],
+      "implementation_evidence": [
+        "frontend/components/feedback.js",
+        "app/routers/feedback.py"
+      ],
+      "test_evidence": [
+        "scripts/smoke_v26.py",
+        "scripts/test_production_browser_matrix.py"
+      ],
       "route": "global feedback drawer",
       "backend_component": "app/routers/feedback.py",
       "frontend_component": "frontend/components/feedback.js",
@@ -379,8 +496,13 @@
       "requirement": "Light/dark theme applies across routes and persists.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/app-complete.js", "frontend/styles/tokens.css"],
-      "test_evidence": ["scripts/capture_v26_visuals.py"],
+      "implementation_evidence": [
+        "frontend/app-complete.js",
+        "frontend/styles/tokens.css"
+      ],
+      "test_evidence": [
+        "scripts/capture_v26_visuals.py"
+      ],
       "route": "global",
       "backend_component": null,
       "frontend_component": "frontend/app-complete.js",
@@ -397,8 +519,14 @@
       "requirement": "Learner and exam experiences adapt across desktop/tablet/mobile without horizontal overflow or clipped controls.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/styles/responsive.css", "frontend/styles/reverse-engineering-completeness.css"],
-      "test_evidence": ["scripts/test_production_browser_matrix.py", "scripts/capture_v26_visuals.py"],
+      "implementation_evidence": [
+        "frontend/styles/responsive.css",
+        "frontend/styles/reverse-engineering-completeness.css"
+      ],
+      "test_evidence": [
+        "scripts/test_production_browser_matrix.py",
+        "scripts/capture_v26_visuals.py"
+      ],
       "route": "global",
       "backend_component": null,
       "frontend_component": "frontend/styles/responsive.css",
@@ -415,8 +543,13 @@
       "requirement": "Keyboard semantics, focus, accessible labels, reduced motion, and structural accessibility baseline are preserved.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/styles/accessibility.css", "frontend/components/globe.js"],
-      "test_evidence": ["scripts/test_production_browser_matrix.py"],
+      "implementation_evidence": [
+        "frontend/styles/accessibility.css",
+        "frontend/components/globe.js"
+      ],
+      "test_evidence": [
+        "scripts/test_production_browser_matrix.py"
+      ],
       "route": "global",
       "backend_component": null,
       "frontend_component": "frontend/styles/accessibility.css",
@@ -433,8 +566,14 @@
       "requirement": "Home uses real projected geography and privacy-safe aggregate activity with truthful fallback and no fabricated learner locations.",
       "priority": "P0",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["frontend/components/globe.js", "frontend/assets/world-major-land.geojson", "app/routers/activity.py"],
-      "test_evidence": ["scripts/smoke_v26.py"],
+      "implementation_evidence": [
+        "frontend/components/globe.js",
+        "frontend/assets/world-major-land.geojson",
+        "app/routers/activity.py"
+      ],
+      "test_evidence": [
+        "scripts/smoke_v26.py"
+      ],
       "route": "#/home",
       "backend_component": "app/routers/activity.py",
       "frontend_component": "frontend/components/globe.js",
@@ -451,8 +590,16 @@
       "requirement": "Candidate sessions fail closed for study content and support email/password plus governed Google OIDC.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["app/auth.py", "app/google_oidc.py", "app/security.py"],
-      "test_evidence": ["scripts/test_auth_membership.py", "scripts/test_google_browser_state.py", "scripts/test_google_identity_continuity.py"],
+      "implementation_evidence": [
+        "app/auth.py",
+        "app/google_oidc.py",
+        "app/security.py"
+      ],
+      "test_evidence": [
+        "scripts/test_auth_membership.py",
+        "scripts/test_google_browser_state.py",
+        "scripts/test_google_identity_continuity.py"
+      ],
       "route": "auth boundary",
       "backend_component": "app/auth.py",
       "frontend_component": "frontend/auth.js",
@@ -469,8 +616,14 @@
       "requirement": "Email verification, recovery, email/password changes, session management, export, and deletion are implemented.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["app/account_lifecycle.py", "frontend/views/account-v26.js"],
-      "test_evidence": ["scripts/test_account_lifecycle.py", "scripts/test_auth_verification_ux.py"],
+      "implementation_evidence": [
+        "app/account_lifecycle.py",
+        "frontend/views/account-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_account_lifecycle.py",
+        "scripts/test_auth_verification_ux.py"
+      ],
       "route": "#/account, #/account-action",
       "backend_component": "app/account_lifecycle.py",
       "frontend_component": "frontend/views/account-v26.js",
@@ -487,8 +640,15 @@
       "requirement": "Free, Premium 100/250/500, and Exam Pack entitlements are server-authoritative.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["app/entitlements.py", "frontend/views/membership-v26.js"],
-      "test_evidence": ["scripts/test_auth_membership.py", "scripts/test_billing_tier_transitions.py", "scripts/test_exam_pack_expiry_reconciliation.py"],
+      "implementation_evidence": [
+        "app/entitlements.py",
+        "frontend/views/membership-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_auth_membership.py",
+        "scripts/test_billing_tier_transitions.py",
+        "scripts/test_exam_pack_expiry_reconciliation.py"
+      ],
       "route": "#/membership",
       "backend_component": "app/entitlements.py",
       "frontend_component": "frontend/views/membership-v26.js",
@@ -505,8 +665,16 @@
       "requirement": "Stripe Checkout/webhook/Portal mapping is implemented with signature, idempotency, price authority, and safe entitlement transitions.",
       "priority": "P0",
       "current_status": "EXTERNAL_CONFIGURATION",
-      "implementation_evidence": ["app/billing", "app/routers/billing.py", "scripts/provision_stripe_billing.py"],
-      "test_evidence": ["scripts/test_google_billing_security.py", "scripts/test_billing_unknown_price_fail_closed.py", "scripts/test_billing_tier_transitions.py"],
+      "implementation_evidence": [
+        "app/billing",
+        "app/routers/billing.py",
+        "scripts/provision_stripe_billing.py"
+      ],
+      "test_evidence": [
+        "scripts/test_google_billing_security.py",
+        "scripts/test_billing_unknown_price_fail_closed.py",
+        "scripts/test_billing_tier_transitions.py"
+      ],
       "route": "#/membership and /api/billing/*",
       "backend_component": "app/billing",
       "frontend_component": "frontend/views/membership-v26.js",
@@ -523,8 +691,17 @@
       "requirement": "Private 1,200-question COF-C03 artifact remains outside Git and is imported through immutable governed releases with answer secrecy and entitlement boundaries.",
       "priority": "P0",
       "current_status": "EXTERNAL_CONFIGURATION",
-      "implementation_evidence": ["app/question_bank.py", "app/question_bank_releases.py", ".github/workflows/production-question-bank-release.yml", "scripts/audit_private_bank_quality.py"],
-      "test_evidence": ["scripts/test_question_bank_manifest_contract.py", "scripts/test_question_bank_releases.py", "scripts/test_question_bank_tiers.py"],
+      "implementation_evidence": [
+        "app/question_bank.py",
+        "app/question_bank_releases.py",
+        ".github/workflows/production-question-bank-release.yml",
+        "scripts/audit_private_bank_quality.py"
+      ],
+      "test_evidence": [
+        "scripts/test_question_bank_manifest_contract.py",
+        "scripts/test_question_bank_releases.py",
+        "scripts/test_question_bank_tiers.py"
+      ],
       "route": "private release pipeline",
       "backend_component": "app/question_bank_releases.py",
       "frontend_component": null,
@@ -541,8 +718,16 @@
       "requirement": "Question versions, release snapshots, source freshness, automated QA, human editorial review, SME approval, staging, activation, and rollback remain distinct.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["app/question_versions.py", "app/question_bank_releases.py", "app/content_freshness.py", "docs/question-bank-editorial-runbook.md"],
-      "test_evidence": ["scripts/test_question_version_immutability.py", "scripts/test_question_bank_releases.py"],
+      "implementation_evidence": [
+        "app/question_versions.py",
+        "app/question_bank_releases.py",
+        "app/content_freshness.py",
+        "docs/question-bank-editorial-runbook.md"
+      ],
+      "test_evidence": [
+        "scripts/test_question_version_immutability.py",
+        "scripts/test_question_bank_releases.py"
+      ],
       "route": "governed content pipeline",
       "backend_component": "app/question_bank_releases.py",
       "frontend_component": null,
@@ -559,8 +744,13 @@
       "requirement": "Adaptive readiness uses evidence, calibration, coverage, retention, runway, and recommendation logic without claiming pass probability.",
       "priority": "P0",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["app/adaptive_readiness.py", "frontend/views/adaptive-v26.js"],
-      "test_evidence": ["scripts/test_adaptive_readiness_intelligence.py"],
+      "implementation_evidence": [
+        "app/adaptive_readiness.py",
+        "frontend/views/adaptive-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_adaptive_readiness_intelligence.py"
+      ],
       "route": "#/adaptive",
       "backend_component": "app/adaptive_readiness.py",
       "frontend_component": "frontend/views/adaptive-v26.js",
@@ -577,8 +767,13 @@
       "requirement": "Attempts feed SRS, mistake notebook, confidence calibration, study plan, and mock remediation.",
       "priority": "P0",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["app/learning_intelligence.py", "frontend/views/progress-v26.js"],
-      "test_evidence": ["scripts/test_candidate_learning_intelligence.py"],
+      "implementation_evidence": [
+        "app/learning_intelligence.py",
+        "frontend/views/progress-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_candidate_learning_intelligence.py"
+      ],
       "route": "#/progress, #/mistakes",
       "backend_component": "app/learning_intelligence.py",
       "frontend_component": "frontend/views/progress-v26.js",
@@ -595,8 +790,15 @@
       "requirement": "Candidate can verify a SnowPro credential via issuer-backed Credly evidence with private-by-default talent visibility.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["app/credential_verification.py", "frontend/views/credentials-v26.js", "docs/VERIFIED_TALENT_MARKETPLACE.md"],
-      "test_evidence": ["scripts/smoke_verified_credentials.py", "tests/test_security_units.py"],
+      "implementation_evidence": [
+        "app/credential_verification.py",
+        "frontend/views/credentials-v26.js",
+        "docs/VERIFIED_TALENT_MARKETPLACE.md"
+      ],
+      "test_evidence": [
+        "scripts/smoke_verified_credentials.py",
+        "tests/test_security_units.py"
+      ],
       "route": "#/credentials",
       "backend_component": "app/credential_verification.py",
       "frontend_component": "frontend/views/credentials-v26.js",
@@ -613,8 +815,14 @@
       "requirement": "Active V26 states independence, no live/leaked/recalled exam content, provenance principles, trademark attribution, correction process, and no false registration claims.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["docs/CONTENT_INTEGRITY_AND_IP_POLICY.md", "frontend/views/info-v26.js", "frontend/app-complete.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "docs/CONTENT_INTEGRITY_AND_IP_POLICY.md",
+        "frontend/views/info-v26.js",
+        "frontend/app-complete.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/content-integrity, footer",
       "backend_component": null,
       "frontend_component": "frontend/views/info-v26.js",
@@ -631,8 +839,13 @@
       "requirement": "Structured logs, request IDs, health/readiness, metrics, alert sinks, and production soak tooling exist.",
       "priority": "P0",
       "current_status": "EXTERNAL_CONFIGURATION",
-      "implementation_evidence": ["app/observability.py", "docs/production-observability-runbook.md"],
-      "test_evidence": ["scripts/test_production_observability.py"],
+      "implementation_evidence": [
+        "app/observability.py",
+        "docs/production-observability-runbook.md"
+      ],
+      "test_evidence": [
+        "scripts/test_production_observability.py"
+      ],
       "route": "/api/health, /api/ready, /api/metrics",
       "backend_component": "app/observability.py",
       "frontend_component": null,
@@ -649,8 +862,16 @@
       "requirement": "Auth boundary, same-origin mutation checks, rate limits, headers, least privilege, SAST, dependency audit, DAST, hostile-subscriber and bank-isolation controls remain blocking release gates.",
       "priority": "P0",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["app/security.py", "scripts/test_security_adversarial.py", "tests/test_postgres_runtime_role.py"],
-      "test_evidence": ["Security Assurance", "Authenticated Bank Isolation", "PostgreSQL Production Smoke"],
+      "implementation_evidence": [
+        "app/security.py",
+        "scripts/test_security_adversarial.py",
+        "tests/test_postgres_runtime_role.py"
+      ],
+      "test_evidence": [
+        "Security Assurance",
+        "Authenticated Bank Isolation",
+        "PostgreSQL Production Smoke"
+      ],
       "route": "global security boundary",
       "backend_component": "app/security.py",
       "frontend_component": null,
@@ -667,8 +888,16 @@
       "requirement": "Vercel/Neon deployment, migrations, least-privilege runtime, backup/restore, release gates, and rollback procedures are defined and automated where possible.",
       "priority": "P0",
       "current_status": "EXTERNAL_CONFIGURATION",
-      "implementation_evidence": ["docs/ARCHITECTURE.md", "scripts/provision_hosted_runtime.py", ".github/workflows/provision-hosted-runtime.yml", "scripts/run_production_release_gates.sh"],
-      "test_evidence": ["Production Launch Gate", "PostgreSQL Production Smoke"],
+      "implementation_evidence": [
+        "docs/ARCHITECTURE.md",
+        "scripts/provision_hosted_runtime.py",
+        ".github/workflows/provision-hosted-runtime.yml",
+        "scripts/run_production_release_gates.sh"
+      ],
+      "test_evidence": [
+        "Production Launch Gate",
+        "PostgreSQL Production Smoke"
+      ],
       "route": "deployment pipeline",
       "backend_component": "app/database.py",
       "frontend_component": null,
@@ -685,8 +914,14 @@
       "requirement": "Expanded task navigation visibly distinguishes completed lessons.",
       "priority": "P1",
       "current_status": "IMPLEMENTED_AND_TESTED",
-      "implementation_evidence": ["frontend/components/study-shell.js", "frontend/views/lesson-v26.js", "frontend/views/curriculum-v26.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/components/study-shell.js",
+        "frontend/views/lesson-v26.js",
+        "frontend/views/curriculum-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/curriculum, #/domain, #/skill",
       "backend_component": "app/routers/skills.py",
       "frontend_component": "frontend/components/study-shell.js",
@@ -703,8 +938,14 @@
       "requirement": "Evaluate Concept Check, Exam Sim, and Build Coach interaction ideas without cloning their UI or content.",
       "priority": "P2",
       "current_status": "SUPERSEDED_BY_BETTER_SNOWFLAKE_NATIVE_IMPLEMENTATION",
-      "implementation_evidence": ["frontend/views/lesson-v26.js", "frontend/views/practice-v26.js", "config/snowflake_lab_challenges.json"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/views/lesson-v26.js",
+        "frontend/views/practice-v26.js",
+        "config/snowflake_lab_challenges.json"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/skill, #/practice, #/labs",
       "backend_component": "app/routers/labs.py",
       "frontend_component": "frontend/views/lesson-v26.js",
@@ -721,8 +962,12 @@
       "requirement": "Evaluate testimonials/social proof.",
       "priority": "P2",
       "current_status": "INTENTIONALLY_NOT_IMPLEMENTED",
-      "implementation_evidence": ["frontend/components/home-extras.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/components/home-extras.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/home",
       "backend_component": null,
       "frontend_component": "frontend/components/home-extras.js",
@@ -739,8 +984,12 @@
       "requirement": "Evaluate waitlist capture for coming-soon certifications.",
       "priority": "P2",
       "current_status": "FUTURE_SCOPE",
-      "implementation_evidence": ["frontend/views/certifications.js"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "frontend/views/certifications.js"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "#/certifications",
       "backend_component": null,
       "frontend_component": "frontend/views/certifications.js",
@@ -757,8 +1006,12 @@
       "requirement": "Recruiter accounts, company verification, search, saved lists, introduction requests, resume/contact release, recruiter subscriptions, and ATS integration.",
       "priority": "P2",
       "current_status": "FUTURE_SCOPE",
-      "implementation_evidence": ["docs/VERIFIED_TALENT_MARKETPLACE.md"],
-      "test_evidence": ["scripts/test_reverse_engineering_completeness.py"],
+      "implementation_evidence": [
+        "docs/VERIFIED_TALENT_MARKETPLACE.md"
+      ],
+      "test_evidence": [
+        "scripts/test_reverse_engineering_completeness.py"
+      ],
       "route": "not live",
       "backend_component": null,
       "frontend_component": null,
@@ -766,6 +1019,218 @@
       "rationale": "PII, company verification, contact release, abuse controls, and marketplace security require a separate launch review.",
       "external_dependency": "Separate marketplace product decision and privacy/security review",
       "final_disposition": "FUTURE_SCOPE"
+    },
+    {
+      "id": "DONOR-LEETQUIZ-001",
+      "source": "LEETQUIZ_DONOR",
+      "source_date": "2026-09-18",
+      "category": "PRACTICE",
+      "requirement": "Provide a secure custom quiz and blueprint explorer without enumerating or exposing the private question bank.",
+      "priority": "P0",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "frontend/views/question-studio-v26.js",
+        "frontend/views/practice-v26.js",
+        "frontend/api.js"
+      ],
+      "test_evidence": [
+        "scripts/test_donor_leetquiz.py",
+        "scripts/test_donor_learning_suite_integration.py",
+        "scripts/test_production_browser_matrix.py"
+      ],
+      "route": "#/question-studio, #/practice",
+      "backend_component": "app/question_bank_selection.py",
+      "frontend_component": "frontend/views/question-studio-v26.js",
+      "intentional_difference": "Snowflake Brain exposes blueprint/task filters rather than public question-detail inventory.",
+      "rationale": "Preserves LeetQuiz-style practice composition while keeping commercial question wording and answer keys behind the authenticated allocator.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-LEETQUIZ-002",
+      "source": "LEETQUIZ_DONOR",
+      "source_date": "2026-09-18",
+      "category": "CONTENT_GOVERNANCE",
+      "requirement": "Support governed source intake and candidate question corrections without auto-publishing, leaking answer keys, or bypassing editorial review.",
+      "priority": "P0",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "scripts/question_source_intake.py",
+        "app/question_feedback.py",
+        "app/routers/question_feedback.py",
+        "frontend/views/admin-operations.js",
+        "migrations/postgres/20260918_001_question_feedback.sql"
+      ],
+      "test_evidence": [
+        "scripts/test_question_source_intake.py",
+        "scripts/test_question_feedback.py",
+        "scripts/test_account_lifecycle.py",
+        "scripts/test_admin_operations.py"
+      ],
+      "route": "#/practice, restricted Founder Operations",
+      "backend_component": "app/routers/question_feedback.py",
+      "frontend_component": "frontend/views/admin-operations.js",
+      "intentional_difference": "PDF/image inputs require reviewed normalized text and candidate reports enter a private editorial queue instead of a public answer discussion.",
+      "rationale": "Keeps provenance, private-bank, SME, account-data, and runtime-role boundaries authoritative while adding usable editorial workflows.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-LEETQUIZ-003",
+      "source": "LEETQUIZ_DONOR",
+      "source_date": "2026-09-18",
+      "category": "CERTIFICATION_DISCOVERY",
+      "requirement": "Provide crawlable certification discovery without publishing private question pages.",
+      "priority": "P1",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "app/public_discovery.py",
+        "frontend/views/exam-guide-v26.js"
+      ],
+      "test_evidence": [
+        "scripts/test_public_discovery.py",
+        "scripts/test_donor_learning_suite_integration.py"
+      ],
+      "route": "/discover, /discover/{certification_id}, /sitemap.xml",
+      "backend_component": "app/public_discovery.py",
+      "frontend_component": "frontend/views/exam-guide-v26.js",
+      "intentional_difference": "Search-engine discovery is based on source-verified certification facts, not public question wording.",
+      "rationale": "Improves lawful discovery while preserving the private content boundary.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-CLAUDE-GUIDE-001",
+      "source": "CLAUDE_CERTIFICATION_GUIDE_DONOR",
+      "source_date": "2026-09-18",
+      "category": "CERTIFICATION_FACTS",
+      "requirement": "Combine a public blueprint/exam guide with direct handoffs to mapped lessons, traps, concept checks, simulations, references, and build coaching.",
+      "priority": "P0",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "frontend/views/exam-guide-v26.js",
+        "app/security.py",
+        "frontend/router-complete.js"
+      ],
+      "test_evidence": [
+        "scripts/test_donor_claude_cert_guide.py",
+        "scripts/capture_reverse_engineering_public_pages.py",
+        "scripts/test_production_browser_matrix.py"
+      ],
+      "route": "#/exam-guide",
+      "backend_component": "app/routers/skills.py",
+      "frontend_component": "frontend/views/exam-guide-v26.js",
+      "intentional_difference": "Verified public exam facts remain separate from authenticated authored preparation content.",
+      "rationale": "Adds the donor guide flow without weakening provenance or protected-content boundaries.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-CLOUDING-001",
+      "source": "CLOUDING_ACADEMY_DONOR",
+      "source_date": "2026-09-18",
+      "category": "LEARNING_INTELLIGENCE",
+      "requirement": "Provide a daily recall loop with persisted cross-device evidence and an honest consecutive-day streak.",
+      "priority": "P0",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "app/learning_intelligence.py",
+        "app/routers/intelligence.py",
+        "frontend/views/daily-session-v26.js",
+        "frontend/api.js"
+      ],
+      "test_evidence": [
+        "scripts/test_daily_recall_streak.py",
+        "scripts/test_donor_clouding_academy.py",
+        "scripts/test_donor_learning_suite_integration.py"
+      ],
+      "route": "#/daily-session",
+      "backend_component": "app/learning_intelligence.py",
+      "frontend_component": "frontend/views/daily-session-v26.js",
+      "intentional_difference": "Recall evidence uses the candidate-owned server ledger rather than browser localStorage or a parallel curriculum.",
+      "rationale": "Makes the daily loop durable, cross-device, idempotent, and compatible with existing Snowflake Brain learning state.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-CLOUDING-002",
+      "source": "CLOUDING_ACADEMY_DONOR",
+      "source_date": "2026-09-18",
+      "category": "BUILD_EXERCISES",
+      "requirement": "Add architecture-reasoning prompts that route learners from requirement ownership to labs and targeted practice.",
+      "priority": "P1",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "frontend/views/daily-session-v26.js",
+        "config/snowflake_lab_challenges.json"
+      ],
+      "test_evidence": [
+        "scripts/test_donor_clouding_academy.py",
+        "scripts/test_donor_learning_suite_integration.py"
+      ],
+      "route": "#/daily-session, #/labs, #/practice",
+      "backend_component": "app/routers/labs.py",
+      "frontend_component": "frontend/views/daily-session-v26.js",
+      "intentional_difference": "Architecture Builder reuses deterministic Snowflake labs and task drills instead of introducing a second simulation engine.",
+      "rationale": "Preserves the donor reasoning pattern with stronger existing Snowflake-native evidence paths.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-ACADEMYOS-001",
+      "source": "ACADEMYOS_AI_DONOR",
+      "source_date": "2026-09-18",
+      "category": "PRACTICE",
+      "requirement": "Provide a practice hub that separates recall, recognition, scenario reasoning, mistakes, and timed rehearsal into clear next actions.",
+      "priority": "P0",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "frontend/views/practice-hub-v26.js",
+        "frontend/router-complete.js"
+      ],
+      "test_evidence": [
+        "scripts/test_donor_academyos_ai.py",
+        "scripts/test_donor_learning_suite_integration.py",
+        "scripts/test_production_browser_matrix.py"
+      ],
+      "route": "#/practice-hub",
+      "backend_component": "app/routers/intelligence.py",
+      "frontend_component": "frontend/views/practice-hub-v26.js",
+      "intentional_difference": "The integrated hub sends daily recall into Clouding's persisted loop and reuses Snowflake Brain practice/mistake/mock authorities.",
+      "rationale": "Combines the donor learning-mode organization without duplicating state or assessment engines.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
+    },
+    {
+      "id": "DONOR-INTEGRATION-001",
+      "source": "DONOR_LEARNING_SUITE_INTEGRATION",
+      "source_date": "2026-09-18",
+      "category": "SECURITY",
+      "requirement": "Integrate all four donor slices on one certification surface while preserving public/protected route, private-bank, identity, database, and release-governance boundaries.",
+      "priority": "P0",
+      "current_status": "IMPLEMENTED_AND_TESTED",
+      "implementation_evidence": [
+        "frontend/router-complete.js",
+        "frontend/components/nav.js",
+        "app/security.py",
+        "scripts/verify_all.sh"
+      ],
+      "test_evidence": [
+        "scripts/test_donor_learning_suite_integration.py",
+        "scripts/test_authenticated_content_boundary.py",
+        "scripts/test_production_browser_matrix.py",
+        "scripts/test_donor_leetquiz.py",
+        "scripts/test_donor_claude_cert_guide.py",
+        "scripts/test_donor_clouding_academy.py",
+        "scripts/test_donor_academyos_ai.py"
+      ],
+      "route": "#/exam-guide, #/practice-hub, #/daily-session, #/question-studio",
+      "backend_component": "app/security.py",
+      "frontend_component": "frontend/router-complete.js",
+      "intentional_difference": "Only the source-verified Exam Guide is public; learner tools remain candidate-authenticated and no donor creates a second content or identity authority.",
+      "rationale": "Creates one auditable merge surface while preserving Snowflake Brain's existing security and governance model.",
+      "external_dependency": null,
+      "final_disposition": "IMPLEMENTED_AND_TESTED"
     }
   ]
 }

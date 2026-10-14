@@ -47,9 +47,16 @@ jobs:
       SECURITY_RELEASE_STRICT: ${{ github.event_name == 'workflow_dispatch' && inputs.require_active_bank || false }}
       RELEASE_MAIN_SHA: ${{ github.sha }}
       RELEASE_PR_NUMBER: ""
+      EXPECTED_RELEASE_SHA: ${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Node.js for authenticated Vercel Preview requests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned Vercel CLI
+        run: npm install --global --no-audit --no-fund vercel@48.8.0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -57,8 +64,14 @@ jobs:
       - name: Install application dependencies
         run: pip install -r requirements.txt
       - name: Soak hosted liveness/readiness and security headers
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: rrahul0904-5013s-projects
         run: python scripts/test_hosted_runtime_security.py
       - name: Probe hosted static/build/private-file exposure
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: rrahul0904-5013s-projects
         run: python scripts/test_hosted_static_exposure.py
       - name: Verify active production bank counts without reading question content
         env:

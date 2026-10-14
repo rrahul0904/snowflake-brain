@@ -16,13 +16,20 @@ from pathlib import Path
 
 import httpx
 
+try:
+    from .hosted_http import get as hosted_get, validate_security_base_url
+except ImportError:
+    from hosted_http import get as hosted_get, validate_security_base_url
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / "artifacts" / "hosted-runtime-security.json"
 BASE = os.environ.get("SECURITY_BASE_URL", "https://snowflakecertificationguide.vercel.app").rstrip("/")
+validate_security_base_url(BASE)
 SOAK_REQUESTS = max(1, min(100, int(os.environ.get("SOAK_REQUESTS", "20"))))
 SOAK_DELAY_SECONDS = max(0.0, min(10.0, float(os.environ.get("SOAK_DELAY_SECONDS", "0.15"))))
 EXPECTED_BACKEND = os.environ.get("EXPECTED_DATABASE_BACKEND", "postgresql").strip().lower()
+EXPECTED_RELEASE_SHA = os.environ.get("EXPECTED_RELEASE_SHA", "").strip()
 
 
 def digest(body: bytes) -> str:
@@ -40,6 +47,13 @@ def snapshot(response: httpx.Response) -> dict[str, object]:
     }
 
 
+def request_error(exc: Exception) -> str:
+    message = str(exc)
+    if message.startswith("vercel_cli_request_failed:") or message.startswith("vercel_cli_request_error:"):
+        return message
+    return type(exc).__name__
+
+
 def main() -> None:
     findings: list[str] = []
     probes: list[dict[str, object]] = []
@@ -47,11 +61,11 @@ def main() -> None:
 
     with httpx.Client(follow_redirects=True, timeout=20.0) as client:
         for index in range(SOAK_REQUESTS):
-            for path, expected_status in (("/api/health", 200), ("/api/ready", 200)):
+            for path, expected_status in (("/api/health", 200), ("/api/ready", 200), ("/api/release", 200)):
                 try:
-                    response = client.get(f"{BASE}{path}")
+                    response = hosted_get(client, f"{BASE}{path}")
                 except Exception as exc:
-                    findings.append(f"{path}:request_error:{type(exc).__name__}")
+                    findings.append(f"{path}:request_error:{request_error(exc)}")
                     continue
                 row = {"iteration": index + 1, "path": path, **snapshot(response)}
                 probes.append(row)
@@ -68,7 +82,7 @@ def main() -> None:
                         findings.append("health:status_not_ok")
                     if EXPECTED_BACKEND and str(payload.get("database_backend", "")).lower() != EXPECTED_BACKEND:
                         findings.append("health:unexpected_database_backend")
-                else:
+                elif path == "/api/ready":
                     if payload.get("status") != "ready":
                         findings.append("ready:status_not_ready")
                     database = payload.get("database") or {}
@@ -76,13 +90,18 @@ def main() -> None:
                         findings.append("ready:database_not_ok")
                     elif EXPECTED_BACKEND and str(database.get("backend", "")).lower() != EXPECTED_BACKEND:
                         findings.append("ready:unexpected_database_backend")
+                else:
+                    if EXPECTED_RELEASE_SHA and payload.get("git_sha") != EXPECTED_RELEASE_SHA:
+                        findings.append("release:unexpected_git_sha")
+                    if payload.get("source_dirty") is not False:
+                        findings.append("release:source_dirty")
             if index + 1 < SOAK_REQUESTS and SOAK_DELAY_SECONDS:
                 time.sleep(SOAK_DELAY_SECONDS)
 
         try:
-            home = client.get(f"{BASE}/")
+            home = hosted_get(client, f"{BASE}/")
         except Exception as exc:
-            findings.append(f"home:request_error:{type(exc).__name__}")
+            findings.append(f"home:request_error:{request_error(exc)}")
         else:
             probes.append({"iteration": 1, "path": "/", **snapshot(home)})
             if home.status_code != 200:

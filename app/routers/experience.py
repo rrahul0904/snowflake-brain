@@ -171,15 +171,52 @@ def _home_summary(conn: Any, track_id: str, candidate_id: int, certs: list[dict[
         """,
         (candidate_id, track_id),
     ).fetchall()
-    configured_skills = {
-        str(skill.get("id")): str(skill.get("title") or skill.get("id"))
+    configured_skill_meta = {
+        str(skill.get("id")): {
+            "title": str(skill.get("title") or skill.get("id")),
+            "domain_id": str(domain.get("id") or ""),
+            "domain": str(domain.get("title") or domain.get("id") or ""),
+        }
         for cert in certs if cert.get("id") == track_id
         for domain in cert.get("domains") or [] for skill in domain.get("skills") or []
     }
-    skills = [
-        {"skill_id": str(row["skill_id"]), "skill": configured_skills.get(str(row["skill_id"]), str(row["skill_id"])), "attempts": int(row["attempts"] or 0), "accuracy_pct": float(row["accuracy_pct"] or 0)}
-        for row in attempt_rows
-    ]
+    configured_skills = {skill_id: item["title"] for skill_id, item in configured_skill_meta.items()}
+    skills = []
+    for row in attempt_rows:
+        skill_id = str(row["skill_id"])
+        meta = configured_skill_meta.get(skill_id, {})
+        skills.append(
+            {
+                "skill_id": skill_id,
+                "skill": configured_skills.get(skill_id, skill_id),
+                "domain_id": str(meta.get("domain_id") or ""),
+                "domain": str(meta.get("domain") or ""),
+                "attempts": int(row["attempts"] or 0),
+                "accuracy_pct": float(row["accuracy_pct"] or 0),
+            }
+        )
+    domain_summary: dict[str, dict[str, Any]] = {}
+    for item in skills:
+        domain_id = str(item.get("domain_id") or "")
+        if not domain_id:
+            continue
+        domain = domain_summary.setdefault(
+            domain_id,
+            {
+                "domain_id": domain_id,
+                "domain": item.get("domain") or domain_id,
+                "attempts": 0,
+                "weighted_accuracy": 0.0,
+                "accuracy_pct": 0,
+            },
+        )
+        attempts = int(item.get("attempts") or 0)
+        domain["attempts"] += attempts
+        domain["weighted_accuracy"] += float(item.get("accuracy_pct") or 0) * attempts
+    for domain in domain_summary.values():
+        attempts = int(domain["attempts"] or 0)
+        domain["accuracy_pct"] = round(domain["weighted_accuracy"] / attempts) if attempts else 0
+        domain.pop("weighted_accuracy", None)
     latest_readiness = conn.execute(
         "SELECT readiness_score,evidence_confidence FROM candidate_readiness_snapshots WHERE candidate_id=? AND track_id=? ORDER BY created_at DESC,id DESC LIMIT 1",
         (candidate_id, track_id),
@@ -190,7 +227,7 @@ def _home_summary(conn: Any, track_id: str, candidate_id: int, certs: list[dict[
         "due": {"due_count": question_due + task_due, "question_due_count": question_due, "task_due_count": task_due, "questions": [], "task_reviews": []},
         "mistakes": {"counts": mistake_counts, "items": []},
         "plan": study_plan(conn, candidate_id, track_id),
-        "summary": {"skills": skills, "domains": []},
+        "summary": {"skills": skills, "domains": list(domain_summary.values())},
         "history": {"history": history},
         "map": {"certifications": certs},
         "progress": {"completed_skill_ids": [str(row["skill_id"]) for row in progress_rows], "completed_tasks": len(progress_rows), "total_tasks": total_tasks},

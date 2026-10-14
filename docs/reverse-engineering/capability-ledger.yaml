@@ -1,0 +1,528 @@
+ledger_version: 1
+date: 2026-10-13
+governance:
+  provider: REA
+  status: REA_UNAVAILABLE
+  reason: No REA executable or connected provider was available in this session.
+  evidence_policy: Repository code, tests, docs, public GitHub metadata, and production-safe endpoint responses only; no donor source copied and no protected question content read.
+  canonical_authorities:
+    curriculum: Snowflake Brain certification catalog and skill graph
+    questions: Governed immutable question releases
+    candidate_state: Server-side candidate evidence and learning-intelligence store
+    readiness: Derived adaptive-readiness service over candidate evidence
+    entitlements: Server-side membership/billing authority
+    release: Exact application SHA reported by /api/release
+donors:
+  - id: leetquiz
+    name: LeetQuiz
+    trace: "PR #53; PR #57; docs/DONOR_LEETQUIZ.md"
+  - id: claude-certification-guide
+    name: Claude Certification Guide
+    trace: "PR #54; PR #57; docs/DONOR_CLAUDE_CERT_GUIDE.md"
+  - id: clouding-academy
+    name: Clouding Academy
+    trace: "PR #55; PR #57; docs/DONOR_CLOUDING_ACADEMY.md"
+  - id: academyos-ai
+    name: AcademyOS AI
+    trace: "PR #56; PR #57; docs/DONOR_ACADEMYOS_AI.md"
+evidence_classes:
+  - OBSERVED
+  - INFERRED
+  - HYPOTHESIS
+  - UNKNOWN
+  - VERIFIED
+capabilities:
+  - capability_id: exam-guide
+    donor: claude-certification-guide
+    evidence: ["PR #54 metadata", "frontend/views/exam-guide-v26.js", "scripts/test_donor_claude_cert_guide.py"]
+    classification: VERIFIED
+    learner_problem: Understand exam facts, blueprint and preparation scope.
+    behavior_contract: Public guide distinguishes sourced official facts from Snowflake Brain simulation settings and unknown official facts.
+    current_authority: Certification catalog and official-source metadata.
+    implementation_state: Implemented in PR #57; source and contract tests present.
+    gap: Hosted Preview/browser certification remains pending.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_donor_claude_cert_guide.py", "scripts/smoke_core_guide.py"]
+    security_notes: Public facts and links only; no protected questions.
+    clean_room_notes: Reconstruct guide behavior from public requirements; no donor source copied.
+  - capability_id: domain-task-workbench
+    donor: claude-certification-guide
+    evidence: ["config/snowpro_core_cof_c03_blueprint.json", "frontend/views/curriculum-v26.js", "scripts/test_donor_learning_suite_integration.py"]
+    classification: VERIFIED
+    learner_problem: Find the exact objective that needs study.
+    behavior_contract: Navigate certification to domain to task to written lesson and mapped practice.
+    current_authority: Certification skill graph.
+    implementation_state: Existing curriculum composed with donor views.
+    gap: Expand six-certificate depth only when content is authored and verified.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/smoke_certification_native.py", "scripts/test_donor_learning_suite_integration.py"]
+    security_notes: Candidate-only learning surfaces remain authenticated.
+    clean_room_notes: Reuses canonical skill IDs, not donor curriculum state.
+  - capability_id: concept-check
+    donor: claude-certification-guide
+    evidence: ["frontend/views/exam-guide-v26.js", "scripts/test_donor_claude_cert_guide.py"]
+    classification: OBSERVED
+    learner_problem: Check understanding before moving into practice.
+    behavior_contract: Give task-mapped formative feedback without altering graded exam evidence.
+    current_authority: Existing practice and candidate evidence APIs.
+    implementation_state: Present in guide interaction; hosted behavior not yet certified.
+    gap: Verify answer withholding and persistence behavior in protected Preview.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_donor_claude_cert_guide.py", "scripts/test_authenticated_content_boundary.py"]
+    security_notes: Do not expose correct answers before grading.
+    clean_room_notes: Snowflake-specific mapped formative behavior only.
+  - capability_id: exam-sim
+    donor: claude-certification-guide
+    evidence: ["app/mock_exam.py", "app/question_bank_exam.py", "scripts/test_mock_exam.py"]
+    classification: VERIFIED
+    learner_problem: Rehearse time-bound exam reasoning.
+    behavior_contract: Start immutable timed sitting from eligible active-release items; grade on server and retain sitting linkage.
+    current_authority: Mock engine, release eligibility and server-side entitlement.
+    implementation_state: Existing engine integrated; automated tests cover sitting contract.
+    gap: Candidate golden flow in Preview.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_mock_exam.py", "scripts/test_question_version_immutability.py"]
+    security_notes: No answer key in active sitting payload.
+    clean_room_notes: Preserve Snowflake Brain exam simulation settings.
+  - capability_id: build-coach
+    donor: claude-certification-guide
+    evidence: ["frontend/views/exercises-v26.js", "config/snowflake_lab_challenges.json"]
+    classification: OBSERVED
+    learner_problem: Practice applied Snowflake architecture and operational reasoning.
+    behavior_contract: Route task-mapped build exercises to deterministic guidance and evidence capture.
+    current_authority: Existing lab challenge configuration and candidate evidence.
+    implementation_state: Exercises/labs exist.
+    gap: Verify full golden learner transition and lab completion evidence.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/smoke_v26.py", "scripts/test_candidate_learning_intelligence.py"]
+    security_notes: No external execution or untrusted SQL execution in learner path.
+    clean_room_notes: Retain platform-specific exercise contracts.
+  - capability_id: question-studio
+    donor: leetquiz
+    evidence: ["PR #53", "PR #57", "frontend/views/question-studio-v26.js", "scripts/test_donor_leetquiz.py"]
+    classification: VERIFIED
+    learner_problem: Shape useful practice without browsing a commercial bank.
+    behavior_contract: Compose candidate-safe quizzes from approved filters and eligible served questions.
+    current_authority: Question delivery API and candidate session.
+    implementation_state: Integrated in PR #57 with focused contract tests.
+    gap: Hosted authenticated usability and isolation proof.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_donor_leetquiz.py", "scripts/test_authenticated_content_boundary.py", "scripts/test_hosted_static_exposure.py"]
+    security_notes: Never enumerate or expose the private bank.
+    clean_room_notes: Donor UI behavior is reconstructed over the canonical Snowflake Brain bank.
+  - capability_id: custom-quizzes
+    donor: leetquiz
+    evidence: ["PR #53", "frontend/views/question-studio-v26.js", "scripts/test_donor_leetquiz.py"]
+    classification: OBSERVED
+    learner_problem: Focus practice on a selected objective and difficulty.
+    behavior_contract: Quiz composition selects only eligible questions through server-controlled filters.
+    current_authority: Existing question bank runtime and entitlements.
+    implementation_state: Implemented as Question Studio composition.
+    gap: Verify Preview flow and edge cases.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_donor_leetquiz.py", "scripts/test_question_bank_tiers.py"]
+    security_notes: Bounded results and entitlement enforcement.
+    clean_room_notes: No separate custom question database.
+  - capability_id: question-explorer
+    donor: leetquiz
+    evidence: ["PR #53", "frontend/views/question-studio-v26.js", "docs/DONOR_LEETQUIZ.md"]
+    classification: OBSERVED
+    learner_problem: Discover practice by domain, task and difficulty.
+    behavior_contract: Expose safe metadata and candidate served history without bank inventory enumeration.
+    current_authority: Existing question delivery and candidate state.
+    implementation_state: Present behind authenticated Question Studio.
+    gap: Protected Preview bank-isolation evidence.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_authenticated_content_boundary.py", "scripts/test_hosted_static_exposure.py"]
+    security_notes: Non-enumerability is mandatory.
+    clean_room_notes: Discovery metadata only; private corpus remains protected.
+  - capability_id: diagnostic
+    donor: academyos-ai
+    evidence: ["app/routers/practice.py", "app/adaptive_readiness.py", "scripts/test_donor_academyos_ai.py"]
+    classification: VERIFIED
+    learner_problem: Identify baseline strengths and weak tasks.
+    behavior_contract: Record candidate-owned responses and map results to the canonical skill graph.
+    current_authority: Practice attempts and candidate evidence store.
+    implementation_state: Existing practice mode and Practice Hub integration.
+    gap: End-to-end Preview diagnostic.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_donor_academyos_ai.py", "scripts/test_candidate_learning_intelligence.py"]
+    security_notes: Candidate ownership and server grading.
+    clean_room_notes: No second progress authority.
+  - capability_id: targeted-drill
+    donor: academyos-ai
+    evidence: ["app/routers/practice.py", "frontend/views/practice-v26.js"]
+    classification: VERIFIED
+    learner_problem: Practice a specific weak objective.
+    behavior_contract: Select eligible items using canonical domain/task/difficulty filters.
+    current_authority: Practice API and active question release.
+    implementation_state: Present in practice modes.
+    gap: Preview flow and release inventory verification.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_question_bank_tiers.py", "scripts/test_authenticated_content_boundary.py"]
+    security_notes: Enforce quota and release eligibility server-side.
+    clean_room_notes: Selection composes the canonical bank.
+  - capability_id: missed-only-repair
+    donor: academyos-ai
+    evidence: ["app/learning_intelligence.py", "app/routers/intelligence.py"]
+    classification: OBSERVED
+    learner_problem: Repair repeated mistakes efficiently.
+    behavior_contract: Queue candidate-owned missed items and map remediation to skill objectives.
+    current_authority: Mistake notebook and candidate evidence.
+    implementation_state: Existing learning-intelligence flow.
+    gap: Golden flow and due scheduling certification.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_candidate_learning_intelligence.py", "scripts/test_question_version_immutability.py"]
+    security_notes: Return only the candidate's own served evidence.
+    clean_room_notes: No donor progress store.
+  - capability_id: readiness-exam
+    donor: academyos-ai
+    evidence: ["app/adaptive_readiness.py", "config/exam_simulation.json"]
+    classification: OBSERVED
+    learner_problem: Assess readiness against broader exam objectives.
+    behavior_contract: Use explainable evidence and eligible simulated assessment; never promise pass probability.
+    current_authority: Adaptive readiness and mock engine.
+    implementation_state: Readiness and mock configuration exist.
+    gap: Confirm user-facing distinction between evidence state and pass guarantee.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_adaptive_readiness_intelligence.py", "scripts/test_mock_exam.py"]
+    security_notes: No false official exam equivalence.
+    clean_room_notes: Preserve existing evidence model.
+  - capability_id: quick-mock
+    donor: academyos-ai
+    evidence: ["app/mock_exam.py", "config/exam_simulation.json"]
+    classification: VERIFIED
+    learner_problem: Fit a timed rehearsal into a short study block.
+    behavior_contract: Start a configured timed sitting using eligible active-release items.
+    current_authority: Mock engine and server-side entitlements.
+    implementation_state: Existing quick/full mock modes.
+    gap: Preview golden flow.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_mock_exam.py", "scripts/test_exam_entitlement_concurrency.py"]
+    security_notes: Atomic quota reservation and answer withholding.
+    clean_room_notes: No duplicate mock authority.
+  - capability_id: full-mock
+    donor: academyos-ai
+    evidence: ["app/mock_exam.py", "config/exam_simulation.json"]
+    classification: VERIFIED
+    learner_problem: Rehearse an extended simulated exam.
+    behavior_contract: Preserve sitting selection and versions; grade and replay under candidate authorization.
+    current_authority: Mock engine, question release and candidate record.
+    implementation_state: Existing full mock modes.
+    gap: Preview end-to-end acceptance.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_mock_exam.py", "scripts/test_question_version_immutability.py"]
+    security_notes: Prevent answer leakage and cross-account access.
+    clean_room_notes: Snowflake Brain's own exam simulation contract governs.
+  - capability_id: question-navigator
+    donor: claude-certification-guide
+    evidence: ["frontend/views/exam-session-v26.js", "scripts/test_mock_exam.py"]
+    classification: OBSERVED
+    learner_problem: Move through a sitting and revisit unanswered questions.
+    behavior_contract: Show sitting-local question positions and answer status.
+    current_authority: Immutable mock sitting state.
+    implementation_state: Existing mock session UI.
+    gap: Browser desktop/mobile proof.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_mock_exam.py", "scripts/test_production_browser_matrix.py"]
+    security_notes: Reveal no item inventory outside the sitting.
+    clean_room_notes: Use existing sitting APIs.
+  - capability_id: flagging
+    donor: claude-certification-guide
+    evidence: ["frontend/views/exam-session-v26.js", "app/mock_exam.py"]
+    classification: OBSERVED
+    learner_problem: Mark uncertain sitting questions for later review.
+    behavior_contract: Persist flags within the candidate-owned sitting and allow clear/revisit.
+    current_authority: Mock sitting state.
+    implementation_state: Existing exam session behavior.
+    gap: Confirm persistence and keyboard behavior in Preview.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_mock_exam.py", "scripts/test_production_browser_matrix.py"]
+    security_notes: Sitting ownership enforced server-side.
+    clean_room_notes: No separate flag store.
+  - capability_id: mock-replay
+    donor: academyos-ai
+    evidence: ["app/mock_exam.py", "frontend/views/exam-result-v26.js"]
+    classification: OBSERVED
+    learner_problem: Learn from completed timed attempts.
+    behavior_contract: Replay only completed authorized sitting evidence and map gaps to remediation.
+    current_authority: Immutable sitting and learning evidence.
+    implementation_state: Existing result/replay surfaces.
+    gap: Golden flow and answer disclosure policy verification.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_mock_exam.py", "scripts/test_authenticated_content_boundary.py"]
+    security_notes: Enforce ownership and post-grading disclosure.
+    clean_room_notes: Retain candidate-specific history.
+  - capability_id: socratic-coach
+    donor: leetquiz
+    evidence: ["PR #53", "docs/DONOR_LEETQUIZ.md", "frontend/views/question-studio-v26.js"]
+    classification: OBSERVED
+    learner_problem: Get a useful reasoning hint without being given the answer.
+    behavior_contract: Hints are progressive and do not reveal the key before a permitted grade/review state.
+    current_authority: Candidate-safe content and question grading policy.
+    implementation_state: Coaching interaction exists; hosted AI availability is not asserted.
+    gap: Verify deterministic fallback and answer-leakage behavior.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_donor_leetquiz.py", "scripts/test_security_adversarial.py"]
+    security_notes: No answer leakage; no provider dependency for core study flow.
+    clean_room_notes: Snowflake task reasoning and deterministic fallback.
+  - capability_id: daily-session
+    donor: clouding-academy
+    evidence: ["PR #55", "frontend/views/daily-session-v26.js", "scripts/test_donor_clouding_academy.py"]
+    classification: VERIFIED
+    learner_problem: Choose a manageable next study session.
+    behavior_contract: Assemble actions from due reviews, weak tasks, lessons and practice using persisted evidence.
+    current_authority: Study plan and candidate learning evidence.
+    implementation_state: Integrated in PR #57.
+    gap: Browser golden path.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_donor_clouding_academy.py", "scripts/test_candidate_learning_intelligence.py"]
+    security_notes: No fabricated learner metrics.
+    clean_room_notes: Reuse candidate evidence.
+  - capability_id: blitz-recall
+    donor: clouding-academy
+    evidence: ["PR #55", "app/learning_intelligence.py", "scripts/test_daily_recall_streak.py"]
+    classification: VERIFIED
+    learner_problem: Retrieve key concepts in a short session.
+    behavior_contract: Record candidate-owned recall against a task; repeated same-day actions do not inflate streaks.
+    current_authority: Persisted learning evidence.
+    implementation_state: Integrated with idempotent streak tests.
+    gap: Protected Preview behavior.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_daily_recall_streak.py"]
+    security_notes: Server timestamp and candidate ownership.
+    clean_room_notes: No browser-only streak authority.
+  - capability_id: streaks
+    donor: clouding-academy
+    evidence: ["app/learning_intelligence.py", "scripts/test_daily_recall_streak.py"]
+    classification: VERIFIED
+    learner_problem: See consistent study activity over time.
+    behavior_contract: Derive streak from persisted dates with timezone-aware same-day idempotency.
+    current_authority: Server-side recall/session evidence.
+    implementation_state: Tested for repeated same-day activity and boundary behavior.
+    gap: Hosted timezone behavior remains to verify.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_daily_recall_streak.py"]
+    security_notes: No fake or client-submitted streak increments.
+    clean_room_notes: Reuses candidate state.
+  - capability_id: architecture-builder
+    donor: clouding-academy
+    evidence: ["PR #55", "frontend/views/daily-session-v26.js", "config/snowflake_lab_challenges.json"]
+    classification: OBSERVED
+    learner_problem: Practice architecture decisions against Snowflake objectives.
+    behavior_contract: Prompt a domain-mapped design task and connect the candidate to relevant lesson/lab/practice.
+    current_authority: Curriculum and lab challenge catalog.
+    implementation_state: Present as Architecture Builder exercise pattern.
+    gap: Verify all links and evidence capture.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/smoke_v26.py", "scripts/test_donor_clouding_academy.py"]
+    security_notes: Do not execute arbitrary learner code.
+    clean_room_notes: Snowflake-specific authored prompts.
+  - capability_id: practice-hub
+    donor: academyos-ai
+    evidence: ["PR #56", "frontend/views/practice-hub-v26.js", "scripts/test_donor_academyos_ai.py"]
+    classification: VERIFIED
+    learner_problem: Find one entry point for practice, mocks, labs and readiness.
+    behavior_contract: Compose existing capabilities without duplicating their state or rules.
+    current_authority: Canonical practice, mock, lab and readiness APIs.
+    implementation_state: Integrated over existing capabilities.
+    gap: Preview route and accessibility evidence.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_donor_academyos_ai.py", "scripts/test_practice_hub_render.mjs"]
+    security_notes: Each linked route retains its own server boundary.
+    clean_room_notes: A hub view, not a new learning engine.
+  - capability_id: mistake-notebook
+    donor: academyos-ai
+    evidence: ["app/learning_intelligence.py", "app/account_lifecycle.py"]
+    classification: VERIFIED
+    learner_problem: Track recurring misconceptions and remediation.
+    behavior_contract: Candidate-owned record links misses, root cause, notes and review state.
+    current_authority: Learning-intelligence store.
+    implementation_state: Existing persistent notebook.
+    gap: Mobile and replay integration verification.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_candidate_learning_intelligence.py", "scripts/test_question_version_immutability.py"]
+    security_notes: Per-candidate ownership and export/deletion lifecycle.
+    clean_room_notes: Single persisted state authority.
+  - capability_id: add-to-review
+    donor: academyos-ai
+    evidence: ["app/learning_intelligence.py", "frontend/views/journal-v26.js"]
+    classification: OBSERVED
+    learner_problem: Schedule a difficult item or task for later retrieval.
+    behavior_contract: Add a candidate-owned review record with due date and source linkage.
+    current_authority: SRS/review evidence.
+    implementation_state: Existing review workflows.
+    gap: Confirm all candidate surfaces use common schedule API.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_candidate_learning_intelligence.py"]
+    security_notes: Candidate ownership; no public notes.
+    clean_room_notes: Reuse existing review state.
+  - capability_id: due-today
+    donor: academyos-ai
+    evidence: ["app/learning_intelligence.py", "app/routers/experience.py"]
+    classification: VERIFIED
+    learner_problem: Know which reviews are due now.
+    behavior_contract: Return only candidate-owned due items and task reviews.
+    current_authority: Learning-intelligence review schedule.
+    implementation_state: Present in progress and experience APIs.
+    gap: Preview and timezone edge evidence.
+    decision: MATCH
+    acceptance_tests: ["scripts/test_candidate_learning_intelligence.py", "scripts/test_daily_recall_streak.py"]
+    security_notes: Do not leak another candidate's item metadata.
+    clean_room_notes: No separate due queue.
+  - capability_id: spaced-repetition
+    donor: academyos-ai
+    evidence: ["app/learning_intelligence.py", "docs/adaptive-readiness-intelligence.md"]
+    classification: OBSERVED
+    learner_problem: Revisit content at an interval informed by recall.
+    behavior_contract: Schedule reviews from candidate outcomes and preserve due state.
+    current_authority: Learning-intelligence store.
+    implementation_state: Existing SRS implementation.
+    gap: Validate scheduling outcomes against hosted experience.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_candidate_learning_intelligence.py"]
+    security_notes: Candidate-scoped state.
+    clean_room_notes: Keep one schedule authority.
+  - capability_id: confidence-calibration
+    donor: academyos-ai
+    evidence: ["app/adaptive_readiness.py", "scripts/test_adaptive_readiness_intelligence.py"]
+    classification: VERIFIED
+    learner_problem: Distinguish mastery from lucky or uncertain answers.
+    behavior_contract: Include confidence, probable guesses, recency and coverage in evidence quality.
+    current_authority: Candidate evidence and adaptive readiness.
+    implementation_state: Existing readiness logic and tests.
+    gap: Confirm explanation clarity in browser.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_adaptive_readiness_intelligence.py"]
+    security_notes: Never convert calibration to a guaranteed pass claim.
+    clean_room_notes: Derived from the one candidate evidence store.
+  - capability_id: readiness-explanations
+    donor: academyos-ai
+    evidence: ["app/adaptive_readiness.py", "docs/adaptive-readiness-intelligence.md"]
+    classification: VERIFIED
+    learner_problem: Understand why readiness is high or low and what evidence is missing.
+    behavior_contract: Return state, evidence quality, blockers, weak tasks, due work and next action.
+    current_authority: Adaptive readiness service.
+    implementation_state: Reason-coded readiness exists.
+    gap: Golden learner comprehension and hosted payload verification.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_adaptive_readiness_intelligence.py", "scripts/test_candidate_learning_intelligence.py"]
+    security_notes: No public candidate data or unsupported pass probability.
+    clean_room_notes: Explanations derive from Snowflake Brain evidence.
+  - capability_id: study-plan
+    donor: academyos-ai
+    evidence: ["app/adaptive_readiness.py", "app/learning_intelligence.py"]
+    classification: OBSERVED
+    learner_problem: Convert readiness gaps into an ordered study plan.
+    behavior_contract: Recommend concrete lessons, reviews and practice in exam-runway context.
+    current_authority: Adaptive readiness and study-plan evidence.
+    implementation_state: Implemented in existing service.
+    gap: Validate all recommended actions resolve to live surfaces.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_candidate_learning_intelligence.py", "scripts/test_adaptive_readiness_intelligence.py"]
+    security_notes: Do not fabricate completion or history.
+    clean_room_notes: No second plan store.
+  - capability_id: labs
+    donor: claude-certification-guide
+    evidence: ["app/routers/labs.py", "config/snowflake_lab_challenges.json"]
+    classification: VERIFIED
+    learner_problem: Apply Snowflake concepts in structured exercises.
+    behavior_contract: Map authored challenge to curriculum task and candidate evidence.
+    current_authority: Lab catalog and candidate evidence.
+    implementation_state: Existing lab routes and catalog.
+    gap: Browser accessibility and golden path proof.
+    decision: MATCH
+    acceptance_tests: ["scripts/smoke_v26.py", "scripts/test_candidate_learning_intelligence.py"]
+    security_notes: Treat learner input as untrusted; no privileged execution.
+    clean_room_notes: Authored Snowflake exercises only.
+  - capability_id: content-correction
+    donor: leetquiz
+    evidence: ["app/question_feedback.py", "app/routers/question_feedback.py", "scripts/test_question_feedback.py"]
+    classification: VERIFIED
+    learner_problem: Report a suspected issue with a served question.
+    behavior_contract: Accept candidate feedback against served history without exposing or changing the active item.
+    current_authority: Question feedback workflow.
+    implementation_state: Implemented with focused tests.
+    gap: Verify staff disposition and hosted persistence.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_question_feedback.py"]
+    security_notes: Candidate ownership and sanitized text handling.
+    clean_room_notes: Feedback informs editorial review; no automatic content mutation.
+  - capability_id: editorial-ingestion
+    donor: leetquiz
+    evidence: ["app/question_editorial.py", "scripts/question_source_intake.py", "scripts/test_question_source_intake.py"]
+    classification: VERIFIED
+    learner_problem: Bring sourced candidate content through a controlled QA path.
+    behavior_contract: Validate provenance/schema and stage content for review; no direct publication.
+    current_authority: Editorial QA and release governance.
+    implementation_state: Intake and validation tooling exist.
+    gap: Verify deployment integration and attributable review records.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_question_source_intake.py", "scripts/test_question_bank_release_governance.py"]
+    security_notes: Malicious package handling and no public artifacts.
+    clean_room_notes: Preserve provenance and human gates.
+  - capability_id: public-discovery-seo
+    donor: leetquiz
+    evidence: ["app/public_discovery.py", "scripts/test_public_discovery.py"]
+    classification: VERIFIED
+    learner_problem: Find accurate public exam preparation information.
+    behavior_contract: Publish discoverable guide, catalog and trust pages; exclude protected questions.
+    current_authority: Public discovery API and authored pages.
+    implementation_state: Discovery routes and tests exist.
+    gap: Verify deployed metadata and search indexing.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_public_discovery.py", "scripts/test_product_scope.py"]
+    security_notes: No protected question pages or source maps.
+    clean_room_notes: Search patterns are reconstructed; Snowflake facts are sourced.
+  - capability_id: quick-reference
+    donor: claude-certification-guide
+    evidence: ["frontend/views/reference.js", "config/study_content_core.json"]
+    classification: OBSERVED
+    learner_problem: Quickly refresh mapped Snowflake concepts.
+    behavior_contract: Provide concise task/domain reference linked to authored guide material.
+    current_authority: Authored certification content.
+    implementation_state: Existing reference route.
+    gap: Verify freshness display and mobile use.
+    decision: MATCH
+    acceptance_tests: ["scripts/smoke_core_guide.py", "scripts/smoke_v26.py"]
+    security_notes: No protected bank content.
+    clean_room_notes: Use independently authored Snowflake material.
+  - capability_id: glossary
+    donor: claude-certification-guide
+    evidence: ["frontend/views/reference.js", "config/study_content_core.json"]
+    classification: OBSERVED
+    learner_problem: Resolve Snowflake terminology while studying.
+    behavior_contract: Search terms with canonical task links and source context where applicable.
+    current_authority: Authored certification content.
+    implementation_state: Existing glossary route.
+    gap: Confirm term/source freshness metadata.
+    decision: MATCH
+    acceptance_tests: ["scripts/smoke_core_guide.py"]
+    security_notes: Public-safe authored material only.
+    clean_room_notes: Independently authored definitions.
+  - capability_id: freshness-metadata
+    donor: claude-certification-guide
+    evidence: ["app/content_freshness.py", "docs/REVERSE_ENGINEERING_COVERAGE_MATRIX.md"]
+    classification: VERIFIED
+    learner_problem: Know whether learning material reflects current official sources.
+    behavior_contract: Record source validation and alert editorial workflow to source changes without silently rewriting questions.
+    current_authority: Content freshness and editorial evidence.
+    implementation_state: Freshness pipeline exists.
+    gap: Production content freshness receipt and operator workflow.
+    decision: IMPROVE
+    acceptance_tests: ["scripts/test_content_freshness.py", "scripts/test_question_bank_release_governance.py"]
+    security_notes: Source changes never auto-promote content.
+    clean_room_notes: Facts cite official Snowflake sources; workflow patterns are reconstructed.
+  - capability_id: video-course-player
+    donor: null
+    evidence: ["GitHub issue #58 historical requirements", "user master brief section 3"]
+    classification: VERIFIED
+    learner_problem: Preserve previously discussed video learning needs without widening GA.
+    behavior_contract: Keep video/course-player/transcript requirements in post-GA roadmap and absent from active GA runtime.
+    current_authority: Explicit product boundary NON_VIDEO_GA_WITH_VIDEO_BACKLOG.
+    implementation_state: Retired from active UI; historical requirements retained.
+    gap: Add durable backlog link to the reconciliation tracker.
+    decision: OMIT
+    acceptance_tests: ["scripts/test_product_scope.py", "scripts/verify_all.sh retired-media guard"]
+    security_notes: No media archive or transcript runtime in GA.
+    clean_room_notes: Historical evidence is retained without copying donor implementation.
