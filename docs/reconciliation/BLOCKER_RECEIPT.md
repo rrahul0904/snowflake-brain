@@ -38,6 +38,15 @@ Prepared 2026-10-13 for the current PR #57 candidate. Blockers below are externa
 - **Evidence missing:** Reviewer identity, approval state, timestamp, and resolution of review comments on the final candidate SHA.
 - **Work completed:** Checked PR review and review-request metadata; preserved the gate as pending without inventing an approver.
 
+## Full-scope independent technical review
+
+- **Blocker:** The prior independent follow-up covered the hosted-probe security changes on the earlier c935 candidate. A fresh review of the full convergence candidate across architecture, content isolation, auth, billing, PostgreSQL, browser/accessibility, release/rollback, freshness and recovery has not been completed.
+- **Owner:** Independent engineer/reviewer who did not build the candidate.
+- **Required action:** Review the exact final candidate SHA and its evidence bundle; record actionable findings and verify their resolution.
+- **Exact next step:** After the hosted Preview evidence is available, assign an independent reviewer to PR #57 with `docs/architecture/`, `docs/reconciliation/SHIPPING_CONTRACT.md`, the exact-SHA workflow receipts, and the candidate browser/security evidence. Record the review disposition and unresolved findings in the PR.
+- **Evidence missing:** Full-scope independent technical review receipt tied to the final candidate SHA, including findings and closure status.
+- **Work completed:** The previous focused security follow-up is preserved; local governance and regression checks are complete. It is not represented as full-scope review.
+
 ## Work completed before handoff
 
 - Reality reconciliation and current deployment facts are in `final-reality.md`.

@@ -57,6 +57,9 @@ def main() -> None:
         raise SystemExit("Final production acceptance must contain exactly one verdict")
     if verdicts[0] != "PRODUCTION NO-GO":
         raise SystemExit("Production GO requires verified exact-SHA acceptance evidence")
+    blockers = (ROOT / "docs/reconciliation/BLOCKER_RECEIPT.md").read_text(encoding="utf-8")
+    if "## Full-scope independent technical review" not in blockers:
+        raise SystemExit("Blocker receipt must distinguish independent technical review from human approval")
     missing_architecture = sorted(path for path in ARCHITECTURE_FILES if not (ARCHITECTURE / path).is_file())
     if missing_architecture:
         raise SystemExit(f"Missing architecture artifacts: {', '.join(missing_architecture)}")
