@@ -22,13 +22,7 @@ SnowPro Core COF-C03
   -> candidate-owned verified SnowPro credentials
 ```
 
-Learner-visible certification catalog:
-
-- **SnowPro Core — COF-C03**: available
-- **SnowPro Advanced: Data Engineer — DEA-C02**: Coming Soon
-- **SnowPro Advanced: Architect — ARA-C01**: Coming Soon
-
-Only genuinely authored certification content is launchable.
+The public catalog reports source-verified facts for multiple SnowPro paths. **SnowPro Core — COF-C03 is the currently launchable, deeply curated study guide.** Other certifications remain discovery paths until their guides and governed practice are authored and reviewed. Snowflake's official exam availability does not imply Snowflake Brain guide availability.
 
 ## COF-C03 blueprint
 
@@ -222,6 +216,10 @@ Production persistence and backup/restore are exercised in CI against PostgreSQL
 
 See `docs/ARCHITECTURE.md` for the current runtime map.
 
+Production incident procedures for database, Vercel, question releases, account email, Stripe, Google OAuth, alerts, freshness and recovery are in [`docs/operations/INCIDENT_RUNBOOKS.md`](docs/operations/INCIDENT_RUNBOOKS.md).
+
+The release architecture, state authorities, security boundaries, question supply chain, learning-intelligence contract, deployment model, and current reconciliation evidence are documented in [`docs/architecture/`](docs/architecture/) and [`docs/reconciliation/final-reality.md`](docs/reconciliation/final-reality.md). The exact-SHA shipping checklist is [`docs/reconciliation/SHIPPING_CONTRACT.md`](docs/reconciliation/SHIPPING_CONTRACT.md). Donor feature decisions and acceptance evidence are tracked in [`docs/reverse-engineering/capability-ledger.yaml`](docs/reverse-engineering/capability-ledger.yaml). REA was unavailable during the current reconciliation, so the ledger uses only independently verifiable repository and deployment evidence.
+
 ## Run locally
 
 ```bash
@@ -321,6 +319,6 @@ A release is GO only when the integrated `main` gate reports zero blocking jobs.
 
 ## Release governance
 
-Use pull requests for production changes and require the Production Launch Gate before release. The repository-level branch/ruleset protection is operational governance and should be enabled on `main` in GitHub settings.
+Use pull requests for production changes and require the Production Launch Gate before release. `main` currently has strict required status checks, administrator enforcement, conversation resolution, and force-push/deletion protections enabled. Current provider and hosted Preview evidence remains recorded in [`docs/reconciliation/final-reality.md`](docs/reconciliation/final-reality.md).
 
 The application source, private question content, provider credentials and production infrastructure are intentionally separate security boundaries.

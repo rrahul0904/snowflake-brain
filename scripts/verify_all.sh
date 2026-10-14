@@ -45,6 +45,9 @@ echo "== V26 functional and visual contract =="
 echo "== Reverse-engineering completeness =="
 "$PYTHON_BIN" scripts/test_reverse_engineering_completeness.py
 
+echo "== Convergence governance artifacts =="
+"$PYTHON_BIN" scripts/test_convergence_governance_artifacts.py
+
 echo "== Final Study Command Center convergence =="
 "$PYTHON_BIN" scripts/test_final_convergence.py
 
@@ -148,7 +151,11 @@ echo "== Persisted daily recall streak =="
 "$PYTHON_BIN" scripts/test_daily_recall_streak.py
 
 echo "== Donor ES-module import smoke =="
-"$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+if "$NODE_BIN" --experimental-default-type=module -e 'void 0' >/dev/null 2>&1; then
+  "$NODE_BIN" --experimental-default-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+else
+  "$NODE_BIN" --input-type=module -e 'await Promise.all(["./frontend/views/question-studio-v26.js","./frontend/views/exam-guide-v26.js","./frontend/views/daily-session-v26.js","./frontend/views/practice-hub-v26.js"].map((path) => import(path)))'
+fi
 "$NODE_BIN" scripts/test_practice_hub_render.mjs
 
 echo "== LeetQuiz donor contract =="
